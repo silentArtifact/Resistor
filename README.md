@@ -36,7 +36,24 @@ docker run -d \
   -e TZ=America/Chicago \
   -e RESISTOR_DATA=/data \
   -v /path/on/host:/data \
-  ghcr.io/yourname/resistor:latest
+ghcr.io/yourname/resistor:latest
+```
+
+## Building the container
+
+To build the image yourself, run from the repository root:
+
+```sh
+docker build -t resistor .
+```
+
+Then start the container:
+
+```sh
+docker run -d \
+  --name resistor \
+  -p 8080:8080 \
+  resistor
 ```
 
 The container detects architecture and selects the correct image variant.
