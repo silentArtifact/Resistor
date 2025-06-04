@@ -2,7 +2,7 @@ This self‑hosted web application helps individuals reinforce good habits by lo
 
 # Overview
 
-UrgeTracker is a single‑user Docker container (arm/v7, arm64, amd64) that runs a Python + FastAPI backend with a React (Vite) frontend and an embedded SQLite database. All data lives locally by default; optional end‑to‑end‑encrypted cloud sync keeps multiple devices in step.
+Resistor is a single‑user Docker container (arm/v7, arm64, amd64) that runs a Python + FastAPI backend with a React (Vite) frontend and an embedded SQLite database. All data lives locally by default; optional end‑to‑end‑encrypted cloud sync keeps multiple devices in step.
 
 # Features
 
@@ -31,12 +31,12 @@ UrgeTracker is a single‑user Docker container (arm/v7, arm64, amd64) that runs
 
 ```sh
 docker run -d \
-  --name urgtracker \
+  --name resistor \
   -p 8080:8080 \
   -e TZ=America/Chicago \
-  -e URGETRACKER_DATA=/data \
+  -e RESISTOR_DATA=/data \
   -v /path/on/host:/data \
-  ghcr.io/yourname/urge-tracker:latest
+  ghcr.io/yourname/resistor:latest
 ```
 
 The container detects architecture and selects the correct image variant.
@@ -46,8 +46,8 @@ The container detects architecture and selects the correct image variant.
 Set environment variables (or a `.env` file):
 
 * `TZ` – IANA timezone string.
-* `URGETRACKER_DATA` – path to mounted writable folder.
-* `URGETRACKER_EXPORT_PASSPHRASE` – optional default passphrase for exports.
+* `RESISTOR_DATA` – path to mounted writable folder.
+* `RESISTOR_EXPORT_PASSPHRASE` – optional default passphrase for exports.
 * `ONEDRIVE_CLIENT_ID` / `ICLOUD_APP_PASSWORD` / `DROPBOX_TOKEN` / `GDRIVE_CLIENT_ID` – provide any of these to enable cloud sync.
 
 # Usage
@@ -70,7 +70,7 @@ Select Settings → Delete My Data. Confirming this action wipes all event rows 
 
 # Backup and Cloud Sync
 
-UrgeTracker can push and pull an encrypted zip of the database:
+Resistor can push and pull an encrypted zip of the database:
 
 * OneDrive (Microsoft Graph device‑code OAuth)
 * iCloud Drive (WebDAV with app‑specific password)
@@ -85,8 +85,8 @@ Go to Settings → Export to download an encrypted or plain JSON archive. Use Im
 # Development
 
 ```sh
-git clone https://github.com/yourname/urge-tracker
-cd urge-tracker
+git clone https://github.com/yourname/resistor
+cd resistor
 ./dev.sh  # starts backend and frontend hot‑reload servers
 ```
 
@@ -101,4 +101,4 @@ See `CONTRIBUTING.md` for coding standards and branch workflow.
 
 # License
 
-UrgeTracker is released under the MIT License. See `LICENSE` for full text.
+Resistor is released under the MIT License. See `LICENSE` for full text.
