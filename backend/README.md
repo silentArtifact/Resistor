@@ -6,3 +6,5 @@ This directory contains the FastAPI application. Install requirements and run th
 pip install -r requirements.txt
 uvicorn resistor.main:app --reload --port 8080
 ```
+
+The requirements file pins `httpx` below 0.27 to avoid compatibility issues.
