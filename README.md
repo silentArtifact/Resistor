@@ -23,6 +23,18 @@ The React app currently renders only a heading that says "Resistor". It is inclu
 
 This script starts both the FastAPI server on port 8080 and the Vite dev server for the React app.
 
+## Docker
+
+To build and run the production container:
+
+```sh
+docker build -t resistor .
+docker run -p 8080:8080 resistor
+```
+
+The image installs the Python requirements, installs the Node packages to build
+the frontend and finally launches the API with `uvicorn`.
+
 # Roadmap
 
 The following planned features are not yet implemented:
