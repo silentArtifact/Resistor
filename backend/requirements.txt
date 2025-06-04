@@ -2,4 +2,4 @@ fastapi
 uvicorn
 sqlmodel
 pydantic
-httpx
+httpx==0.26.*
