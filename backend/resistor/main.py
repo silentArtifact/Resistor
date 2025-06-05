@@ -15,7 +15,7 @@ def on_startup():
 
 @app.post("/habits", response_model=HabitRead)
 def create_habit(habit: HabitCreate, session=Depends(get_session)):
-    db_habit = Habit.from_orm(habit)
+    db_habit = Habit.model_validate(habit, from_attributes=True)
     session.add(db_habit)
     session.commit()
     session.refresh(db_habit)
@@ -33,7 +33,7 @@ def create_event(event: EventCreate, session=Depends(get_session)):
     habit = session.get(Habit, event.habit_id)
     if not habit:
         raise HTTPException(status_code=404, detail="Habit not found")
-    db_event = Event.from_orm(event)
+    db_event = Event.model_validate(event, from_attributes=True)
     session.add(db_event)
     session.commit()
     session.refresh(db_event)
