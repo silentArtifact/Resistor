@@ -52,6 +52,17 @@ def list_events(session=Depends(get_session)):
     return events
 
 
+@app.delete("/events/{event_id}")
+def delete_event(event_id: int, session=Depends(get_session)):
+    """Delete a single event by id."""
+    event = session.get(Event, event_id)
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    session.delete(event)
+    session.commit()
+    return {"status": "deleted"}
+
+
 @app.get("/export")
 def export_data(session=Depends(get_session)):
     """Export all habits and events as JSON."""
