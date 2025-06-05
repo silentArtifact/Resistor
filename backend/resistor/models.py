@@ -5,7 +5,9 @@ from sqlmodel import SQLModel, Field
 class Habit(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     name: str
+    description: str | None = None
     color: str | None = None
+    icon: str | None = None
 
 
 class Event(SQLModel, table=True):

@@ -7,6 +7,8 @@ engine = create_engine(f"sqlite:///{DATA_PATH / 'resistor.db'}", echo=True)
 
 
 def init_db():
+    """Recreate database tables to ensure schema matches models."""
+    SQLModel.metadata.drop_all(engine)
     SQLModel.metadata.create_all(engine)
 
 

@@ -13,9 +13,19 @@ def test_healthz():
 
 def test_create_and_list_habit():
     init_db()
-    response = client.post("/habits", json={"name": "Test"})
+    payload = {
+        "name": "Test",
+        "description": "Example desc",
+        "color": "#ff0000",
+        "icon": "🔥",
+    }
+    response = client.post("/habits", json=payload)
     assert response.status_code == 200
-    habit_id = response.json()["id"]
+    data = response.json()
+    habit_id = data["id"]
+    assert data["description"] == payload["description"]
+    assert data["color"] == payload["color"]
+    assert data["icon"] == payload["icon"]
 
     response = client.get("/habits")
     assert response.status_code == 200

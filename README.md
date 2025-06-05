@@ -6,7 +6,7 @@ The backend uses SQLite through SQLModel and the frontend is bootstrapped with V
 
 # API Endpoints
 
-* `POST /habits` – create a habit with a name and optional colour.
+* `POST /habits` – create a habit with a name, optional description, colour and icon.
 * `GET /habits` – list all habits.
 * `POST /events` – log a success or slip against a habit.
 * `GET /events` – list all logged events.
