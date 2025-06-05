@@ -5,6 +5,12 @@ from resistor.database import init_db
 client = TestClient(app)
 
 
+def test_healthz():
+    response = client.get("/healthz")
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+
+
 def test_create_and_list_habit():
     init_db()
     response = client.post("/habits", json={"name": "Test"})

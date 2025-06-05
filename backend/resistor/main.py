@@ -8,6 +8,12 @@ from .schemas import HabitCreate, HabitRead, EventCreate, EventRead
 app = FastAPI(title="Resistor API")
 
 
+@app.get("/healthz")
+def healthz():
+    """Simple health check endpoint."""
+    return {"status": "ok"}
+
+
 @app.on_event("startup")
 def on_startup():
     init_db()
