@@ -19,3 +19,4 @@ class Event(SQLModel, table=True):
     success: bool
     latitude: float | None = None
     longitude: float | None = None
+    note: str | None = None

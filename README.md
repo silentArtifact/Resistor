@@ -15,7 +15,7 @@ The backend uses SQLite through SQLModel and the frontend is bootstrapped with V
 
 # Frontend
 
-The React app currently renders only a heading that says "Resistor". It is included so the backend can serve a basic SPA bundle.
+The React app lets you manage habits and quickly log events. A dropdown at the top acts as a quick switcher for the active habit, and Resist/Slip buttons record successes or failures. After logging you are prompted for an optional note and see a brief alert as feedback.
 
 # Quick Start (Development)
 

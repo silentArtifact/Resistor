@@ -42,6 +42,7 @@ def test_create_event_and_list_events():
             "success": True,
             "latitude": 1.0,
             "longitude": 2.0,
+            "note": "Feeling great",
         },
     )
     assert event_response.status_code == 200
@@ -52,6 +53,7 @@ def test_create_event_and_list_events():
     event = next(e for e in response.json() if e["id"] == event_id)
     assert event["latitude"] == 1.0
     assert event["longitude"] == 2.0
+    assert event["note"] == "Feeling great"
 
 
 def test_create_event_invalid_habit():
@@ -127,7 +129,7 @@ def test_export_data():
     habit_id = habit_resp.json()["id"]
     event_resp = client.post(
         "/events",
-        json={"habit_id": habit_id, "success": False},
+        json={"habit_id": habit_id, "success": False, "note": "x"},
     )
     event_id = event_resp.json()["id"]
 
@@ -135,7 +137,7 @@ def test_export_data():
     assert response.status_code == 200
     data = response.json()
     assert any(h["id"] == habit_id for h in data["habits"])
-    assert any(e["id"] == event_id for e in data["events"])
+    assert any(e["id"] == event_id and e["note"] == "x" for e in data["events"])
 
 
 def test_delete_event():
@@ -166,7 +168,7 @@ def test_export_delete_import_round_trip():
     habit = client.post("/habits", json={"name": "Import Habit"}).json()
     event = client.post(
         "/events",
-        json={"habit_id": habit["id"], "success": True},
+        json={"habit_id": habit["id"], "success": True, "note": "note"},
     ).json()
 
     export_resp = client.get("/export")
@@ -192,4 +194,4 @@ def test_export_delete_import_round_trip():
     events_after = client.get("/events").json()
 
     assert any(h["id"] == habit["id"] for h in habits_after)
-    assert any(e["id"] == event["id"] for e in events_after)
+    assert any(e["id"] == event["id"] and e["note"] == "note" for e in events_after)

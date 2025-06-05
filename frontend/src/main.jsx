@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 
 function App() {
   const [habits, setHabits] = useState([]);
+  const [activeHabit, setActiveHabit] = useState(null);
   const [form, setForm] = useState({
     name: '',
     description: '',
@@ -23,6 +24,12 @@ function App() {
       .then(setHabits)
       .catch(() => setHabits([]));
   }, []);
+
+  useEffect(() => {
+    if (habits.length > 0 && !activeHabit) {
+      setActiveHabit(habits[0].id);
+    }
+  }, [habits, activeHabit]);
 
   function createHabit(e) {
     e.preventDefault();
@@ -69,6 +76,7 @@ function App() {
   }
 
   function logEvent(habitId, success) {
+    const note = prompt('Add a note (optional)') || null;
     const send = (lat, lon) => {
       fetch('/events', {
         method: 'POST',
@@ -78,7 +86,12 @@ function App() {
           success,
           latitude: lat,
           longitude: lon,
+          note,
         }),
+      }).then(() => {
+        if (success) {
+          alert('Great job!');
+        }
       });
     };
 
@@ -95,6 +108,22 @@ function App() {
   return (
     <div>
       <h1>Resistor</h1>
+      {habits.length > 0 && (
+        <div style={{ marginBottom: '1em' }}>
+          <select
+            value={activeHabit || ''}
+            onChange={(e) => setActiveHabit(Number(e.target.value))}
+          >
+            {habits.map((h) => (
+              <option key={h.id} value={h.id}>
+                {h.name}
+              </option>
+            ))}
+          </select>{' '}
+          <button onClick={() => logEvent(activeHabit, true)}>Resist</button>{' '}
+          <button onClick={() => logEvent(activeHabit, false)}>Slip</button>
+        </div>
+      )}
       <form onSubmit={createHabit} style={{ marginBottom: '1em' }}>
         <input
           placeholder="Name"
@@ -157,7 +186,7 @@ function App() {
             {habit.icon && <span>{habit.icon} </span>}
             <span style={{ color: habit.color || 'inherit' }}>{habit.name}</span>
             {habit.description ? ` - ${habit.description}` : ''}{' '}
-            <button onClick={() => logEvent(habit.id, true)}>Success</button>{' '}
+            <button onClick={() => logEvent(habit.id, true)}>Resist</button>{' '}
             <button onClick={() => logEvent(habit.id, false)}>Slip</button>{' '}
             <button onClick={() => startEdit(habit)}>Edit</button>{' '}
             <button onClick={() => deleteHabit(habit.id)}>Delete</button>

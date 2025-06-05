@@ -30,6 +30,7 @@ class EventCreate(BaseModel):
     success: bool
     latitude: float | None = None
     longitude: float | None = None
+    note: str | None = None
 
 
 class EventRead(EventCreate):
