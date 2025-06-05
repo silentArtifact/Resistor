@@ -11,4 +11,6 @@ def init_db():
 
 
 def get_session():
-    return Session(engine)
+    """Yield a database session scoped to a context manager."""
+    with Session(engine) as session:
+        yield session
