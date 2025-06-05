@@ -21,3 +21,9 @@ class EventCreate(BaseModel):
 class EventRead(EventCreate):
     id: int
     timestamp: datetime
+
+
+class ExportBundle(BaseModel):
+    """Payload used for full data export/import."""
+    habits: list[HabitRead]
+    events: list[EventRead]

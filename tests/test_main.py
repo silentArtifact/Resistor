@@ -88,3 +88,39 @@ def test_delete_event_not_found():
     init_db()
     response = client.delete("/events/9999")
     assert response.status_code == 404
+
+
+def test_export_delete_import_round_trip():
+    init_db()
+
+    # Create unique data to export
+    habit = client.post("/habits", json={"name": "Import Habit"}).json()
+    event = client.post(
+        "/events",
+        json={"habit_id": habit["id"], "success": True},
+    ).json()
+
+    export_resp = client.get("/export")
+    assert export_resp.status_code == 200
+    exported = export_resp.json()
+
+    # Remove the database file to simulate a clean slate
+    from pathlib import Path
+    from resistor.database import engine
+
+    engine.dispose()
+    Path(engine.url.database).unlink()
+    init_db()
+
+    # Verify DB is empty
+    assert client.get("/habits").json() == []
+    assert client.get("/events").json() == []
+
+    import_resp = client.post("/import", json=exported)
+    assert import_resp.status_code == 200
+
+    habits_after = client.get("/habits").json()
+    events_after = client.get("/events").json()
+
+    assert any(h["id"] == habit["id"] for h in habits_after)
+    assert any(e["id"] == event["id"] for e in events_after)
