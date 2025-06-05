@@ -79,6 +79,19 @@ def test_update_habit():
     assert any(h["id"] == habit["id"] and h["name"] == "New" for h in listed)
 
 
+def test_reorder_habits():
+    init_db()
+    h1 = client.post("/habits", json={"name": "One"}).json()
+    h2 = client.post("/habits", json={"name": "Two"}).json()
+
+    resp = client.patch(f"/habits/{h2['id']}", json={"position": 0})
+    assert resp.status_code == 200
+
+    habits = client.get("/habits").json()
+    ids = [h["id"] for h in habits]
+    assert ids[0] == h2["id"] and ids[1] == h1["id"]
+
+
 def test_archive_habit():
     init_db()
     habit = client.post("/habits", json={"name": "Archivable"}).json()

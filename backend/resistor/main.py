@@ -28,7 +28,11 @@ def on_startup():
 
 @app.post("/habits", response_model=HabitRead)
 def create_habit(habit: HabitCreate, session=Depends(get_session)):
-    db_habit = Habit.model_validate(habit, from_attributes=True)
+    data = habit.model_dump(exclude_unset=True)
+    if data.get("position") is None:
+        max_pos = session.exec(select(Habit.position).order_by(Habit.position.desc())).first()
+        data["position"] = (max_pos or 0) + 1
+    db_habit = Habit(**data)
     session.add(db_habit)
     session.commit()
     session.refresh(db_habit)
@@ -40,7 +44,7 @@ def list_habits(include_archived: bool = False, session=Depends(get_session)):
     query = select(Habit)
     if not include_archived:
         query = query.where(Habit.archived == False)  # noqa: E712
-    habits = session.exec(query).all()
+    habits = session.exec(query.order_by(Habit.position)).all()
     return habits
 
 

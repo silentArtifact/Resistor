@@ -8,6 +8,7 @@ class Habit(SQLModel, table=True):
     description: str | None = None
     color: str | None = None
     icon: str | None = None
+    position: int = Field(default=0, index=True)
     archived: bool = Field(default=False)
 
 
