@@ -7,6 +7,7 @@ class HabitCreate(BaseModel):
     description: str | None = None
     color: str | None = None
     icon: str | None = None
+    position: int | None = None
     archived: bool = False
 
 
@@ -20,6 +21,7 @@ class HabitUpdate(BaseModel):
     description: str | None = None
     color: str | None = None
     icon: str | None = None
+    position: int | None = None
     archived: bool | None = None
 
 

@@ -6,9 +6,9 @@ The backend uses SQLite through SQLModel and the frontend is bootstrapped with V
 
 # API Endpoints
 
-* `POST /habits` – create a habit with a name, optional description, colour and icon.
+* `POST /habits` – create a habit with a name, optional description, colour, icon and position.
 * `GET /habits` – list all active habits. Pass `include_archived=true` to include archived ones.
-* `PATCH /habits/{id}` – update a habit's details (name, colour, etc.) or archive it.
+* `PATCH /habits/{id}` – update a habit's details (name, colour, position, etc.) or archive it.
 * `DELETE /habits/{id}` – remove a habit and its events.
 * `POST /events` – log a success or slip against a habit.
 * `GET /events` – list all logged events.
