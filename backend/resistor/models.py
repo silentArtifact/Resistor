@@ -20,3 +20,9 @@ class Event(SQLModel, table=True):
     latitude: float | None = None
     longitude: float | None = None
     note: str | None = None
+
+
+class Settings(SQLModel, table=True):
+    """Application-wide configuration."""
+    id: int | None = Field(default=1, primary_key=True)
+    capture_location: bool = Field(default=True)
