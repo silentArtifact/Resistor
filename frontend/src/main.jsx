@@ -1,6 +1,54 @@
 import React, { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom/client';
 
+function AnalyticsTable() {
+  const [rows, setRows] = useState([]);
+
+  useEffect(() => {
+    fetch('/analytics')
+      .then((r) => r.json())
+      .then(setRows)
+      .catch(() => setRows([]));
+  }, []);
+
+  if (rows.length === 0) {
+    return (
+      <div>
+        <h2>Analytics</h2>
+        <p>No data</p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <h2>Analytics</h2>
+      <table border="1">
+        <thead>
+          <tr>
+            <th>Habit</th>
+            <th>Daily Resist</th>
+            <th>Daily Slip</th>
+            <th>Weekly Resist</th>
+            <th>Weekly Slip</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.habit_id}>
+              <td>{row.habit_name}</td>
+              <td>{row.daily_resist}</td>
+              <td>{row.daily_slip}</td>
+              <td>{row.weekly_resist}</td>
+              <td>{row.weekly_slip}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function App() {
   const [habits, setHabits] = useState([]);
   const [activeHabit, setActiveHabit] = useState(null);
@@ -217,10 +265,11 @@ function App() {
             <button onClick={() => logEvent(habit.id, true)}>Resist</button>{' '}
             <button onClick={() => logEvent(habit.id, false)}>Slip</button>{' '}
             <button onClick={() => startEdit(habit)}>Edit</button>{' '}
-            <button onClick={() => deleteHabit(habit.id)}>Delete</button>
-          </li>
-        ))}
+          <button onClick={() => deleteHabit(habit.id)}>Delete</button>
+        </li>
+      ))}
       </ul>
+      <AnalyticsTable />
     </div>
   );
 }
