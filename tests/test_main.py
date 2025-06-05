@@ -224,3 +224,42 @@ def test_export_delete_import_round_trip():
 
     assert any(h["id"] == habit["id"] for h in habits_after)
     assert any(e["id"] == event["id"] and e["note"] == "note" for e in events_after)
+
+
+def test_analytics_counts():
+    init_db()
+
+    h1 = client.post("/habits", json={"name": "H1"}).json()
+    h2 = client.post("/habits", json={"name": "H2"}).json()
+
+    e1 = client.post("/events", json={"habit_id": h1["id"], "success": True}).json()
+    e2 = client.post("/events", json={"habit_id": h1["id"], "success": False}).json()
+    e3 = client.post("/events", json={"habit_id": h2["id"], "success": False}).json()
+
+    from datetime import datetime, timedelta
+    from resistor.database import Session, engine
+    from resistor.models import Event
+
+    with Session(engine) as session:
+        ev1 = session.get(Event, e1["id"])
+        ev1.timestamp = datetime.utcnow() - timedelta(days=1)
+        session.add(ev1)
+        ev3 = session.get(Event, e3["id"])
+        ev3.timestamp = datetime.utcnow() - timedelta(days=8)
+        session.add(ev3)
+        session.commit()
+
+    resp = client.get("/analytics")
+    assert resp.status_code == 200
+    data = resp.json()
+
+    d1 = next(r for r in data if r["habit_id"] == h1["id"])
+    d2 = next(r for r in data if r["habit_id"] == h2["id"])
+
+    assert d1["daily_resist"] == 0
+    assert d1["daily_slip"] == 1
+    assert d1["weekly_resist"] == 1
+    assert d1["weekly_slip"] == 1
+
+    assert d2["daily_slip"] == 0
+    assert d2["weekly_slip"] == 0
