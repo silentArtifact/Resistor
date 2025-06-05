@@ -42,3 +42,7 @@ class ExportBundle(BaseModel):
     """Payload used for full data export/import."""
     habits: list[HabitRead]
     events: list[EventRead]
+
+
+class SettingsSchema(BaseModel):
+    capture_location: bool

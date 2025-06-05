@@ -161,6 +161,35 @@ def test_delete_event_not_found():
     assert response.status_code == 404
 
 
+def test_settings_endpoint_and_gps_disable():
+    init_db()
+
+    # default settings should return True
+    resp = client.get("/settings")
+    assert resp.status_code == 200
+    assert resp.json()["capture_location"] is True
+
+    # disable gps
+    resp = client.patch("/settings", json={"capture_location": False})
+    assert resp.status_code == 200
+    assert resp.json()["capture_location"] is False
+
+    habit = client.post("/habits", json={"name": "GPS"}).json()
+    ev_resp = client.post(
+        "/events",
+        json={
+            "habit_id": habit["id"],
+            "success": True,
+            "latitude": 12.3,
+            "longitude": 45.6,
+        },
+    )
+    assert ev_resp.status_code == 200
+    data = ev_resp.json()
+    assert data["latitude"] is None
+    assert data["longitude"] is None
+
+
 def test_export_delete_import_round_trip():
     init_db()
 

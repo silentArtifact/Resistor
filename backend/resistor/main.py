@@ -2,7 +2,7 @@ from fastapi import FastAPI, Depends, HTTPException
 from sqlmodel import select
 
 from .database import init_db, get_session
-from .models import Habit, Event
+from .models import Habit, Event, Settings
 from .schemas import (
     HabitCreate,
     HabitRead,
@@ -10,6 +10,7 @@ from .schemas import (
     EventCreate,
     EventRead,
     ExportBundle,
+    SettingsSchema,
 )
 
 app = FastAPI(title="Resistor API")
@@ -24,6 +25,22 @@ def healthz():
 @app.on_event("startup")
 def on_startup():
     init_db()
+
+
+@app.get("/settings", response_model=SettingsSchema)
+def get_settings(session=Depends(get_session)):
+    """Return current configuration."""
+    return session.get(Settings, 1)
+
+
+@app.patch("/settings", response_model=SettingsSchema)
+def update_settings(payload: SettingsSchema, session=Depends(get_session)):
+    settings = session.get(Settings, 1)
+    settings.capture_location = payload.capture_location
+    session.add(settings)
+    session.commit()
+    session.refresh(settings)
+    return settings
 
 
 @app.post("/habits", response_model=HabitRead)
@@ -81,7 +98,12 @@ def create_event(event: EventCreate, session=Depends(get_session)):
     habit = session.get(Habit, event.habit_id)
     if not habit:
         raise HTTPException(status_code=404, detail="Habit not found")
-    db_event = Event.model_validate(event, from_attributes=True)
+    data = event.model_dump(exclude_unset=True)
+    settings = session.get(Settings, 1)
+    if settings and not settings.capture_location:
+        data["latitude"] = None
+        data["longitude"] = None
+    db_event = Event(**data)
     session.add(db_event)
     session.commit()
     session.refresh(db_event)

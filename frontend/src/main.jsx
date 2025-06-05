@@ -4,6 +4,7 @@ import ReactDOM from 'react-dom/client';
 function App() {
   const [habits, setHabits] = useState([]);
   const [activeHabit, setActiveHabit] = useState(null);
+  const [captureLocation, setCaptureLocation] = useState(true);
   const [form, setForm] = useState({
     name: '',
     description: '',
@@ -23,6 +24,13 @@ function App() {
       .then((r) => r.json())
       .then(setHabits)
       .catch(() => setHabits([]));
+  }, []);
+
+  useEffect(() => {
+    fetch('/settings')
+      .then((r) => r.json())
+      .then((s) => setCaptureLocation(s.capture_location))
+      .catch(() => setCaptureLocation(false));
   }, []);
 
   useEffect(() => {
@@ -75,6 +83,16 @@ function App() {
     });
   }
 
+  function toggleCapture() {
+    fetch('/settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ capture_location: !captureLocation }),
+    })
+      .then((r) => r.json())
+      .then((s) => setCaptureLocation(s.capture_location));
+  }
+
   function logEvent(habitId, success) {
     const note = prompt('Add a note (optional)') || null;
     const send = (lat, lon) => {
@@ -95,7 +113,9 @@ function App() {
       });
     };
 
-    if (navigator.geolocation) {
+    if (!captureLocation) {
+      send(null, null);
+    } else if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => send(pos.coords.latitude, pos.coords.longitude),
         () => send(null, null)
@@ -108,6 +128,14 @@ function App() {
   return (
     <div>
       <h1>Resistor</h1>
+      <label style={{ display: 'block', marginBottom: '1em' }}>
+        <input
+          type="checkbox"
+          checked={captureLocation}
+          onChange={toggleCapture}
+        />{' '}
+        Capture Location
+      </label>
       {habits.length > 0 && (
         <div style={{ marginBottom: '1em' }}>
           <select
