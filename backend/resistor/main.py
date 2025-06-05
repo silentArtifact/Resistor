@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException
 from sqlmodel import select
+from datetime import datetime, timedelta
 
 from .database import init_db, get_session
 from .models import Habit, Event, Settings
@@ -155,3 +156,40 @@ def import_data(payload: ExportBundle, session=Depends(get_session)):
 
     session.commit()
     return {"status": "imported"}
+
+
+@app.get("/analytics")
+def analytics(session=Depends(get_session)):
+    """Return daily and weekly counts of events per habit."""
+    now = datetime.utcnow()
+    start_day = now - timedelta(days=1)
+    start_week = now - timedelta(days=7)
+
+    habits = session.exec(select(Habit)).all()
+    results = []
+
+    for habit in habits:
+        day_events = session.exec(
+            select(Event).where(Event.habit_id == habit.id, Event.timestamp >= start_day)
+        ).all()
+        week_events = session.exec(
+            select(Event).where(Event.habit_id == habit.id, Event.timestamp >= start_week)
+        ).all()
+
+        daily_resist = sum(1 for e in day_events if e.success)
+        daily_slip = sum(1 for e in day_events if not e.success)
+        weekly_resist = sum(1 for e in week_events if e.success)
+        weekly_slip = sum(1 for e in week_events if not e.success)
+
+        results.append(
+            {
+                "habit_id": habit.id,
+                "habit_name": habit.name,
+                "daily_resist": daily_resist,
+                "daily_slip": daily_slip,
+                "weekly_resist": weekly_resist,
+                "weekly_slip": weekly_slip,
+            }
+        )
+
+    return results
