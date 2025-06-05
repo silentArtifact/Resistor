@@ -12,3 +12,4 @@ The requirements file pins `httpx` below 0.27 to avoid compatibility issues.
 ## Endpoints
 
 * `GET /export` – return all habits and events in a single JSON payload.
+* `POST /import` – restore habits and events from an exported JSON payload.

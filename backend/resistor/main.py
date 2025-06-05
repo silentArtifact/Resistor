@@ -3,7 +3,7 @@ from sqlmodel import select
 
 from .database import init_db, get_session
 from .models import Habit, Event
-from .schemas import HabitCreate, HabitRead, EventCreate, EventRead
+from .schemas import HabitCreate, HabitRead, EventCreate, EventRead, ExportBundle
 
 app = FastAPI(title="Resistor API")
 
@@ -72,3 +72,22 @@ def export_data(session=Depends(get_session)):
         "habits": [HabitRead.model_validate(h, from_attributes=True) for h in habits],
         "events": [EventRead.model_validate(e, from_attributes=True) for e in events],
     }
+
+
+@app.post("/import")
+def import_data(payload: ExportBundle, session=Depends(get_session)):
+    """Import habits and events from an export payload."""
+    # Validate and load habits
+    habits = [Habit.model_validate(h, from_attributes=True) for h in payload.habits]
+    events = [Event.model_validate(e, from_attributes=True) for e in payload.events]
+
+    for habit in habits:
+        session.merge(habit)
+    for event in events:
+        # Ensure referenced habit exists in the current session
+        if not session.get(Habit, event.habit_id):
+            raise HTTPException(status_code=400, detail="Habit not found for event")
+        session.merge(event)
+
+    session.commit()
+    return {"status": "imported"}
