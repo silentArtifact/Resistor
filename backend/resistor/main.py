@@ -50,3 +50,14 @@ def create_event(event: EventCreate, session=Depends(get_session)):
 def list_events(session=Depends(get_session)):
     events = session.exec(select(Event)).all()
     return events
+
+
+@app.get("/export")
+def export_data(session=Depends(get_session)):
+    """Export all habits and events as JSON."""
+    habits = session.exec(select(Habit)).all()
+    events = session.exec(select(Event)).all()
+    return {
+        "habits": [HabitRead.model_validate(h, from_attributes=True) for h in habits],
+        "events": [EventRead.model_validate(e, from_attributes=True) for e in events],
+    }

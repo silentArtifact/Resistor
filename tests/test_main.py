@@ -50,3 +50,20 @@ def test_create_event_invalid_habit():
         "/events", json={"habit_id": 999999, "success": True}
     )
     assert response.status_code == 404
+
+
+def test_export_data():
+    init_db()
+    habit_resp = client.post("/habits", json={"name": "Export Habit"})
+    habit_id = habit_resp.json()["id"]
+    event_resp = client.post(
+        "/events",
+        json={"habit_id": habit_id, "success": False},
+    )
+    event_id = event_resp.json()["id"]
+
+    response = client.get("/export")
+    assert response.status_code == 200
+    data = response.json()
+    assert any(h["id"] == habit_id for h in data["habits"])
+    assert any(e["id"] == event_id for e in data["events"])
