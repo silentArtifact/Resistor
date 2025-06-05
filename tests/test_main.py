@@ -67,3 +67,24 @@ def test_export_data():
     data = response.json()
     assert any(h["id"] == habit_id for h in data["habits"])
     assert any(e["id"] == event_id for e in data["events"])
+
+
+def test_delete_event():
+    init_db()
+    habit = client.post("/habits", json={"name": "Delete Habit"}).json()
+    event = client.post(
+        "/events",
+        json={"habit_id": habit["id"], "success": True},
+    ).json()
+
+    del_resp = client.delete(f"/events/{event['id']}")
+    assert del_resp.status_code == 200
+
+    events = client.get("/events").json()
+    assert all(e["id"] != event["id"] for e in events)
+
+
+def test_delete_event_not_found():
+    init_db()
+    response = client.delete("/events/9999")
+    assert response.status_code == 404
