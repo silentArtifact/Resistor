@@ -8,6 +8,8 @@ The backend uses SQLite through SQLModel and the frontend is bootstrapped with V
 
 * `POST /habits` – create a habit with a name, optional description, colour and icon.
 * `GET /habits` – list all habits.
+* `PATCH /habits/{id}` – update a habit's details.
+* `DELETE /habits/{id}` – remove a habit and its events.
 * `POST /events` – log a success or slip against a habit.
 * `GET /events` – list all logged events.
 

@@ -62,6 +62,37 @@ def test_create_event_invalid_habit():
     assert response.status_code == 404
 
 
+def test_update_habit():
+    init_db()
+    habit = client.post("/habits", json={"name": "Old"}).json()
+
+    resp = client.patch(
+        f"/habits/{habit['id']}",
+        json={"name": "New", "description": "Updated"},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["name"] == "New"
+    assert data["description"] == "Updated"
+
+    listed = client.get("/habits").json()
+    assert any(h["id"] == habit["id"] and h["name"] == "New" for h in listed)
+
+
+def test_delete_habit():
+    init_db()
+    habit = client.post("/habits", json={"name": "To Remove"}).json()
+    client.post("/events", json={"habit_id": habit["id"], "success": True})
+
+    del_resp = client.delete(f"/habits/{habit['id']}")
+    assert del_resp.status_code == 200
+
+    habits_after = client.get("/habits").json()
+    assert all(h["id"] != habit["id"] for h in habits_after)
+    events_after = client.get("/events").json()
+    assert all(e["habit_id"] != habit["id"] for e in events_after)
+
+
 def test_export_data():
     init_db()
     habit_resp = client.post("/habits", json={"name": "Export Habit"})

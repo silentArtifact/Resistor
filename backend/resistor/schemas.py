@@ -13,6 +13,14 @@ class HabitRead(HabitCreate):
     id: int
 
 
+class HabitUpdate(BaseModel):
+    """Fields that can be updated on a habit."""
+    name: str | None = None
+    description: str | None = None
+    color: str | None = None
+    icon: str | None = None
+
+
 class EventCreate(BaseModel):
     habit_id: int
     success: bool
