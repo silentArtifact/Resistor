@@ -3,3 +3,4 @@ uvicorn
 sqlmodel
 pydantic
 httpx==0.26.*
+cryptography

@@ -25,6 +25,15 @@ The React app lets you manage habits and quickly log events. A dropdown at the t
 
 This script starts both the FastAPI server on port 8080 and the Vite dev server for the React app.
 
+## CLI Export/Import
+
+`cli.py` provides simple helpers for backing up or restoring data:
+
+```sh
+python cli.py export backup.json --passphrase mysecret
+python cli.py import backup.json --passphrase mysecret
+```
+
 ## Docker
 
 To build and run the production container manually:
