@@ -8,6 +8,7 @@ class Habit(SQLModel, table=True):
     description: str | None = None
     color: str | None = None
     icon: str | None = None
+    archived: bool = Field(default=False)
 
 
 class Event(SQLModel, table=True):
