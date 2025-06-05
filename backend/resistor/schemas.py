@@ -7,6 +7,7 @@ class HabitCreate(BaseModel):
     description: str | None = None
     color: str | None = None
     icon: str | None = None
+    archived: bool = False
 
 
 class HabitRead(HabitCreate):
@@ -19,6 +20,7 @@ class HabitUpdate(BaseModel):
     description: str | None = None
     color: str | None = None
     icon: str | None = None
+    archived: bool | None = None
 
 
 class EventCreate(BaseModel):

@@ -36,8 +36,11 @@ def create_habit(habit: HabitCreate, session=Depends(get_session)):
 
 
 @app.get("/habits", response_model=list[HabitRead])
-def list_habits(session=Depends(get_session)):
-    habits = session.exec(select(Habit)).all()
+def list_habits(include_archived: bool = False, session=Depends(get_session)):
+    query = select(Habit)
+    if not include_archived:
+        query = query.where(Habit.archived == False)  # noqa: E712
+    habits = session.exec(query).all()
     return habits
 
 

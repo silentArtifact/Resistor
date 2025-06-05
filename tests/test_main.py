@@ -79,6 +79,21 @@ def test_update_habit():
     assert any(h["id"] == habit["id"] and h["name"] == "New" for h in listed)
 
 
+def test_archive_habit():
+    init_db()
+    habit = client.post("/habits", json={"name": "Archivable"}).json()
+
+    resp = client.patch(f"/habits/{habit['id']}", json={"archived": True})
+    assert resp.status_code == 200
+    assert resp.json()["archived"] is True
+
+    default_list = client.get("/habits").json()
+    assert all(h["id"] != habit["id"] for h in default_list)
+
+    archived_list = client.get("/habits", params={"include_archived": "true"}).json()
+    assert any(h["id"] == habit["id"] for h in archived_list)
+
+
 def test_delete_habit():
     init_db()
     habit = client.post("/habits", json={"name": "To Remove"}).json()
