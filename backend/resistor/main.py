@@ -3,7 +3,14 @@ from sqlmodel import select
 
 from .database import init_db, get_session
 from .models import Habit, Event
-from .schemas import HabitCreate, HabitRead, EventCreate, EventRead, ExportBundle
+from .schemas import (
+    HabitCreate,
+    HabitRead,
+    HabitUpdate,
+    EventCreate,
+    EventRead,
+    ExportBundle,
+)
 
 app = FastAPI(title="Resistor API")
 
@@ -32,6 +39,34 @@ def create_habit(habit: HabitCreate, session=Depends(get_session)):
 def list_habits(session=Depends(get_session)):
     habits = session.exec(select(Habit)).all()
     return habits
+
+
+@app.patch("/habits/{habit_id}", response_model=HabitRead)
+def update_habit(habit_id: int, updates: HabitUpdate, session=Depends(get_session)):
+    """Modify an existing habit."""
+    habit = session.get(Habit, habit_id)
+    if not habit:
+        raise HTTPException(status_code=404, detail="Habit not found")
+    for field, value in updates.model_dump(exclude_unset=True).items():
+        setattr(habit, field, value)
+    session.add(habit)
+    session.commit()
+    session.refresh(habit)
+    return habit
+
+
+@app.delete("/habits/{habit_id}")
+def delete_habit(habit_id: int, session=Depends(get_session)):
+    """Delete a habit and all its events."""
+    habit = session.get(Habit, habit_id)
+    if not habit:
+        raise HTTPException(status_code=404, detail="Habit not found")
+    events = session.exec(select(Event).where(Event.habit_id == habit_id)).all()
+    for event in events:
+        session.delete(event)
+    session.delete(habit)
+    session.commit()
+    return {"status": "deleted"}
 
 
 @app.post("/events", response_model=EventRead)
