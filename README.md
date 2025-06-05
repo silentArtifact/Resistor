@@ -27,7 +27,7 @@ This script starts both the FastAPI server on port 8080 and the Vite dev server 
 
 ## Docker
 
-To build and run the production container:
+To build and run the production container manually:
 
 ```sh
 docker build -t resistor .
@@ -36,6 +36,24 @@ docker run -p 8080:8080 resistor
 
 The image installs the Python requirements, installs the Node packages to build
 the frontend and finally launches the API with `uvicorn`.
+
+### Docker Compose
+
+A `docker-compose.yml` is included for convenience. It builds the image (or pulls
+it from Docker Hub when the `IMAGE` environment variable is set) and mounts the
+local `data/` directory so the SQLite database persists between runs.
+
+```sh
+docker compose up --build
+```
+
+To use a prebuilt image from Docker Hub instead of building locally:
+
+```sh
+export IMAGE=yourdockerhubuser/resistor:latest
+docker compose pull
+docker compose up -d
+```
 
 # Roadmap
 
