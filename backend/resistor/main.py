@@ -1,4 +1,5 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Body
+from fastapi.encoders import jsonable_encoder
 from sqlmodel import select
 from datetime import datetime, timedelta
 
@@ -13,6 +14,7 @@ from .schemas import (
     ExportBundle,
     SettingsSchema,
 )
+from .crypto import encrypt_json, decrypt_json
 
 app = FastAPI(title="Resistor API")
 
@@ -129,22 +131,39 @@ def delete_event(event_id: int, session=Depends(get_session)):
 
 
 @app.get("/export")
-def export_data(session=Depends(get_session)):
+def export_data(passphrase: str | None = None, session=Depends(get_session)):
     """Export all habits and events as JSON."""
     habits = session.exec(select(Habit)).all()
     events = session.exec(select(Event)).all()
-    return {
+    payload = {
         "habits": [HabitRead.model_validate(h, from_attributes=True) for h in habits],
         "events": [EventRead.model_validate(e, from_attributes=True) for e in events],
     }
+    if passphrase:
+        return {"encrypted": encrypt_json(jsonable_encoder(payload), passphrase)}
+    return payload
 
 
 @app.post("/import")
-def import_data(payload: ExportBundle, session=Depends(get_session)):
+def import_data(
+    payload: dict = Body(...),
+    passphrase: str | None = None,
+    session=Depends(get_session),
+):
     """Import habits and events from an export payload."""
+    if "encrypted" in payload:
+        if not passphrase:
+            raise HTTPException(status_code=400, detail="Passphrase required")
+        try:
+            payload = decrypt_json(payload["encrypted"], passphrase)
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid passphrase")
+
+    bundle = ExportBundle.model_validate(payload)
+
     # Validate and load habits
-    habits = [Habit.model_validate(h, from_attributes=True) for h in payload.habits]
-    events = [Event.model_validate(e, from_attributes=True) for e in payload.events]
+    habits = [Habit.model_validate(h, from_attributes=True) for h in bundle.habits]
+    events = [Event.model_validate(e, from_attributes=True) for e in bundle.events]
 
     for habit in habits:
         session.merge(habit)

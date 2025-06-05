@@ -226,6 +226,31 @@ def test_export_delete_import_round_trip():
     assert any(e["id"] == event["id"] and e["note"] == "note" for e in events_after)
 
 
+def test_encrypted_export_round_trip_and_wrong_passphrase():
+    init_db()
+
+    habit = client.post("/habits", json={"name": "Secret"}).json()
+    client.post("/events", json={"habit_id": habit["id"], "success": True})
+
+    resp = client.get("/export", params={"passphrase": "pw"})
+    assert resp.status_code == 200
+    encrypted = resp.json()
+    assert "encrypted" in encrypted
+
+    from pathlib import Path
+    from resistor.database import engine
+
+    engine.dispose()
+    Path(engine.url.database).unlink()
+    init_db()
+
+    fail = client.post("/import", params={"passphrase": "wrong"}, json=encrypted)
+    assert fail.status_code == 400
+
+    ok = client.post("/import", params={"passphrase": "pw"}, json=encrypted)
+    assert ok.status_code == 200
+
+
 def test_analytics_counts():
     init_db()
 
