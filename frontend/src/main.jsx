@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom/client';
+import './style.css';
 
 function AnalyticsTable() {
   const [rows, setRows] = useState([]);
@@ -174,18 +175,18 @@ function App() {
   }
 
   return (
-    <div>
+    <div className="container">
       <h1>Resistor</h1>
-      <label style={{ display: 'block', marginBottom: '1em' }}>
+      <label className="capture-toggle">
         <input
           type="checkbox"
           checked={captureLocation}
           onChange={toggleCapture}
-        />{' '}
+        />
         Capture Location
       </label>
       {habits.length > 0 && (
-        <div style={{ marginBottom: '1em' }}>
+        <div className="quick-actions">
           <select
             value={activeHabit || ''}
             onChange={(e) => setActiveHabit(Number(e.target.value))}
@@ -195,76 +196,76 @@ function App() {
                 {h.name}
               </option>
             ))}
-          </select>{' '}
-          <button onClick={() => logEvent(activeHabit, true)}>Resist</button>{' '}
+          </select>
+          <button onClick={() => logEvent(activeHabit, true)}>Resist</button>
           <button onClick={() => logEvent(activeHabit, false)}>Slip</button>
         </div>
       )}
-      <form onSubmit={createHabit} style={{ marginBottom: '1em' }}>
+      <form onSubmit={createHabit} className="habit-form">
         <input
           placeholder="Name"
           value={form.name}
           onChange={(e) => setForm({ ...form, name: e.target.value })}
           required
-        />{' '}
+        />
         <input
           placeholder="Description"
           value={form.description}
           onChange={(e) => setForm({ ...form, description: e.target.value })}
-        />{' '}
+        />
         <input
           type="color"
           value={form.color}
           onChange={(e) => setForm({ ...form, color: e.target.value })}
-        />{' '}
+        />
         <input
           placeholder="Icon"
           value={form.icon}
           onChange={(e) => setForm({ ...form, icon: e.target.value })}
-        />{' '}
+        />
         <button type="submit">Add Habit</button>
       </form>
 
       {editId && (
-        <form onSubmit={updateHabit} style={{ marginBottom: '1em' }}>
+        <form onSubmit={updateHabit} className="habit-form">
           <input
             placeholder="Name"
             value={editForm.name}
             onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
             required
-          />{' '}
+          />
           <input
             placeholder="Description"
             value={editForm.description}
             onChange={(e) =>
               setEditForm({ ...editForm, description: e.target.value })
             }
-          />{' '}
+          />
           <input
             type="color"
             value={editForm.color}
             onChange={(e) => setEditForm({ ...editForm, color: e.target.value })}
-          />{' '}
+          />
           <input
             placeholder="Icon"
             value={editForm.icon}
             onChange={(e) => setEditForm({ ...editForm, icon: e.target.value })}
-          />{' '}
-          <button type="submit">Save</button>{' '}
+          />
+          <button type="submit">Save</button>
           <button type="button" onClick={() => setEditId(null)}>
             Cancel
           </button>
         </form>
       )}
-      <ul>
+      <ul className="habit-list">
         {habits.map((habit) => (
           <li key={habit.id}>
             {habit.icon && <span>{habit.icon} </span>}
             <span style={{ color: habit.color || 'inherit' }}>{habit.name}</span>
-            {habit.description ? ` - ${habit.description}` : ''}{' '}
-            <button onClick={() => logEvent(habit.id, true)}>Resist</button>{' '}
-            <button onClick={() => logEvent(habit.id, false)}>Slip</button>{' '}
-            <button onClick={() => startEdit(habit)}>Edit</button>{' '}
+            {habit.description ? ` - ${habit.description}` : ''}
+            <button onClick={() => logEvent(habit.id, true)}>Resist</button>
+            <button onClick={() => logEvent(habit.id, false)}>Slip</button>
+            <button onClick={() => startEdit(habit)}>Edit</button>
           <button onClick={() => deleteHabit(habit.id)}>Delete</button>
         </li>
       ))}
