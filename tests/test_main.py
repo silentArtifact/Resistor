@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 from resistor.main import app
-from resistor.database import init_db
+from resistor.database import init_db_destructive
 
 client = TestClient(app)
 
@@ -12,7 +12,7 @@ def test_healthz():
 
 
 def test_create_and_list_habit():
-    init_db()
+    init_db_destructive()
     payload = {
         "name": "Test",
         "description": "Example desc",
@@ -33,7 +33,7 @@ def test_create_and_list_habit():
 
 
 def test_create_event_and_list_events():
-    init_db()
+    init_db_destructive()
     habit = client.post("/habits", json={"name": "Event Habit"}).json()
     event_response = client.post(
         "/events",
@@ -57,7 +57,7 @@ def test_create_event_and_list_events():
 
 
 def test_create_event_invalid_habit():
-    init_db()
+    init_db_destructive()
     response = client.post(
         "/events", json={"habit_id": 999999, "success": True}
     )
@@ -65,7 +65,7 @@ def test_create_event_invalid_habit():
 
 
 def test_update_habit():
-    init_db()
+    init_db_destructive()
     habit = client.post("/habits", json={"name": "Old"}).json()
 
     resp = client.patch(
@@ -82,7 +82,7 @@ def test_update_habit():
 
 
 def test_reorder_habits():
-    init_db()
+    init_db_destructive()
     h1 = client.post("/habits", json={"name": "One"}).json()
     h2 = client.post("/habits", json={"name": "Two"}).json()
 
@@ -95,7 +95,7 @@ def test_reorder_habits():
 
 
 def test_archive_habit():
-    init_db()
+    init_db_destructive()
     habit = client.post("/habits", json={"name": "Archivable"}).json()
 
     resp = client.patch(f"/habits/{habit['id']}", json={"archived": True})
@@ -110,7 +110,7 @@ def test_archive_habit():
 
 
 def test_delete_habit():
-    init_db()
+    init_db_destructive()
     habit = client.post("/habits", json={"name": "To Remove"}).json()
     client.post("/events", json={"habit_id": habit["id"], "success": True})
 
@@ -124,7 +124,7 @@ def test_delete_habit():
 
 
 def test_export_data():
-    init_db()
+    init_db_destructive()
     habit_resp = client.post("/habits", json={"name": "Export Habit"})
     habit_id = habit_resp.json()["id"]
     event_resp = client.post(
@@ -141,7 +141,7 @@ def test_export_data():
 
 
 def test_delete_event():
-    init_db()
+    init_db_destructive()
     habit = client.post("/habits", json={"name": "Delete Habit"}).json()
     event = client.post(
         "/events",
@@ -156,13 +156,13 @@ def test_delete_event():
 
 
 def test_delete_event_not_found():
-    init_db()
+    init_db_destructive()
     response = client.delete("/events/9999")
     assert response.status_code == 404
 
 
 def test_settings_endpoint_and_gps_disable():
-    init_db()
+    init_db_destructive()
 
     # default settings should return True
     resp = client.get("/settings")
@@ -191,7 +191,7 @@ def test_settings_endpoint_and_gps_disable():
 
 
 def test_export_delete_import_round_trip():
-    init_db()
+    init_db_destructive()
 
     # Create unique data to export
     habit = client.post("/habits", json={"name": "Import Habit"}).json()
@@ -210,7 +210,7 @@ def test_export_delete_import_round_trip():
 
     engine.dispose()
     Path(engine.url.database).unlink()
-    init_db()
+    init_db_destructive()
 
     # Verify DB is empty
     assert client.get("/habits").json() == []
@@ -227,7 +227,7 @@ def test_export_delete_import_round_trip():
 
 
 def test_encrypted_export_round_trip_and_wrong_passphrase():
-    init_db()
+    init_db_destructive()
 
     habit = client.post("/habits", json={"name": "Secret"}).json()
     client.post("/events", json={"habit_id": habit["id"], "success": True})
@@ -242,7 +242,7 @@ def test_encrypted_export_round_trip_and_wrong_passphrase():
 
     engine.dispose()
     Path(engine.url.database).unlink()
-    init_db()
+    init_db_destructive()
 
     fail = client.post("/import", params={"passphrase": "wrong"}, json=encrypted)
     assert fail.status_code == 400
@@ -252,7 +252,7 @@ def test_encrypted_export_round_trip_and_wrong_passphrase():
 
 
 def test_analytics_counts():
-    init_db()
+    init_db_destructive()
 
     h1 = client.post("/habits", json={"name": "H1"}).json()
     h2 = client.post("/habits", json={"name": "H2"}).json()
