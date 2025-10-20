@@ -3,7 +3,7 @@ from fastapi.encoders import jsonable_encoder
 from sqlmodel import select
 from datetime import datetime, timedelta
 
-from .database import init_db, get_session
+from .database import init_db_safe, get_session
 from .models import Habit, Event, Settings
 from .schemas import (
     HabitCreate,
@@ -27,7 +27,7 @@ def healthz():
 
 @app.on_event("startup")
 def on_startup():
-    init_db()
+    init_db_safe()
 
 
 @app.get("/settings", response_model=SettingsSchema)
