@@ -1,0 +1,90 @@
+import Foundation
+import SwiftData
+
+@Model
+final class TemptationEvent {
+    @Attribute(.unique) var id: UUID
+    var occurredAt: Date
+    var intensity: Int?
+    var outcome: String
+    var contextTag: String?
+    var note: String?
+
+    var habit: Habit?
+
+    init(
+        id: UUID = UUID(),
+        habit: Habit,
+        occurredAt: Date = Date(),
+        intensity: Int? = nil,
+        outcome: String = "unknown",
+        contextTag: String? = nil,
+        note: String? = nil
+    ) {
+        self.id = id
+        self.habit = habit
+        self.occurredAt = occurredAt
+        self.intensity = intensity
+        self.outcome = outcome
+        self.contextTag = contextTag
+        self.note = note
+    }
+}
+
+extension TemptationEvent {
+    enum Outcome: String, CaseIterable {
+        case resisted = "resisted"
+        case gaveIn = "gave_in"
+        case unknown = "unknown"
+
+        var displayName: String {
+            switch self {
+            case .resisted: return "Resisted"
+            case .gaveIn: return "Gave In"
+            case .unknown: return "Unknown"
+            }
+        }
+    }
+
+    enum ContextTag: String, CaseIterable {
+        case atStore = "at_store"
+        case onPhone = "on_phone"
+        case withFriends = "with_friends"
+        case alone = "alone"
+        case atWork = "at_work"
+        case atHome = "at_home"
+        case stressed = "stressed"
+        case bored = "bored"
+
+        var displayName: String {
+            switch self {
+            case .atStore: return "At Store"
+            case .onPhone: return "On Phone"
+            case .withFriends: return "With Friends"
+            case .alone: return "Alone"
+            case .atWork: return "At Work"
+            case .atHome: return "At Home"
+            case .stressed: return "Stressed"
+            case .bored: return "Bored"
+            }
+        }
+    }
+
+    var hourOfDay: Int {
+        Calendar.current.component(.hour, from: occurredAt)
+    }
+
+    var dayOfWeek: Int {
+        Calendar.current.component(.weekday, from: occurredAt)
+    }
+
+    var timeOfDayPeriod: String {
+        let hour = hourOfDay
+        switch hour {
+        case 5..<12: return "Morning"
+        case 12..<17: return "Afternoon"
+        case 17..<21: return "Evening"
+        default: return "Night"
+        }
+    }
+}
