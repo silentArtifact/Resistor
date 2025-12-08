@@ -1,0 +1,327 @@
+import SwiftUI
+import SwiftData
+
+struct HistoryView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Query(sort: \TemptationEvent.occurredAt, order: .reverse) private var allEvents: [TemptationEvent]
+
+    let habit: Habit?
+
+    private var events: [TemptationEvent] {
+        if let habit = habit {
+            return allEvents.filter { $0.habit?.id == habit.id }
+        }
+        return allEvents
+    }
+
+    private var groupedEvents: [(String, [TemptationEvent])] {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+
+        let grouped = Dictionary(grouping: events) { event in
+            formatter.string(from: event.occurredAt)
+        }
+
+        return grouped.sorted { first, second in
+            guard let firstDate = events.first(where: { formatter.string(from: $0.occurredAt) == first.key })?.occurredAt,
+                  let secondDate = events.first(where: { formatter.string(from: $0.occurredAt) == second.key })?.occurredAt else {
+                return false
+            }
+            return firstDate > secondDate
+        }
+    }
+
+    @State private var eventToDelete: TemptationEvent?
+    @State private var showDeleteConfirmation = false
+    @State private var selectedEvent: TemptationEvent?
+    @State private var showEventDetail = false
+
+    var body: some View {
+        Group {
+            if events.isEmpty {
+                emptyStateView
+            } else {
+                eventsList
+            }
+        }
+        .navigationTitle(habit != nil ? "\(habit!.name) History" : "All History")
+        .navigationBarTitleDisplayMode(.inline)
+        .alert("Delete Event?", isPresented: $showDeleteConfirmation) {
+            Button("Cancel", role: .cancel) {
+                eventToDelete = nil
+            }
+            Button("Delete", role: .destructive) {
+                deleteEvent()
+            }
+        } message: {
+            Text("This will permanently delete this logged event.")
+        }
+        .sheet(isPresented: $showEventDetail) {
+            if let event = selectedEvent {
+                EventDetailSheet(event: event)
+            }
+        }
+    }
+
+    private var emptyStateView: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "clock.arrow.circlepath")
+                .font(.system(size: 48))
+                .foregroundStyle(.secondary)
+
+            Text("No events logged yet")
+                .font(.headline)
+
+            Text("Your logged temptations will appear here.")
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .padding()
+    }
+
+    private var eventsList: some View {
+        List {
+            ForEach(groupedEvents, id: \.0) { dateString, dayEvents in
+                Section(dateString) {
+                    ForEach(dayEvents) { event in
+                        eventRow(event)
+                    }
+                }
+            }
+        }
+        .listStyle(.insetGrouped)
+    }
+
+    @ViewBuilder
+    private func eventRow(_ event: TemptationEvent) -> some View {
+        HStack(spacing: 12) {
+            // Habit icon
+            if let habit = event.habit {
+                Image(systemName: habit.iconName ?? "circle.fill")
+                    .font(.title3)
+                    .foregroundStyle(Color(hex: habit.colorHex ?? "#007AFF") ?? .blue)
+                    .frame(width: 28)
+            }
+
+            // Event details
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    if let habit = event.habit {
+                        Text(habit.name)
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                    }
+
+                    Spacer()
+
+                    Text(formatTime(event.occurredAt))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                HStack(spacing: 8) {
+                    // Outcome badge
+                    outcomeLabel(event.outcome)
+
+                    // Context tag if present
+                    if let contextTag = event.contextTag,
+                       let context = TemptationEvent.ContextTag(rawValue: contextTag) {
+                        Text(context.displayName)
+                            .font(.caption2)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.gray.opacity(0.2))
+                            .cornerRadius(4)
+                    }
+                }
+
+                // Note if present
+                if let note = event.note, !note.isEmpty {
+                    Text(note)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+            }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            selectedEvent = event
+            showEventDetail = true
+        }
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            Button(role: .destructive) {
+                eventToDelete = event
+                showDeleteConfirmation = true
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func outcomeLabel(_ outcome: String) -> some View {
+        if let outcomeEnum = TemptationEvent.Outcome(rawValue: outcome) {
+            HStack(spacing: 4) {
+                Image(systemName: outcomeIcon(outcomeEnum))
+                    .font(.caption2)
+                Text(outcomeEnum.displayName)
+                    .font(.caption2)
+            }
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(outcomeColor(outcomeEnum).opacity(0.2))
+            .foregroundStyle(outcomeColor(outcomeEnum))
+            .cornerRadius(4)
+        }
+    }
+
+    private func outcomeIcon(_ outcome: TemptationEvent.Outcome) -> String {
+        switch outcome {
+        case .resisted: return "checkmark.circle.fill"
+        case .gaveIn: return "xmark.circle.fill"
+        case .unknown: return "questionmark.circle.fill"
+        }
+    }
+
+    private func outcomeColor(_ outcome: TemptationEvent.Outcome) -> Color {
+        switch outcome {
+        case .resisted: return .green
+        case .gaveIn: return .red
+        case .unknown: return .gray
+        }
+    }
+
+    private func formatTime(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+
+    private func deleteEvent() {
+        guard let event = eventToDelete else { return }
+        modelContext.delete(event)
+        do {
+            try modelContext.save()
+        } catch {
+            print("Failed to delete event: \(error)")
+        }
+        eventToDelete = nil
+    }
+}
+
+// MARK: - Event Detail Sheet
+
+struct EventDetailSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let event: TemptationEvent
+
+    var body: some View {
+        NavigationStack {
+            List {
+                // Habit section
+                if let habit = event.habit {
+                    Section("Habit") {
+                        HStack(spacing: 12) {
+                            Image(systemName: habit.iconName ?? "circle.fill")
+                                .font(.title2)
+                                .foregroundStyle(Color(hex: habit.colorHex ?? "#007AFF") ?? .blue)
+                            Text(habit.name)
+                                .font(.body)
+                        }
+                    }
+                }
+
+                // Time section
+                Section("When") {
+                    HStack {
+                        Text("Date")
+                        Spacer()
+                        Text(formatDate(event.occurredAt))
+                            .foregroundStyle(.secondary)
+                    }
+                    HStack {
+                        Text("Time")
+                        Spacer()
+                        Text(formatTime(event.occurredAt))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                // Outcome section
+                Section("Outcome") {
+                    if let outcome = TemptationEvent.Outcome(rawValue: event.outcome) {
+                        HStack {
+                            Image(systemName: outcomeIcon(outcome))
+                                .foregroundStyle(outcomeColor(outcome))
+                            Text(outcome.displayName)
+                        }
+                    }
+                }
+
+                // Context section
+                if let contextTag = event.contextTag,
+                   let context = TemptationEvent.ContextTag(rawValue: contextTag) {
+                    Section("Context") {
+                        Text(context.displayName)
+                    }
+                }
+
+                // Note section
+                if let note = event.note, !note.isEmpty {
+                    Section("Note") {
+                        Text(note)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .navigationTitle("Event Details")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .long
+        return formatter.string(from: date)
+    }
+
+    private func formatTime(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+
+    private func outcomeIcon(_ outcome: TemptationEvent.Outcome) -> String {
+        switch outcome {
+        case .resisted: return "checkmark.circle.fill"
+        case .gaveIn: return "xmark.circle.fill"
+        case .unknown: return "questionmark.circle.fill"
+        }
+    }
+
+    private func outcomeColor(_ outcome: TemptationEvent.Outcome) -> Color {
+        switch outcome {
+        case .resisted: return .green
+        case .gaveIn: return .red
+        case .unknown: return .gray
+        }
+    }
+}
+
+#Preview {
+    NavigationStack {
+        HistoryView(habit: nil)
+            .modelContainer(for: [Habit.self, TemptationEvent.self, UserSettings.self], inMemory: true)
+    }
+}

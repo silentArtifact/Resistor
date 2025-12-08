@@ -71,10 +71,37 @@ struct InsightsView: View {
 
                     // Day of week distribution
                     dayOfWeekChart(vm)
+
+                    // View History link
+                    viewHistoryButton(vm)
                 }
             }
             .padding()
         }
+    }
+
+    @ViewBuilder
+    private func viewHistoryButton(_ vm: InsightsViewModel) -> some View {
+        NavigationLink {
+            HistoryView(habit: vm.selectedHabit)
+        } label: {
+            HStack {
+                Image(systemName: "clock.arrow.circlepath")
+                    .font(.body)
+                Text("View History")
+                    .font(.body)
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .padding()
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color(.secondarySystemBackground))
+            )
+        }
+        .buttonStyle(.plain)
     }
 
     @ViewBuilder
