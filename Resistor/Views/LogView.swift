@@ -8,8 +8,10 @@ struct LogView: View {
 
     @State private var viewModel: LogViewModel?
     @State private var showContextSheet = false
+    @State private var showOutcomeSheet = false
     @State private var contextNote: String = ""
     @State private var selectedContextTag: TemptationEvent.ContextTag?
+    @State private var selectedOutcome: TemptationEvent.Outcome?
 
     private var showContextPrompt: Bool {
         userSettings.first?.showContextPrompt ?? true
@@ -89,6 +91,9 @@ struct LogView: View {
             }
         }
         .animation(.easeInOut(duration: 0.3), value: vm.showConfirmation)
+        .sheet(isPresented: $showOutcomeSheet) {
+            outcomeSheet(vm)
+        }
         .sheet(isPresented: $showContextSheet) {
             contextSheet(vm)
         }
@@ -178,9 +183,7 @@ struct LogView: View {
     private func logButton(_ vm: LogViewModel) -> some View {
         Button(action: {
             vm.logTemptation(showContext: showContextPrompt)
-            if showContextPrompt {
-                showContextSheet = true
-            }
+            showOutcomeSheet = true
         }) {
             HStack(spacing: 12) {
                 Image(systemName: "plus.circle.fill")
@@ -213,6 +216,94 @@ struct LogView: View {
                 .shadow(radius: 4)
         )
         .padding(.top, 8)
+    }
+
+    @ViewBuilder
+    private func outcomeSheet(_ vm: LogViewModel) -> some View {
+        NavigationStack {
+            VStack(spacing: 32) {
+                Text("How did it go?")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                    .padding(.top, 24)
+
+                Text("Did you resist or give in to the temptation?")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
+
+                VStack(spacing: 16) {
+                    // Resisted button
+                    Button(action: {
+                        selectedOutcome = .resisted
+                        vm.updateEventOutcome(.resisted)
+                        showOutcomeSheet = false
+                        if showContextPrompt {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                showContextSheet = true
+                            }
+                        }
+                    }) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "hand.raised.fill")
+                                .font(.title2)
+                            Text("I Resisted")
+                                .font(.title3)
+                                .fontWeight(.semibold)
+                        }
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 18)
+                        .background(Color.green)
+                        .cornerRadius(14)
+                    }
+
+                    // Gave in button
+                    Button(action: {
+                        selectedOutcome = .gaveIn
+                        vm.updateEventOutcome(.gaveIn)
+                        showOutcomeSheet = false
+                        if showContextPrompt {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                showContextSheet = true
+                            }
+                        }
+                    }) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.title2)
+                            Text("I Gave In")
+                                .font(.title3)
+                                .fontWeight(.semibold)
+                        }
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 18)
+                        .background(Color.orange)
+                        .cornerRadius(14)
+                    }
+                }
+                .padding(.horizontal, 24)
+
+                Spacer()
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Skip") {
+                        showOutcomeSheet = false
+                        selectedOutcome = nil
+                        if showContextPrompt {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                showContextSheet = true
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .presentationDetents([.medium])
     }
 
     @ViewBuilder
