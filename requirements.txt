@@ -1,3 +1,0 @@
-pytest
-cryptography
-httpx==0.26.*
