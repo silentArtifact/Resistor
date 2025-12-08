@@ -6,6 +6,9 @@ struct HabitsView: View {
     @Query private var userSettings: [UserSettings]
 
     @State private var viewModel: HabitsViewModel?
+    @StateObject private var notificationManager = NotificationManager.shared
+    @State private var showingTimePicker = false
+    @State private var selectedReminderTime = Date()
 
     var body: some View {
         NavigationStack {
@@ -29,6 +32,15 @@ struct HabitsView: View {
         }
         .onAppear {
             viewModel = HabitsViewModel(modelContext: modelContext)
+            // Initialize selectedReminderTime from settings
+            if let settings = userSettings.first {
+                var components = DateComponents()
+                components.hour = settings.dailyReminderHour ?? 20
+                components.minute = settings.dailyReminderMinute ?? 0
+                if let date = Calendar.current.date(from: components) {
+                    selectedReminderTime = date
+                }
+            }
         }
         .sheet(isPresented: Binding(
             get: { viewModel?.showAddHabitSheet ?? false },
@@ -37,6 +49,9 @@ struct HabitsView: View {
             if let vm = viewModel {
                 habitFormSheet(vm)
             }
+        }
+        .sheet(isPresented: $showingTimePicker) {
+            timePickerSheet
         }
         .alert("Delete Habit?", isPresented: Binding(
             get: { viewModel?.showDeleteConfirmation ?? false },
@@ -50,6 +65,61 @@ struct HabitsView: View {
             }
         } message: {
             Text("This will permanently delete this habit and all its logged events. This cannot be undone.")
+        }
+    }
+
+    @ViewBuilder
+    private var timePickerSheet: some View {
+        NavigationStack {
+            VStack(spacing: 20) {
+                Text("Choose reminder time")
+                    .font(.headline)
+                    .padding(.top)
+
+                DatePicker(
+                    "Reminder Time",
+                    selection: $selectedReminderTime,
+                    displayedComponents: .hourAndMinute
+                )
+                .datePickerStyle(.wheel)
+                .labelsHidden()
+
+                Spacer()
+            }
+            .padding()
+            .navigationTitle("Reminder Time")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        showingTimePicker = false
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        saveReminderTime()
+                        showingTimePicker = false
+                    }
+                }
+            }
+        }
+        .presentationDetents([.medium])
+    }
+
+    private func saveReminderTime() {
+        guard let settings = userSettings.first else { return }
+
+        let hour = Calendar.current.component(.hour, from: selectedReminderTime)
+        let minute = Calendar.current.component(.minute, from: selectedReminderTime)
+
+        settings.dailyReminderHour = hour
+        settings.dailyReminderMinute = minute
+        try? modelContext.save()
+
+        if settings.dailyReminderEnabled {
+            Task {
+                await notificationManager.scheduleDailyReminder(hour: hour, minute: minute)
+            }
         }
     }
 
@@ -161,6 +231,51 @@ struct HabitsView: View {
                         try? modelContext.save()
                     }
                 ))
+            }
+        }
+
+        Section("Daily Reminder") {
+            if let settings = userSettings.first {
+                Toggle("Enable daily reminder", isOn: Binding(
+                    get: { settings.dailyReminderEnabled },
+                    set: { newValue in
+                        settings.dailyReminderEnabled = newValue
+                        try? modelContext.save()
+                        if newValue {
+                            let hour = settings.dailyReminderHour ?? 20
+                            let minute = settings.dailyReminderMinute ?? 0
+                            Task {
+                                await notificationManager.scheduleDailyReminder(hour: hour, minute: minute)
+                            }
+                        } else {
+                            notificationManager.cancelDailyReminder()
+                        }
+                    }
+                ))
+
+                if settings.dailyReminderEnabled {
+                    HStack {
+                        Text("Reminder time")
+                        Spacer()
+                        Button(action: { showingTimePicker = true }) {
+                            Text(notificationManager.formatTime(
+                                hour: settings.dailyReminderHour ?? 20,
+                                minute: settings.dailyReminderMinute ?? 0
+                            ))
+                            .foregroundStyle(.blue)
+                        }
+                    }
+                }
+
+                if !notificationManager.isAuthorized && notificationManager.authorizationStatus == .denied {
+                    HStack {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.orange)
+                        Text("Notifications are disabled. Enable them in Settings.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
             }
         }
     }
