@@ -243,6 +243,18 @@ struct EventDetailSheet: View {
                     }
                 }
 
+                // Intensity section
+                if let intensity = event.intensity {
+                    Section("Intensity") {
+                        HStack {
+                            Text("Level")
+                            Spacer()
+                            Text("\(intensity) of 5")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+
                 // Context section
                 if !event.contextTags.isEmpty {
                     Section("Context") {

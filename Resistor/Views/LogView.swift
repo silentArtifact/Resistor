@@ -360,6 +360,7 @@ struct LogView: View {
                         .background(Color.green)
                         .cornerRadius(14)
                     }
+                    .accessibilityLabel("I Resisted")
 
                     // Gave in button
                     Button(action: {
@@ -384,6 +385,7 @@ struct LogView: View {
                         .background(Color.orange)
                         .cornerRadius(14)
                     }
+                    .accessibilityLabel("I Gave In")
                 }
                 .padding(.horizontal, 24)
 
@@ -435,6 +437,8 @@ struct LogView: View {
                                 )
                                 .foregroundStyle(selectedContextTags.contains(tag) ? .white : .primary)
                         }
+                        .accessibilityLabel(tag.displayName)
+                        .accessibilityAddTraits(selectedContextTags.contains(tag) ? .isSelected : [])
                     }
                 }
                 .padding(.horizontal)
