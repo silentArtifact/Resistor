@@ -28,8 +28,6 @@ struct HistoryView: View {
             .map { (formatter.string(from: $0.key), $0.value) }
     }
 
-    @State private var eventToDelete: TemptationEvent?
-    @State private var showDeleteConfirmation = false
     @State private var selectedEvent: TemptationEvent?
     @State private var showEventDetail = false
 
@@ -43,16 +41,6 @@ struct HistoryView: View {
         }
         .navigationTitle(habit.map { "\($0.name) History" } ?? "All History")
         .navigationBarTitleDisplayMode(.inline)
-        .alert("Delete Event?", isPresented: $showDeleteConfirmation) {
-            Button("Cancel", role: .cancel) {
-                eventToDelete = nil
-            }
-            Button("Delete", role: .destructive) {
-                deleteEvent()
-            }
-        } message: {
-            Text("This will permanently delete this logged event.")
-        }
         .sheet(isPresented: $showEventDetail) {
             if let event = selectedEvent {
                 EventDetailSheet(event: event)
@@ -148,10 +136,9 @@ struct HistoryView: View {
             selectedEvent = event
             showEventDetail = true
         }
-        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button(role: .destructive) {
-                eventToDelete = event
-                showDeleteConfirmation = true
+                deleteEvent(event)
             } label: {
                 Label("Delete", systemImage: "trash")
             }
@@ -180,15 +167,9 @@ struct HistoryView: View {
         return formatter.string(from: date)
     }
 
-    private func deleteEvent() {
-        guard let event = eventToDelete else { return }
+    private func deleteEvent(_ event: TemptationEvent) {
         modelContext.delete(event)
-        do {
-            try modelContext.save()
-        } catch {
-            print("Failed to delete event: \(error)")
-        }
-        eventToDelete = nil
+        try? modelContext.save()
     }
 }
 
