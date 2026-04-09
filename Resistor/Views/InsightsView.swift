@@ -407,6 +407,7 @@ struct StatCard: View {
             RoundedRectangle(cornerRadius: 12)
                 .fill(Color(.secondarySystemBackground))
         )
+        .accessibilityElement(children: .combine)
     }
 }
 

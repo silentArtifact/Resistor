@@ -212,6 +212,7 @@ struct LogView: View {
             RoundedRectangle(cornerRadius: 20)
                 .fill(Color(hex: habit.colorHex ?? "#007AFF")?.opacity(0.1) ?? Color.blue.opacity(0.1))
         )
+        .accessibilityElement(children: .combine)
         .padding(.horizontal, 24)
         .offset(x: cardDragOffset)
         .gesture(
@@ -512,6 +513,8 @@ private struct AddHabitFromLogSheet: View {
                                         .stroke(Color.primary, lineWidth: selectedColor == color.hex ? 3 : 0)
                                 )
                                 .onTapGesture { selectedColor = color.hex }
+                                .accessibilityLabel(color.name)
+                                .accessibilityAddTraits(selectedColor == color.hex ? .isSelected : [])
                         }
                     }
                     .padding(.vertical, 8)
@@ -532,6 +535,8 @@ private struct AddHabitFromLogSheet: View {
                                         .stroke(selectedIcon == icon ? Color.blue : Color.clear, lineWidth: 2)
                                 )
                                 .onTapGesture { selectedIcon = icon }
+                                .accessibilityLabel(icon.replacingOccurrences(of: ".fill", with: "").replacingOccurrences(of: ".", with: " "))
+                                .accessibilityAddTraits(selectedIcon == icon ? .isSelected : [])
                         }
                     }
                     .padding(.vertical, 8)
