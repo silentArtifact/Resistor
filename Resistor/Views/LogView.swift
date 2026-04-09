@@ -3,6 +3,7 @@ import SwiftData
 
 struct LogView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Query(filter: #Predicate<Habit> { !$0.isArchived }) private var habits: [Habit]
     @Query private var userSettings: [UserSettings]
 
@@ -121,10 +122,10 @@ struct LogView: View {
         .overlay(alignment: .top) {
             if vm.showConfirmation {
                 confirmationBanner
-                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .transition(reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity))
             }
         }
-        .animation(.easeInOut(duration: 0.3), value: vm.showConfirmation)
+        .animation(reduceMotion ? .none : .easeInOut(duration: 0.3), value: vm.showConfirmation)
         .sheet(isPresented: $showOutcomeSheet, onDismiss: {
             if shouldShowContextAfterOutcome {
                 shouldShowContextAfterOutcome = false
@@ -224,12 +225,16 @@ struct LogView: View {
                     } else if value.translation.width < -50 {
                         vm.selectNextHabit()
                     }
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    if reduceMotion {
                         cardDragOffset = 0
+                    } else {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                            cardDragOffset = 0
+                        }
                     }
                 }
         )
-        .animation(.interactiveSpring, value: cardDragOffset)
+        .animation(reduceMotion ? .none : .interactiveSpring, value: cardDragOffset)
     }
 
     @ViewBuilder
