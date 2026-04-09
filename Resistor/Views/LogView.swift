@@ -6,6 +6,14 @@ struct LogView: View {
     @Query(filter: #Predicate<Habit> { !$0.isArchived }) private var habits: [Habit]
     @Query private var userSettings: [UserSettings]
 
+    private var accentColor: Color {
+        if let hex = userSettings.first?.accentColorHex,
+           let color = Color(hex: hex) {
+            return color
+        }
+        return .blue
+    }
+
     @State private var viewModel: LogViewModel?
     @State private var showContextSheet = false
     @State private var showOutcomeSheet = false
@@ -67,7 +75,16 @@ struct LogView: View {
                     .font(.headline)
             }
             .buttonStyle(.borderedProminent)
-            .sheet(isPresented: $showAddHabitSheet) {
+            .sheet(isPresented: $showAddHabitSheet, onDismiss: {
+                if viewModel == nil {
+                    viewModel = LogViewModel(
+                        modelContext: modelContext,
+                        defaultHabitId: userSettings.first?.defaultHabitId
+                    )
+                } else {
+                    viewModel?.fetchHabits()
+                }
+            }) {
                 AddHabitFromLogSheet(modelContext: modelContext)
             }
         }
@@ -158,7 +175,7 @@ struct LogView: View {
             HStack(spacing: 8) {
                 ForEach(Array(vm.habits.enumerated()), id: \.element.id) { index, _ in
                     Circle()
-                        .fill(index == vm.selectedHabitIndex ? Color.blue : Color.gray.opacity(0.3))
+                        .fill(index == vm.selectedHabitIndex ? accentColor : Color.gray.opacity(0.3))
                         .frame(width: 8, height: 8)
                 }
             }
@@ -239,7 +256,7 @@ struct LogView: View {
             .foregroundStyle(.white)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 20)
-            .background(Color.blue)
+            .background(accentColor)
             .cornerRadius(16)
         }
         .accessibilityLabel("Log temptation for \(vm.selectedHabit?.name ?? "habit")")
@@ -293,7 +310,7 @@ struct LogView: View {
                                     .frame(width: 44, height: 44)
                                     .background(
                                         Circle()
-                                            .fill(selectedIntensity == level ? Color.blue : Color.gray.opacity(0.2))
+                                            .fill(selectedIntensity == level ? accentColor : Color.gray.opacity(0.2))
                                     )
                                     .foregroundStyle(selectedIntensity == level ? .white : .primary)
                             }
@@ -409,7 +426,7 @@ struct LogView: View {
                                 .frame(maxWidth: .infinity)
                                 .background(
                                     RoundedRectangle(cornerRadius: 8)
-                                        .fill(selectedContextTags.contains(tag) ? Color.blue : Color.gray.opacity(0.2))
+                                        .fill(selectedContextTags.contains(tag) ? accentColor : Color.gray.opacity(0.2))
                                 )
                                 .foregroundStyle(selectedContextTags.contains(tag) ? .white : .primary)
                         }

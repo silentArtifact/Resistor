@@ -303,20 +303,18 @@ struct InsightsView: View {
             Text("Daily Trend")
                 .font(.headline)
 
-            if #available(iOS 17.0, *) {
-                Chart(data, id: \.date) { item in
-                    BarMark(
-                        x: .value("Date", item.date, unit: .day),
-                        y: .value("Count", item.count)
-                    )
-                    .foregroundStyle(Color(hex: vm.selectedHabit?.colorHex ?? "#007AFF") ?? .blue)
-                }
-                .frame(height: 200)
-                .chartXAxis {
-                    AxisMarks(values: .stride(by: .day, count: vm.selectedTimeRange == .week ? 1 : 5)) { _ in
-                        AxisGridLine()
-                        AxisValueLabel(format: .dateTime.day().month(.abbreviated))
-                    }
+            Chart(data, id: \.date) { item in
+                BarMark(
+                    x: .value("Date", item.date, unit: .day),
+                    y: .value("Count", item.count)
+                )
+                .foregroundStyle(Color(hex: vm.selectedHabit?.colorHex ?? "#007AFF") ?? .blue)
+            }
+            .frame(height: 200)
+            .chartXAxis {
+                AxisMarks(values: .stride(by: .day, count: vm.selectedTimeRange == .week ? 1 : 5)) { _ in
+                    AxisGridLine()
+                    AxisValueLabel(format: .dateTime.day().month(.abbreviated))
                 }
             }
         }
@@ -335,16 +333,14 @@ struct InsightsView: View {
             Text("Time of Day")
                 .font(.headline)
 
-            if #available(iOS 17.0, *) {
-                Chart(data, id: \.period) { item in
-                    BarMark(
-                        x: .value("Period", item.period),
-                        y: .value("Count", item.count)
-                    )
-                    .foregroundStyle(Color(hex: vm.selectedHabit?.colorHex ?? "#007AFF") ?? .blue)
-                }
-                .frame(height: 150)
+            Chart(data, id: \.period) { item in
+                BarMark(
+                    x: .value("Period", item.period),
+                    y: .value("Count", item.count)
+                )
+                .foregroundStyle(Color(hex: vm.selectedHabit?.colorHex ?? "#007AFF") ?? .blue)
             }
+            .frame(height: 150)
         }
         .padding()
         .background(
@@ -361,16 +357,14 @@ struct InsightsView: View {
             Text("Day of Week")
                 .font(.headline)
 
-            if #available(iOS 17.0, *) {
-                Chart(data, id: \.day) { item in
-                    BarMark(
-                        x: .value("Day", item.day),
-                        y: .value("Count", item.count)
-                    )
-                    .foregroundStyle(Color(hex: vm.selectedHabit?.colorHex ?? "#007AFF") ?? .blue)
-                }
-                .frame(height: 150)
+            Chart(data, id: \.day) { item in
+                BarMark(
+                    x: .value("Day", item.day),
+                    y: .value("Count", item.count)
+                )
+                .foregroundStyle(Color(hex: vm.selectedHabit?.colorHex ?? "#007AFF") ?? .blue)
             }
+            .frame(height: 150)
         }
         .padding()
         .background(

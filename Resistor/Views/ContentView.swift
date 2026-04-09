@@ -27,6 +27,14 @@ struct ContentView: View {
         habits.filter { !$0.isArchived }.isEmpty
     }
 
+    private var accentColor: Color {
+        if let hex = userSettings.first?.accentColorHex,
+           let color = Color(hex: hex) {
+            return color
+        }
+        return .blue
+    }
+
     var body: some View {
         Group {
             if needsOnboarding {
@@ -37,6 +45,7 @@ struct ContentView: View {
                 mainTabView
             }
         }
+        .tint(accentColor)
         .onAppear {
             initializeSettingsIfNeeded()
         }
