@@ -11,7 +11,9 @@ Resistor is a habit-tracking iOS app that logs moments of temptation rather than
 
 ```
 Resistor/
-├── ResistorApp.swift                 # App entry, ModelContainer setup
+├── ResistorApp.swift                 # App entry, ModelContainer + CloudKit setup
+├── Resistor.entitlements             # iCloud/CloudKit entitlements
+├── TipJar.storekit                   # StoreKit configuration for testing
 ├── Assets.xcassets/                  # App icon, accent color
 ├── Extensions/
 │   └── Color+Hex.swift              # Color(hex:) initializer
@@ -24,7 +26,8 @@ Resistor/
 │   ├── LogViewModel.swift            # Log screen logic
 │   ├── InsightsViewModel.swift       # Stats, charts, distributions
 │   ├── HabitsViewModel.swift         # Habit CRUD, color/icon lists
-│   └── OnboardingViewModel.swift     # First-run habit creation
+│   ├── OnboardingViewModel.swift     # First-run habit creation
+│   └── TipJarViewModel.swift         # StoreKit 2 tip jar purchases
 └── Views/
     ├── ContentView.swift             # TabView + onboarding gate + accent color
     ├── LogView.swift                 # Core logging flow (S1)
@@ -192,13 +195,13 @@ xcodebuild -project Resistor.xcodeproj \
 
 ## Remaining Work (v1.0)
 
-- iCloud sync (CloudKit container setup + entitlements)
-- Unit + UI test targets
-- Tip jar (StoreKit 2 consumable IAPs)
-- App icon (minimalist shield)
-- Dark mode audit
-- Accessibility pass (VoiceOver, Dynamic Type)
-- TestFlight build
+- ~~iCloud sync (CloudKit container setup + entitlements)~~ — Done: entitlements + CloudKit ModelConfiguration
+- ~~Unit + UI test targets~~ — Done: ResistorTests with 11 test files
+- ~~Tip jar (StoreKit 2 consumable IAPs)~~ — Done: TipJarViewModel + StoreKit config
+- App icon (minimalist shield) — Issue #35
+- ~~Dark mode audit~~ — Done: confirmation banner border, habit card contrast
+- ~~Accessibility pass (VoiceOver, Dynamic Type)~~ — Done: selected traits, event grouping, carousel labels
+- TestFlight build (requires Xcode: signing, CloudKit container, team ID)
 
 ## Design Documents
 

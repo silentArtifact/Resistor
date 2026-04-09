@@ -131,6 +131,7 @@ struct HistoryView: View {
                 }
             }
         }
+        .accessibilityElement(children: .combine)
         .contentShape(Rectangle())
         .onTapGesture {
             selectedEvent = event

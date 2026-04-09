@@ -1,11 +1,13 @@
 import SwiftUI
 import SwiftData
+import StoreKit
 
 struct HabitsView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var userSettings: [UserSettings]
 
     @State private var viewModel: HabitsViewModel?
+    @State private var tipJarViewModel = TipJarViewModel()
     @State private var showDeleteAllConfirmation = false
     @State private var showExportSheet = false
     @State private var exportURL: URL?
@@ -111,6 +113,9 @@ struct HabitsView: View {
 
             // Data section
             dataSection
+
+            // Tip jar
+            tipJarSection
         }
         .listStyle(.insetGrouped)
         .overlay {
@@ -252,6 +257,7 @@ struct HabitsView: View {
                                     try? modelContext.save()
                                 }
                                 .accessibilityLabel(color.name)
+                                .accessibilityAddTraits(settings.accentColorHex == color.hex ? .isSelected : [])
                         }
                     }
                 }
@@ -269,6 +275,48 @@ struct HabitsView: View {
 
             Button("Delete All Data", role: .destructive) {
                 showDeleteAllConfirmation = true
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var tipJarSection: some View {
+        Section {
+            if tipJarViewModel.purchaseState == .thanked {
+                Text("Thank you.")
+                    .font(.body)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 4)
+            } else if tipJarViewModel.products.isEmpty {
+                // Products still loading or unavailable — show nothing
+                EmptyView()
+            } else {
+                ForEach(tipJarViewModel.products, id: \.id) { product in
+                    Button {
+                        Task { await tipJarViewModel.purchase(product) }
+                    } label: {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(product.displayName)
+                                    .font(.body)
+                                Text(product.displayPrice)
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            if tipJarViewModel.purchaseState == .purchasing {
+                                ProgressView()
+                            }
+                        }
+                    }
+                    .disabled(tipJarViewModel.purchaseState == .purchasing)
+                }
+            }
+        } header: {
+            Text("Tip Jar")
+        } footer: {
+            if !tipJarViewModel.products.isEmpty && tipJarViewModel.purchaseState != .thanked {
+                Text("Tips help support development. Completely optional.")
             }
         }
     }
