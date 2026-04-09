@@ -180,20 +180,22 @@ final class HabitTests: XCTestCase {
         let calendar = Calendar.current
         let now = Date()
 
-        // Event exactly 7 days ago (should be excluded — "last 7 days" is < 7 days)
+        // Event exactly 7 days ago from `now`. The implementation uses >= with
+        // its own Date() call, so tiny timing differences make inclusion non-deterministic.
         let sevenDaysAgo = calendar.date(byAdding: .day, value: -7, to: now)!
         let boundaryEvent = TestHelpers.makeEvent(habit: habit, occurredAt: sevenDaysAgo)
         context.insert(boundaryEvent)
 
-        // Event 6 days and 23 hours ago (should be included)
+        // Event 6 days and 23 hours ago (well within range, always included)
         let almostSevenDaysAgo = calendar.date(byAdding: .hour, value: -(7 * 24 - 1), to: now)!
         let recentEvent = TestHelpers.makeEvent(habit: habit, occurredAt: almostSevenDaysAgo)
         context.insert(recentEvent)
 
         try context.save()
 
-        // The actual count depends on the implementation (>= vs >)
-        // This test documents the boundary behavior
+        // The boundary event may or may not be included due to the race between
+        // `now` captured above and `Date()` inside thisWeekEventsCount.
+        // This test documents the behavior rather than enforcing a specific count.
         let count = habit.thisWeekEventsCount
         XCTAssertTrue(count >= 1 && count <= 2,
                       "Expected 1 or 2 events at the 7-day boundary, got \(count)")
