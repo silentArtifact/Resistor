@@ -281,16 +281,17 @@ struct HabitsView: View {
 
     @ViewBuilder
     private var tipJarSection: some View {
-        Section {
-            if tipJarViewModel.purchaseState == .thanked {
+        if tipJarViewModel.purchaseState == .thanked {
+            Section {
                 Text("Thank you.")
                     .font(.body)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 4)
-            } else if tipJarViewModel.products.isEmpty {
-                // Products still loading or unavailable — show nothing
-                EmptyView()
-            } else {
+            } header: {
+                Text("Tip Jar")
+            }
+        } else if !tipJarViewModel.products.isEmpty {
+            Section {
                 ForEach(tipJarViewModel.products, id: \.id) { product in
                     Button {
                         Task { await tipJarViewModel.purchase(product) }
@@ -311,11 +312,9 @@ struct HabitsView: View {
                     }
                     .disabled(tipJarViewModel.purchaseState == .purchasing)
                 }
-            }
-        } header: {
-            Text("Tip Jar")
-        } footer: {
-            if !tipJarViewModel.products.isEmpty && tipJarViewModel.purchaseState != .thanked {
+            } header: {
+                Text("Tip Jar")
+            } footer: {
                 Text("Tips help support development. Completely optional.")
             }
         }

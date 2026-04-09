@@ -70,8 +70,9 @@ final class TipJarViewModel {
     }
 
     private func observeTransactions() -> Task<Void, Never> {
-        Task.detached {
+        Task.detached { [weak self] in
             for await result in Transaction.updates {
+                guard let self else { break }
                 if let transaction = try? self.checkVerified(result) {
                     await transaction.finish()
                 }
