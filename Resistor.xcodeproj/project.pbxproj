@@ -24,7 +24,26 @@
 		A100000F000000000000001A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A100000F000000000000000A /* Assets.xcassets */; };
 
 		A1000011000000000000001A /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000011000000000000000A /* HistoryView.swift */; };
+
+		B2000001000000000000001A /* TestHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000001000000000000000A /* TestHelpers.swift */; };
+		B2000002000000000000001A /* InsightsViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000002000000000000000A /* InsightsViewModelTests.swift */; };
+		B2000003000000000000001A /* TemptationEventTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000003000000000000000A /* TemptationEventTests.swift */; };
+		B2000004000000000000001A /* HabitsViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000004000000000000000A /* HabitsViewModelTests.swift */; };
+		B2000005000000000000001A /* LogViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000005000000000000000A /* LogViewModelTests.swift */; };
+		B2000006000000000000001A /* ColorHexTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000006000000000000000A /* ColorHexTests.swift */; };
+		B2000007000000000000001A /* OnboardingViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000007000000000000000A /* OnboardingViewModelTests.swift */; };
+		B2000008000000000000001A /* HabitTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000008000000000000000A /* HabitTests.swift */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		B2000001000000000000007A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A1000000000000000000005A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A1000000000000000000004A;
+			remoteInfo = Resistor;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		A1000000000000000000000A /* Resistor.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Resistor.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -45,10 +64,27 @@
 		A100000F000000000000000A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 
 		A1000011000000000000000A /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
+
+		B2000000000000000000000A /* ResistorTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ResistorTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		B2000001000000000000000A /* TestHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestHelpers.swift; sourceTree = "<group>"; };
+		B2000002000000000000000A /* InsightsViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsViewModelTests.swift; sourceTree = "<group>"; };
+		B2000003000000000000000A /* TemptationEventTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemptationEventTests.swift; sourceTree = "<group>"; };
+		B2000004000000000000000A /* HabitsViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HabitsViewModelTests.swift; sourceTree = "<group>"; };
+		B2000005000000000000000A /* LogViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogViewModelTests.swift; sourceTree = "<group>"; };
+		B2000006000000000000000A /* ColorHexTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorHexTests.swift; sourceTree = "<group>"; };
+		B2000007000000000000000A /* OnboardingViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingViewModelTests.swift; sourceTree = "<group>"; };
+		B2000008000000000000000A /* HabitTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HabitTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		A1000000000000000000002A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B2000000000000000000002A /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -62,6 +98,7 @@
 			isa = PBXGroup;
 			children = (
 				A1000001000000000000003A /* Resistor */,
+				B2000001000000000000003A /* ResistorTests */,
 				A1000002000000000000003A /* Products */,
 			);
 			sourceTree = "<group>";
@@ -84,6 +121,7 @@
 			isa = PBXGroup;
 			children = (
 				A1000000000000000000000A /* Resistor.app */,
+				B2000000000000000000000A /* ResistorTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -137,6 +175,21 @@
 			path = Services;
 			sourceTree = "<group>";
 		};
+		B2000001000000000000003A /* ResistorTests */ = {
+			isa = PBXGroup;
+			children = (
+				B2000001000000000000000A /* TestHelpers.swift */,
+				B2000002000000000000000A /* InsightsViewModelTests.swift */,
+				B2000003000000000000000A /* TemptationEventTests.swift */,
+				B2000004000000000000000A /* HabitsViewModelTests.swift */,
+				B2000005000000000000000A /* LogViewModelTests.swift */,
+				B2000006000000000000000A /* ColorHexTests.swift */,
+				B2000007000000000000000A /* OnboardingViewModelTests.swift */,
+				B2000008000000000000000A /* HabitTests.swift */,
+			);
+			path = ResistorTests;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -157,6 +210,23 @@
 			productReference = A1000000000000000000000A /* Resistor.app */;
 			productType = "com.apple.product-type.application";
 		};
+		B2000000000000000000004A /* ResistorTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B2000001000000000000005A /* Build configuration list for PBXNativeTarget "ResistorTests" */;
+			buildPhases = (
+				B2000001000000000000004A /* Sources */,
+				B2000000000000000000002A /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				B2000001000000000000008A /* PBXTargetDependency */,
+			);
+			name = ResistorTests;
+			productName = ResistorTests;
+			productReference = B2000000000000000000000A /* ResistorTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -169,6 +239,10 @@
 				TargetAttributes = {
 					A1000000000000000000004A = {
 						CreatedOnToolsVersion = 15.0;
+					};
+					B2000000000000000000004A = {
+						CreatedOnToolsVersion = 15.0;
+						TestTargetID = A1000000000000000000004A;
 					};
 				};
 			};
@@ -186,6 +260,7 @@
 			projectRoot = "";
 			targets = (
 				A1000000000000000000004A /* Resistor */,
+				B2000000000000000000004A /* ResistorTests */,
 			);
 		};
 /* End PBXProject section */
@@ -225,7 +300,30 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B2000001000000000000004A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B2000001000000000000001A /* TestHelpers.swift in Sources */,
+				B2000002000000000000001A /* InsightsViewModelTests.swift in Sources */,
+				B2000003000000000000001A /* TemptationEventTests.swift in Sources */,
+				B2000004000000000000001A /* HabitsViewModelTests.swift in Sources */,
+				B2000005000000000000001A /* LogViewModelTests.swift in Sources */,
+				B2000006000000000000001A /* ColorHexTests.swift in Sources */,
+				B2000007000000000000001A /* OnboardingViewModelTests.swift in Sources */,
+				B2000008000000000000001A /* HabitTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		B2000001000000000000008A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A1000000000000000000004A /* Resistor */;
+			targetProxy = B2000001000000000000007A /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		A1000001000000000000006A /* Debug */ = {
@@ -411,6 +509,46 @@
 			};
 			name = Release;
 		};
+		B2000001000000000000006A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.resistor.app.ResistorTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Resistor.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Resistor";
+			};
+			name = Debug;
+		};
+		B2000002000000000000006A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.resistor.app.ResistorTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Resistor.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Resistor";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -428,6 +566,15 @@
 			buildConfigurations = (
 				A1000003000000000000006A /* Debug */,
 				A1000004000000000000006A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B2000001000000000000005A /* Build configuration list for PBXNativeTarget "ResistorTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B2000001000000000000006A /* Debug */,
+				B2000002000000000000006A /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
