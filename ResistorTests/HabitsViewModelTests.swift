@@ -56,6 +56,27 @@ final class HabitsViewModelTests: XCTestCase {
         XCTAssertTrue(vm.archivedHabits.isEmpty)
     }
 
+    func testActiveHabitsSortByCreatedAt() throws {
+        let date1 = TestHelpers.dateFromComponents(year: 2025, month: 1, day: 1)
+        let date2 = TestHelpers.dateFromComponents(year: 2025, month: 6, day: 15)
+        let date3 = TestHelpers.dateFromComponents(year: 2025, month: 12, day: 31)
+
+        let habit3 = TestHelpers.makeHabit(name: "Third", createdAt: date3)
+        let habit1 = TestHelpers.makeHabit(name: "First", createdAt: date1)
+        let habit2 = TestHelpers.makeHabit(name: "Second", createdAt: date2)
+
+        // Insert in non-chronological order
+        context.insert(habit3)
+        context.insert(habit1)
+        context.insert(habit2)
+        try context.save()
+
+        let vm = HabitsViewModel(modelContext: context)
+        let activeNames = vm.activeHabits.map { $0.name }
+
+        XCTAssertEqual(activeNames, ["First", "Second", "Third"])
+    }
+
     // MARK: - Create Habit
 
     func testSaveNewHabitCreatesHabit() throws {

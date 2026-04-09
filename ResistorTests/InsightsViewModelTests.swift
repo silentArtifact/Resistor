@@ -460,6 +460,93 @@ final class InsightsViewModelTests: XCTestCase {
         XCTAssertNil(vm.peakDayOfWeek)
     }
 
+    // MARK: - Peak Day of Week
+
+    func testPeakDayOfWeekReturnsHighestDay() throws {
+        let habit = TestHelpers.makeHabit()
+        context.insert(habit)
+
+        let calendar = Calendar.current
+        let now = Date()
+
+        // Create 3 events on the same weekday (today) and 1 event on a different day
+        for i in 0..<3 {
+            let date = calendar.date(byAdding: .minute, value: i, to: now)!
+            let event = TestHelpers.makeEvent(habit: habit, occurredAt: date, outcome: "resisted")
+            context.insert(event)
+        }
+
+        // 1 event 2 days ago (different weekday)
+        let twoDaysAgo = calendar.date(byAdding: .day, value: -2, to: now)!
+        let otherEvent = TestHelpers.makeEvent(habit: habit, occurredAt: twoDaysAgo, outcome: "resisted")
+        context.insert(otherEvent)
+
+        try context.save()
+
+        let vm = InsightsViewModel(modelContext: context)
+        vm.selectedTimeRange = .week
+
+        let todayWeekday = calendar.component(.weekday, from: now)
+        let expectedDay = calendar.shortWeekdaySymbols[todayWeekday - 1]
+        XCTAssertEqual(vm.peakDayOfWeek, expectedDay)
+    }
+
+    // MARK: - Change Percentage Edge Cases
+
+    func testChangePercentageNegative100WhenCurrentPeriodEmpty() throws {
+        let habit = TestHelpers.makeHabit()
+        context.insert(habit)
+
+        let calendar = Calendar.current
+        let now = Date()
+
+        // Events only in previous period (8-13 days ago for week range)
+        for i in 0..<3 {
+            let date = calendar.date(byAdding: .day, value: -(8 + i), to: now)!
+            let event = TestHelpers.makeEvent(habit: habit, occurredAt: date, outcome: "resisted")
+            context.insert(event)
+        }
+
+        try context.save()
+
+        let vm = InsightsViewModel(modelContext: context)
+        vm.selectedTimeRange = .week
+
+        XCTAssertEqual(vm.totalEventsInRange, 0)
+        XCTAssertEqual(vm.previousPeriodEvents, 3)
+        XCTAssertEqual(vm.changeFromPreviousPeriod, -3)
+        XCTAssertEqual(vm.changePercentage!, -100.0, accuracy: 0.01)
+    }
+
+    // MARK: - Time Range Switching
+
+    func testSwitchingTimeRangeChangesEventsInRange() throws {
+        let habit = TestHelpers.makeHabit()
+        context.insert(habit)
+
+        let calendar = Calendar.current
+        let now = Date()
+
+        // Event today (in both week and month)
+        let todayEvent = TestHelpers.makeEvent(habit: habit, occurredAt: now, outcome: "resisted")
+        context.insert(todayEvent)
+
+        // Event 15 days ago (only in month range)
+        let fifteenDaysAgo = calendar.date(byAdding: .day, value: -15, to: now)!
+        let olderEvent = TestHelpers.makeEvent(habit: habit, occurredAt: fifteenDaysAgo, outcome: "gave_in")
+        context.insert(olderEvent)
+
+        try context.save()
+
+        let vm = InsightsViewModel(modelContext: context)
+
+        vm.selectedTimeRange = .week
+        XCTAssertEqual(vm.eventsInRange().count, 1)
+
+        vm.selectedTimeRange = .month
+        XCTAssertEqual(vm.eventsInRange().count, 2)
+    }
+
     // MARK: - Habit Selection
 
     func testSelectedHabitIndexBoundsChecking() throws {
