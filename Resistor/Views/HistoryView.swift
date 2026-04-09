@@ -15,21 +15,17 @@ struct HistoryView: View {
     }
 
     private var groupedEvents: [(String, [TemptationEvent])] {
+        let calendar = Calendar.current
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
         formatter.timeStyle = .none
 
         let grouped = Dictionary(grouping: events) { event in
-            formatter.string(from: event.occurredAt)
+            calendar.startOfDay(for: event.occurredAt)
         }
 
-        return grouped.sorted { first, second in
-            guard let firstDate = events.first(where: { formatter.string(from: $0.occurredAt) == first.key })?.occurredAt,
-                  let secondDate = events.first(where: { formatter.string(from: $0.occurredAt) == second.key })?.occurredAt else {
-                return false
-            }
-            return firstDate > secondDate
-        }
+        return grouped.sorted { $0.key > $1.key }
+            .map { (formatter.string(from: $0.key), $0.value) }
     }
 
     @State private var eventToDelete: TemptationEvent?

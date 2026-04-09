@@ -57,7 +57,8 @@ final class InsightsViewModel {
     func eventsInRange() -> [TemptationEvent] {
         guard let habit = selectedHabit else { return [] }
         let calendar = Calendar.current
-        guard let startDate = calendar.date(byAdding: .day, value: -selectedTimeRange.days, to: Date()) else {
+        let startOfToday = calendar.startOfDay(for: Date())
+        guard let startDate = calendar.date(byAdding: .day, value: -(selectedTimeRange.days - 1), to: startOfToday) else {
             return []
         }
         return habit.events.filter { $0.occurredAt >= startDate }
@@ -71,11 +72,12 @@ final class InsightsViewModel {
         guard let habit = selectedHabit else { return 0 }
         let calendar = Calendar.current
         let days = selectedTimeRange.days
-        guard let startDate = calendar.date(byAdding: .day, value: -days * 2, to: Date()),
-              let endDate = calendar.date(byAdding: .day, value: -days, to: Date()) else {
+        let startOfToday = calendar.startOfDay(for: Date())
+        guard let currentPeriodStart = calendar.date(byAdding: .day, value: -(days - 1), to: startOfToday),
+              let previousPeriodStart = calendar.date(byAdding: .day, value: -days, to: currentPeriodStart) else {
             return 0
         }
-        return habit.events.filter { $0.occurredAt >= startDate && $0.occurredAt < endDate }.count
+        return habit.events.filter { $0.occurredAt >= previousPeriodStart && $0.occurredAt < currentPeriodStart }.count
     }
 
     var changeFromPreviousPeriod: Int {
@@ -199,11 +201,13 @@ final class InsightsViewModel {
 
     var peakTimeOfDay: String? {
         let dist = timeOfDayDistribution()
-        return dist.max(by: { $0.count < $1.count })?.period
+        guard let peak = dist.max(by: { $0.count < $1.count }), peak.count > 0 else { return nil }
+        return peak.period
     }
 
     var peakDayOfWeek: String? {
         let dist = dayOfWeekDistribution()
-        return dist.max(by: { $0.count < $1.count })?.day
+        guard let peak = dist.max(by: { $0.count < $1.count }), peak.count > 0 else { return nil }
+        return peak.day
     }
 }
