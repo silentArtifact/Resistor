@@ -37,7 +37,7 @@ final class HabitsViewModel {
         )
         do {
             let all = try modelContext.fetch(descriptor)
-            habits = all.sorted { !$0.isArchived && $1.isArchived }
+            habits = all.sorted { ($0.isArchived ? 1 : 0) < ($1.isArchived ? 1 : 0) }
         } catch {
             print("Failed to fetch habits: \(error)")
             habits = []

@@ -10,6 +10,7 @@ final class LogViewModel {
     var selectedHabitIndex: Int = 0
     var lastLoggedEvent: TemptationEvent?
     var showConfirmation: Bool = false
+    private var confirmationWorkItem: DispatchWorkItem?
 
     var selectedHabit: Habit? {
         guard !habits.isEmpty, selectedHabitIndex >= 0, selectedHabitIndex < habits.count else {
@@ -59,10 +60,13 @@ final class LogViewModel {
     }
 
     func triggerConfirmation() {
+        confirmationWorkItem?.cancel()
         showConfirmation = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+        let workItem = DispatchWorkItem { [weak self] in
             self?.showConfirmation = false
         }
+        confirmationWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5, execute: workItem)
     }
 
     func updateEventContext(contextTags: [String], note: String?) {

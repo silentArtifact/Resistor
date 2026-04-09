@@ -45,7 +45,7 @@ struct HistoryView: View {
                 eventsList
             }
         }
-        .navigationTitle(habit != nil ? "\(habit!.name) History" : "All History")
+        .navigationTitle(habit.map { "\($0.name) History" } ?? "All History")
         .navigationBarTitleDisplayMode(.inline)
         .alert("Delete Event?", isPresented: $showDeleteConfirmation) {
             Button("Cancel", role: .cancel) {

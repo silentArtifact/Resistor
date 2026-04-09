@@ -282,27 +282,29 @@ struct HabitsView: View {
             formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
 
             let habitsJSON: [[String: Any]] = habits.map { habit in
-                [
+                var dict: [String: Any] = [
                     "id": habit.id.uuidString,
                     "name": habit.name,
-                    "description": habit.habitDescription as Any,
-                    "color_hex": habit.colorHex as Any,
-                    "icon_name": habit.iconName as Any,
                     "is_archived": habit.isArchived,
                     "created_at": formatter.string(from: habit.createdAt)
                 ]
+                dict["description"] = habit.habitDescription ?? NSNull()
+                dict["color_hex"] = habit.colorHex ?? NSNull()
+                dict["icon_name"] = habit.iconName ?? NSNull()
+                return dict
             }
 
             let eventsJSON: [[String: Any]] = events.map { event in
-                [
+                var dict: [String: Any] = [
                     "id": event.id.uuidString,
-                    "habit_id": event.habit?.id.uuidString as Any,
                     "occurred_at": formatter.string(from: event.occurredAt),
-                    "intensity": event.intensity as Any,
                     "outcome": event.outcome,
-                    "context_tags": event.contextTags,
-                    "note": event.note as Any
+                    "context_tags": event.contextTags
                 ]
+                dict["habit_id"] = event.habit?.id.uuidString ?? NSNull()
+                dict["intensity"] = event.intensity ?? NSNull()
+                dict["note"] = event.note ?? NSNull()
+                return dict
             }
 
             let exportData: [String: Any] = [
