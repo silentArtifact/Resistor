@@ -1,7 +1,7 @@
 import Foundation
 import StoreKit
 
-@Observable
+@MainActor @Observable
 final class TipJarViewModel {
     private(set) var products: [Product] = []
     private(set) var purchaseState: PurchaseState = .idle
@@ -28,7 +28,6 @@ final class TipJarViewModel {
         updates?.cancel()
     }
 
-    @MainActor
     func loadProducts() async {
         do {
             let storeProducts = try await Product.products(for: Self.productIds)
@@ -38,17 +37,20 @@ final class TipJarViewModel {
         }
     }
 
-    @MainActor
     func purchase(_ product: Product) async {
         purchaseState = .purchasing
         do {
             let result = try await product.purchase()
             switch result {
             case .success(let verification):
-                let transaction = try checkVerified(verification)
-                await transaction.finish()
-                purchaseState = .thanked
-                dismissThankYouAfterDelay()
+                let transaction = checkVerified(verification)
+                if let transaction {
+                    await transaction.finish()
+                    purchaseState = .thanked
+                    dismissThankYouAfterDelay()
+                } else {
+                    purchaseState = .idle
+                }
             case .userCancelled, .pending:
                 purchaseState = .idle
             @unknown default:
@@ -60,10 +62,10 @@ final class TipJarViewModel {
         }
     }
 
-    private func checkVerified<T>(_ result: VerificationResult<T>) throws -> T {
+    private nonisolated func checkVerified<T: Sendable>(_ result: VerificationResult<T>) -> T? {
         switch result {
         case .unverified:
-            throw StoreError.verificationFailed
+            return nil
         case .verified(let value):
             return value
         }
@@ -73,7 +75,7 @@ final class TipJarViewModel {
         Task.detached { [weak self] in
             for await result in Transaction.updates {
                 guard let self else { break }
-                if let transaction = try? self.checkVerified(result) {
+                if let transaction = self.checkVerified(result) {
                     await transaction.finish()
                 }
             }
@@ -81,7 +83,7 @@ final class TipJarViewModel {
     }
 
     private func dismissThankYouAfterDelay() {
-        Task { @MainActor in
+        Task {
             try? await Task.sleep(for: .seconds(3))
             if purchaseState == .thanked {
                 purchaseState = .idle
