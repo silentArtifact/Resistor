@@ -40,7 +40,7 @@ final class NotificationManager: ObservableObject {
 
     func scheduleDailyReminder(hour: Int, minute: Int) async {
         // First ensure we have authorization
-        guard isAuthorized else {
+        if !isAuthorized {
             let granted = await requestAuthorization()
             guard granted else { return }
         }

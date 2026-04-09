@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 import SwiftData
 
 @Model
@@ -44,6 +45,22 @@ extension TemptationEvent {
             case .unknown: return "Unknown"
             }
         }
+
+        var iconName: String {
+            switch self {
+            case .resisted: return "checkmark.circle.fill"
+            case .gaveIn: return "xmark.circle.fill"
+            case .unknown: return "questionmark.circle.fill"
+            }
+        }
+
+        var color: Color {
+            switch self {
+            case .resisted: return .green
+            case .gaveIn: return .red
+            case .unknown: return .gray
+            }
+        }
     }
 
     enum ContextTag: String, CaseIterable {
@@ -68,6 +85,10 @@ extension TemptationEvent {
             case .bored: return "Bored"
             }
         }
+    }
+
+    var outcomeEnum: Outcome {
+        Outcome(rawValue: outcome) ?? .unknown
     }
 
     var hourOfDay: Int {

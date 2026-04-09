@@ -12,6 +12,10 @@ struct LogView: View {
     @State private var contextNote: String = ""
     @State private var selectedContextTag: TemptationEvent.ContextTag?
     @State private var selectedOutcome: TemptationEvent.Outcome?
+    @State private var selectedIntensity: Int = 3
+    @State private var shouldShowContextAfterOutcome = false
+    @State private var showAddHabitSheet = false
+    @State private var cardDragOffset: CGFloat = 0
 
     private var showContextPrompt: Bool {
         userSettings.first?.showContextPrompt ?? true
@@ -31,10 +35,14 @@ struct LogView: View {
             .navigationTitle("Log")
         }
         .onAppear {
-            viewModel = LogViewModel(modelContext: modelContext)
-        }
-        .onChange(of: habits.count) {
-            viewModel?.fetchHabits()
+            if viewModel == nil {
+                viewModel = LogViewModel(
+                    modelContext: modelContext,
+                    defaultHabitId: userSettings.first?.defaultHabitId
+                )
+            } else {
+                viewModel?.fetchHabits()
+            }
         }
     }
 
@@ -48,11 +56,20 @@ struct LogView: View {
                 .font(.title2)
                 .fontWeight(.semibold)
 
-            Text("Add a habit in the Habits tab to start logging temptations.")
+            Text("Create a habit to start logging temptations.")
                 .font(.body)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 40)
+
+            Button(action: { showAddHabitSheet = true }) {
+                Label("Add Habit", systemImage: "plus")
+                    .font(.headline)
+            }
+            .buttonStyle(.borderedProminent)
+            .sheet(isPresented: $showAddHabitSheet) {
+                AddHabitFromLogSheet(modelContext: modelContext)
+            }
         }
     }
 
@@ -91,7 +108,12 @@ struct LogView: View {
             }
         }
         .animation(.easeInOut(duration: 0.3), value: vm.showConfirmation)
-        .sheet(isPresented: $showOutcomeSheet) {
+        .sheet(isPresented: $showOutcomeSheet, onDismiss: {
+            if shouldShowContextAfterOutcome {
+                shouldShowContextAfterOutcome = false
+                showContextSheet = true
+            }
+        }) {
             outcomeSheet(vm)
         }
         .sheet(isPresented: $showContextSheet) {
@@ -108,6 +130,7 @@ struct LogView: View {
                         .font(.title2)
                         .foregroundStyle(.secondary)
                 }
+                .accessibilityLabel("Previous habit")
 
                 Spacer()
 
@@ -122,6 +145,7 @@ struct LogView: View {
                         .font(.title2)
                         .foregroundStyle(.secondary)
                 }
+                .accessibilityLabel("Next habit")
             }
             .padding(.horizontal, 24)
             .padding(.top, 16)
@@ -167,21 +191,31 @@ struct LogView: View {
                 .fill(Color(hex: habit.colorHex ?? "#007AFF")?.opacity(0.1) ?? Color.blue.opacity(0.1))
         )
         .padding(.horizontal, 24)
+        .offset(x: cardDragOffset)
         .gesture(
-            DragGesture(minimumDistance: 50)
+            DragGesture(minimumDistance: 30)
+                .onChanged { value in
+                    cardDragOffset = value.translation.width * 0.4
+                }
                 .onEnded { value in
-                    if value.translation.width > 0 {
+                    if value.translation.width > 50 {
                         vm.selectPreviousHabit()
-                    } else {
+                    } else if value.translation.width < -50 {
                         vm.selectNextHabit()
+                    }
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        cardDragOffset = 0
                     }
                 }
         )
+        .animation(.interactiveSpring, value: cardDragOffset)
     }
 
     @ViewBuilder
     private func logButton(_ vm: LogViewModel) -> some View {
         Button(action: {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            selectedIntensity = 3
             vm.logTemptation(showContext: showContextPrompt)
             showOutcomeSheet = true
         }) {
@@ -198,6 +232,7 @@ struct LogView: View {
             .background(Color.blue)
             .cornerRadius(16)
         }
+        .accessibilityLabel("Log temptation for \(vm.selectedHabit?.name ?? "habit")")
         .padding(.horizontal, 24)
         .padding(.bottom, 8)
     }
@@ -233,17 +268,50 @@ struct LogView: View {
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
 
+                // Intensity
+                VStack(spacing: 8) {
+                    Text("How strong was the urge?")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+
+                    HStack(spacing: 12) {
+                        ForEach(1...5, id: \.self) { level in
+                            Button(action: { selectedIntensity = level }) {
+                                Text("\(level)")
+                                    .font(.title3)
+                                    .fontWeight(.semibold)
+                                    .frame(width: 44, height: 44)
+                                    .background(
+                                        Circle()
+                                            .fill(selectedIntensity == level ? Color.blue : Color.gray.opacity(0.2))
+                                    )
+                                    .foregroundStyle(selectedIntensity == level ? .white : .primary)
+                            }
+                            .accessibilityLabel("Intensity \(level) of 5")
+                        }
+                    }
+
+                    HStack {
+                        Text("Mild")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Text("Overwhelming")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.horizontal, 8)
+                }
+                .padding(.horizontal, 24)
+
                 VStack(spacing: 16) {
                     // Resisted button
                     Button(action: {
                         selectedOutcome = .resisted
                         vm.updateEventOutcome(.resisted)
+                        vm.updateEventIntensity(selectedIntensity)
+                        shouldShowContextAfterOutcome = showContextPrompt
                         showOutcomeSheet = false
-                        if showContextPrompt {
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                showContextSheet = true
-                            }
-                        }
                     }) {
                         HStack(spacing: 12) {
                             Image(systemName: "hand.raised.fill")
@@ -263,12 +331,9 @@ struct LogView: View {
                     Button(action: {
                         selectedOutcome = .gaveIn
                         vm.updateEventOutcome(.gaveIn)
+                        vm.updateEventIntensity(selectedIntensity)
+                        shouldShowContextAfterOutcome = showContextPrompt
                         showOutcomeSheet = false
-                        if showContextPrompt {
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                showContextSheet = true
-                            }
-                        }
                     }) {
                         HStack(spacing: 12) {
                             Image(systemName: "xmark.circle.fill")
@@ -292,13 +357,10 @@ struct LogView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Skip") {
-                        showOutcomeSheet = false
                         selectedOutcome = nil
-                        if showContextPrompt {
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                showContextSheet = true
-                            }
-                        }
+                        vm.updateEventIntensity(selectedIntensity)
+                        shouldShowContextAfterOutcome = showContextPrompt
+                        showOutcomeSheet = false
                     }
                 }
             }
@@ -373,6 +435,87 @@ struct LogView: View {
             }
         }
         .presentationDetents([.medium])
+    }
+}
+
+// MARK: - Quick Add Habit Sheet (from Log empty state)
+
+private struct AddHabitFromLogSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let modelContext: ModelContext
+
+    @State private var name = ""
+    @State private var description = ""
+    @State private var selectedColor = HabitsViewModel.availableColors[0].hex
+    @State private var selectedIcon = HabitsViewModel.availableIcons[0]
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextField("Habit name", text: $name)
+                    TextField("Description (optional)", text: $description, axis: .vertical)
+                        .lineLimit(2...4)
+                }
+
+                Section("Color") {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 44))], spacing: 12) {
+                        ForEach(HabitsViewModel.availableColors, id: \.hex) { color in
+                            Circle()
+                                .fill(Color(hex: color.hex) ?? .blue)
+                                .frame(width: 44, height: 44)
+                                .overlay(
+                                    Circle()
+                                        .stroke(Color.primary, lineWidth: selectedColor == color.hex ? 3 : 0)
+                                )
+                                .onTapGesture { selectedColor = color.hex }
+                        }
+                    }
+                    .padding(.vertical, 8)
+                }
+
+                Section("Icon") {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 50))], spacing: 12) {
+                        ForEach(HabitsViewModel.availableIcons, id: \.self) { icon in
+                            Image(systemName: icon)
+                                .font(.title2)
+                                .frame(width: 50, height: 50)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(selectedIcon == icon ? Color.blue.opacity(0.2) : Color.clear)
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .stroke(selectedIcon == icon ? Color.blue : Color.clear, lineWidth: 2)
+                                )
+                                .onTapGesture { selectedIcon = icon }
+                        }
+                    }
+                    .padding(.vertical, 8)
+                }
+            }
+            .navigationTitle("New Habit")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        let habit = Habit(
+                            name: name.trimmingCharacters(in: .whitespacesAndNewlines),
+                            habitDescription: description.isEmpty ? nil : description,
+                            colorHex: selectedColor,
+                            iconName: selectedIcon
+                        )
+                        modelContext.insert(habit)
+                        try? modelContext.save()
+                        dismiss()
+                    }
+                    .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+        }
     }
 }
 

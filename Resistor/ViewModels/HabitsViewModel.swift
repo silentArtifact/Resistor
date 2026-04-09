@@ -33,10 +33,11 @@ final class HabitsViewModel {
 
     func fetchHabits() {
         let descriptor = FetchDescriptor<Habit>(
-            sortBy: [SortDescriptor(\.isArchived), SortDescriptor(\.createdAt)]
+            sortBy: [SortDescriptor(\.createdAt)]
         )
         do {
-            habits = try modelContext.fetch(descriptor)
+            let all = try modelContext.fetch(descriptor)
+            habits = all.sorted { !$0.isArchived && $1.isArchived }
         } catch {
             print("Failed to fetch habits: \(error)")
             habits = []

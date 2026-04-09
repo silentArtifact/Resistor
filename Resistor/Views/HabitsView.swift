@@ -31,7 +31,11 @@ struct HabitsView: View {
             }
         }
         .onAppear {
-            viewModel = HabitsViewModel(modelContext: modelContext)
+            if viewModel == nil {
+                viewModel = HabitsViewModel(modelContext: modelContext)
+            } else {
+                viewModel?.fetchHabits()
+            }
             // Initialize selectedReminderTime from settings
             if let settings = userSettings.first {
                 var components = DateComponents()

@@ -23,9 +23,13 @@ final class LogViewModel {
         !habits.isEmpty
     }
 
-    init(modelContext: ModelContext) {
+    init(modelContext: ModelContext, defaultHabitId: UUID? = nil) {
         self.modelContext = modelContext
         fetchHabits()
+        if let defaultId = defaultHabitId,
+           let index = habits.firstIndex(where: { $0.id == defaultId }) {
+            selectedHabitIndex = index
+        }
     }
 
     func fetchHabits() {
@@ -78,6 +82,18 @@ final class LogViewModel {
         }
 
         showContextSheet = false
+    }
+
+    func updateEventIntensity(_ intensity: Int) {
+        guard let event = lastLoggedEvent else { return }
+
+        event.intensity = intensity
+
+        do {
+            try modelContext.save()
+        } catch {
+            print("Failed to update event intensity: \(error)")
+        }
     }
 
     func updateEventOutcome(_ outcome: TemptationEvent.Outcome) {

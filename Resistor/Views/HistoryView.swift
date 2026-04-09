@@ -163,35 +163,18 @@ struct HistoryView: View {
 
     @ViewBuilder
     private func outcomeLabel(_ outcome: String) -> some View {
-        if let outcomeEnum = TemptationEvent.Outcome(rawValue: outcome) {
-            HStack(spacing: 4) {
-                Image(systemName: outcomeIcon(outcomeEnum))
-                    .font(.caption2)
-                Text(outcomeEnum.displayName)
-                    .font(.caption2)
-            }
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
-            .background(outcomeColor(outcomeEnum).opacity(0.2))
-            .foregroundStyle(outcomeColor(outcomeEnum))
-            .cornerRadius(4)
+        let parsed = TemptationEvent.Outcome(rawValue: outcome) ?? .unknown
+        HStack(spacing: 4) {
+            Image(systemName: parsed.iconName)
+                .font(.caption2)
+            Text(parsed.displayName)
+                .font(.caption2)
         }
-    }
-
-    private func outcomeIcon(_ outcome: TemptationEvent.Outcome) -> String {
-        switch outcome {
-        case .resisted: return "checkmark.circle.fill"
-        case .gaveIn: return "xmark.circle.fill"
-        case .unknown: return "questionmark.circle.fill"
-        }
-    }
-
-    private func outcomeColor(_ outcome: TemptationEvent.Outcome) -> Color {
-        switch outcome {
-        case .resisted: return .green
-        case .gaveIn: return .red
-        case .unknown: return .gray
-        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 2)
+        .background(parsed.color.opacity(0.2))
+        .foregroundStyle(parsed.color)
+        .cornerRadius(4)
     }
 
     private func formatTime(_ date: Date) -> String {
@@ -252,12 +235,10 @@ struct EventDetailSheet: View {
 
                 // Outcome section
                 Section("Outcome") {
-                    if let outcome = TemptationEvent.Outcome(rawValue: event.outcome) {
-                        HStack {
-                            Image(systemName: outcomeIcon(outcome))
-                                .foregroundStyle(outcomeColor(outcome))
-                            Text(outcome.displayName)
-                        }
+                    HStack {
+                        Image(systemName: event.outcomeEnum.iconName)
+                            .foregroundStyle(event.outcomeEnum.color)
+                        Text(event.outcomeEnum.displayName)
                     }
                 }
 
@@ -302,21 +283,6 @@ struct EventDetailSheet: View {
         return formatter.string(from: date)
     }
 
-    private func outcomeIcon(_ outcome: TemptationEvent.Outcome) -> String {
-        switch outcome {
-        case .resisted: return "checkmark.circle.fill"
-        case .gaveIn: return "xmark.circle.fill"
-        case .unknown: return "questionmark.circle.fill"
-        }
-    }
-
-    private func outcomeColor(_ outcome: TemptationEvent.Outcome) -> Color {
-        switch outcome {
-        case .resisted: return .green
-        case .gaveIn: return .red
-        case .unknown: return .gray
-        }
-    }
 }
 
 #Preview {

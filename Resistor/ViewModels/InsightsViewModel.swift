@@ -170,6 +170,31 @@ final class InsightsViewModel {
         return (0..<24).map { ($0, distribution[$0] ?? 0) }
     }
 
+    // MARK: - Outcome Breakdown
+
+    func outcomeBreakdown() -> [(outcome: TemptationEvent.Outcome, count: Int)] {
+        let events = eventsInRange()
+        var counts: [TemptationEvent.Outcome: Int] = [
+            .resisted: 0,
+            .gaveIn: 0,
+            .unknown: 0
+        ]
+        for event in events {
+            counts[event.outcomeEnum, default: 0] += 1
+        }
+        return TemptationEvent.Outcome.allCases.map { ($0, counts[$0] ?? 0) }
+    }
+
+    var resistedCount: Int {
+        eventsInRange().filter { $0.outcomeEnum == .resisted }.count
+    }
+
+    var resistedPercentage: Int? {
+        let total = totalEventsInRange
+        guard total > 0 else { return nil }
+        return Int(Double(resistedCount) / Double(total) * 100)
+    }
+
     // MARK: - Peak Time
 
     var peakTimeOfDay: String? {

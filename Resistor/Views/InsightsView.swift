@@ -22,10 +22,11 @@ struct InsightsView: View {
             .navigationTitle("Insights")
         }
         .onAppear {
-            viewModel = InsightsViewModel(modelContext: modelContext)
-        }
-        .onChange(of: habits.count) {
-            viewModel?.fetchHabits()
+            if viewModel == nil {
+                viewModel = InsightsViewModel(modelContext: modelContext)
+            } else {
+                viewModel?.fetchHabits()
+            }
         }
     }
 
@@ -60,6 +61,9 @@ struct InsightsView: View {
                     // Summary stats
                     summaryStats(vm)
 
+                    // Outcome breakdown
+                    outcomeBreakdown(vm)
+
                     // Time range picker
                     timeRangePicker(vm)
 
@@ -78,6 +82,63 @@ struct InsightsView: View {
             }
             .padding()
         }
+    }
+
+    @ViewBuilder
+    private func outcomeBreakdown(_ vm: InsightsViewModel) -> some View {
+        let data = vm.outcomeBreakdown()
+        let total = data.reduce(0) { $0 + $1.count }
+
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Outcomes")
+                    .font(.headline)
+                Spacer()
+                if let pct = vm.resistedPercentage {
+                    Text("\(pct)% resisted")
+                        .font(.subheadline)
+                        .foregroundStyle(.green)
+                        .fontWeight(.medium)
+                }
+            }
+
+            if total > 0 {
+                // Stacked bar
+                GeometryReader { geo in
+                    HStack(spacing: 2) {
+                        ForEach(data.filter { $0.count > 0 }, id: \.outcome) { item in
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(item.outcome.color)
+                                .frame(width: max(geo.size.width * CGFloat(item.count) / CGFloat(total) - 2, 4))
+                        }
+                    }
+                }
+                .frame(height: 24)
+
+                // Legend
+                HStack(spacing: 16) {
+                    ForEach(data, id: \.outcome) { item in
+                        HStack(spacing: 4) {
+                            Circle()
+                                .fill(item.outcome.color)
+                                .frame(width: 8, height: 8)
+                            Text("\(item.outcome.displayName): \(item.count)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            } else {
+                Text("No events in this period")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(.secondarySystemBackground))
+        )
     }
 
     @ViewBuilder

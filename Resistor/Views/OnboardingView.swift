@@ -143,7 +143,9 @@ struct OnboardingView: View {
             }
         }
         .onAppear {
-            viewModel = OnboardingViewModel(modelContext: modelContext)
+            if viewModel == nil {
+                viewModel = OnboardingViewModel(modelContext: modelContext)
+            }
         }
     }
 }
