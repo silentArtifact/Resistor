@@ -399,6 +399,8 @@ struct HabitsView: View {
                                 .onTapGesture {
                                     vm.selectedColorHex = color.hex
                                 }
+                                .accessibilityLabel(color.name)
+                                .accessibilityAddTraits(vm.selectedColorHex == color.hex ? .isSelected : [])
                         }
                     }
                     .padding(.vertical, 8)
@@ -421,6 +423,8 @@ struct HabitsView: View {
                                 .onTapGesture {
                                     vm.selectedIconName = icon
                                 }
+                                .accessibilityLabel(icon.replacingOccurrences(of: ".fill", with: "").replacingOccurrences(of: ".", with: " "))
+                                .accessibilityAddTraits(vm.selectedIconName == icon ? .isSelected : [])
                         }
                     }
                     .padding(.vertical, 8)

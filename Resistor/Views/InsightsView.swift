@@ -233,19 +233,23 @@ struct InsightsView: View {
                 )
             }
 
-            if let peak = vm.peakTimeOfDay, let peakDay = vm.peakDayOfWeek {
+            if vm.peakTimeOfDay != nil || vm.peakDayOfWeek != nil {
                 HStack(spacing: 16) {
-                    StatCard(
-                        title: "Peak Time",
-                        value: peak,
-                        subtitle: "of day"
-                    )
+                    if let peak = vm.peakTimeOfDay {
+                        StatCard(
+                            title: "Peak Time",
+                            value: peak,
+                            subtitle: "of day"
+                        )
+                    }
 
-                    StatCard(
-                        title: "Peak Day",
-                        value: peakDay,
-                        subtitle: "of week"
-                    )
+                    if let peakDay = vm.peakDayOfWeek {
+                        StatCard(
+                            title: "Peak Day",
+                            value: peakDay,
+                            subtitle: "of week"
+                        )
+                    }
                 }
             }
         }
@@ -403,6 +407,7 @@ struct StatCard: View {
             RoundedRectangle(cornerRadius: 12)
                 .fill(Color(.secondarySystemBackground))
         )
+        .accessibilityElement(children: .combine)
     }
 }
 

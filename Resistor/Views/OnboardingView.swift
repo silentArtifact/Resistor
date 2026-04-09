@@ -69,6 +69,8 @@ struct OnboardingView: View {
                                             .onTapGesture {
                                                 vm.selectedColorHex = color.hex
                                             }
+                                            .accessibilityLabel(color.name)
+                                            .accessibilityAddTraits(vm.selectedColorHex == color.hex ? .isSelected : [])
                                     }
                                 }
                                 .padding(.horizontal)
@@ -99,6 +101,8 @@ struct OnboardingView: View {
                                             .onTapGesture {
                                                 vm.selectedIconName = icon
                                             }
+                                            .accessibilityLabel(icon.replacingOccurrences(of: ".fill", with: "").replacingOccurrences(of: ".", with: " "))
+                                            .accessibilityAddTraits(vm.selectedIconName == icon ? .isSelected : [])
                                     }
                                 }
                                 .padding(.horizontal)
