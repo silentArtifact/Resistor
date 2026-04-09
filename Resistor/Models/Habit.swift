@@ -3,7 +3,7 @@ import SwiftData
 
 @Model
 final class Habit {
-    @Attribute(.unique) var id: UUID
+    var id: UUID
     var name: String
     var habitDescription: String?
     var colorHex: String?
@@ -11,12 +11,12 @@ final class Habit {
     var isArchived: Bool
     var createdAt: Date
 
-    @Relationship(deleteRule: .cascade, inverse: \TemptationEvent.habit)
+    @Relationship(inverse: \TemptationEvent.habit)
     var events: [TemptationEvent] = []
 
     init(
         id: UUID = UUID(),
-        name: String,
+        name: String = "",
         habitDescription: String? = nil,
         colorHex: String? = nil,
         iconName: String? = nil,

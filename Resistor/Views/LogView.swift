@@ -10,9 +10,9 @@ struct LogView: View {
     @State private var showContextSheet = false
     @State private var showOutcomeSheet = false
     @State private var contextNote: String = ""
-    @State private var selectedContextTag: TemptationEvent.ContextTag?
+    @State private var selectedContextTags: Set<TemptationEvent.ContextTag> = []
     @State private var selectedOutcome: TemptationEvent.Outcome?
-    @State private var selectedIntensity: Int = 3
+    @State private var selectedIntensity: Int? = nil
     @State private var shouldShowContextAfterOutcome = false
     @State private var showAddHabitSheet = false
     @State private var cardDragOffset: CGFloat = 0
@@ -112,11 +112,15 @@ struct LogView: View {
             if shouldShowContextAfterOutcome {
                 shouldShowContextAfterOutcome = false
                 showContextSheet = true
+            } else {
+                vm.triggerConfirmation()
             }
         }) {
             outcomeSheet(vm)
         }
-        .sheet(isPresented: $showContextSheet) {
+        .sheet(isPresented: $showContextSheet, onDismiss: {
+            vm.triggerConfirmation()
+        }) {
             contextSheet(vm)
         }
     }
@@ -214,9 +218,15 @@ struct LogView: View {
     @ViewBuilder
     private func logButton(_ vm: LogViewModel) -> some View {
         Button(action: {
+            // Reset all sheet state
+            selectedIntensity = nil
+            selectedOutcome = nil
+            selectedContextTags = []
+            contextNote = ""
+            shouldShowContextAfterOutcome = false
+
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-            selectedIntensity = 3
-            vm.logTemptation(showContext: showContextPrompt)
+            vm.logTemptation()
             showOutcomeSheet = true
         }) {
             HStack(spacing: 12) {
@@ -309,7 +319,9 @@ struct LogView: View {
                     Button(action: {
                         selectedOutcome = .resisted
                         vm.updateEventOutcome(.resisted)
-                        vm.updateEventIntensity(selectedIntensity)
+                        if let intensity = selectedIntensity {
+                            vm.updateEventIntensity(intensity)
+                        }
                         shouldShowContextAfterOutcome = showContextPrompt
                         showOutcomeSheet = false
                     }) {
@@ -331,7 +343,9 @@ struct LogView: View {
                     Button(action: {
                         selectedOutcome = .gaveIn
                         vm.updateEventOutcome(.gaveIn)
-                        vm.updateEventIntensity(selectedIntensity)
+                        if let intensity = selectedIntensity {
+                            vm.updateEventIntensity(intensity)
+                        }
                         shouldShowContextAfterOutcome = showContextPrompt
                         showOutcomeSheet = false
                     }) {
@@ -358,7 +372,9 @@ struct LogView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Skip") {
                         selectedOutcome = nil
-                        vm.updateEventIntensity(selectedIntensity)
+                        if let intensity = selectedIntensity {
+                            vm.updateEventIntensity(intensity)
+                        }
                         shouldShowContextAfterOutcome = showContextPrompt
                         showOutcomeSheet = false
                     }
@@ -376,14 +392,14 @@ struct LogView: View {
                     .font(.headline)
                     .padding(.top)
 
-                // Context tags
+                // Context tags (multi-select)
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 100))], spacing: 12) {
                     ForEach(TemptationEvent.ContextTag.allCases, id: \.self) { tag in
                         Button(action: {
-                            if selectedContextTag == tag {
-                                selectedContextTag = nil
+                            if selectedContextTags.contains(tag) {
+                                selectedContextTags.remove(tag)
                             } else {
-                                selectedContextTag = tag
+                                selectedContextTags.insert(tag)
                             }
                         }) {
                             Text(tag.displayName)
@@ -393,9 +409,9 @@ struct LogView: View {
                                 .frame(maxWidth: .infinity)
                                 .background(
                                     RoundedRectangle(cornerRadius: 8)
-                                        .fill(selectedContextTag == tag ? Color.blue : Color.gray.opacity(0.2))
+                                        .fill(selectedContextTags.contains(tag) ? Color.blue : Color.gray.opacity(0.2))
                                 )
-                                .foregroundStyle(selectedContextTag == tag ? .white : .primary)
+                                .foregroundStyle(selectedContextTags.contains(tag) ? .white : .primary)
                         }
                     }
                 }
@@ -420,15 +436,16 @@ struct LogView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Skip") {
                         showContextSheet = false
-                        selectedContextTag = nil
+                        selectedContextTags = []
                         contextNote = ""
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        vm.updateEventContext(contextTag: selectedContextTag, note: contextNote)
+                        let tags = selectedContextTags.map(\.rawValue)
+                        vm.updateEventContext(contextTags: tags, note: contextNote)
                         showContextSheet = false
-                        selectedContextTag = nil
+                        selectedContextTags = []
                         contextNote = ""
                     }
                 }

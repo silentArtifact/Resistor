@@ -19,7 +19,7 @@ struct OnboardingView: View {
                         .font(.largeTitle)
                         .fontWeight(.bold)
 
-                    Text("Track your moments of temptation, not just outcomes. Build awareness of your patterns and take back control.")
+                    Text("Track your temptations, understand your patterns.")
                         .font(.body)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
@@ -32,10 +32,10 @@ struct OnboardingView: View {
                 // Form
                 if let vm = viewModel {
                     VStack(spacing: 20) {
-                        Text("Create your first habit to track")
+                        Text("What habit are you working on?")
                             .font(.headline)
 
-                        TextField("Habit name (e.g., Impulse spending)", text: Binding(
+                        TextField("e.g., Sugar, Smoking, Social Media", text: Binding(
                             get: { vm.habitName },
                             set: { vm.habitName = $0 }
                         ))
@@ -118,6 +118,7 @@ struct OnboardingView: View {
                             }
                         }) {
                             Text("Create habit and start logging")
+
                                 .font(.headline)
                                 .foregroundStyle(.white)
                                 .frame(maxWidth: .infinity)

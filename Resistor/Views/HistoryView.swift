@@ -125,15 +125,16 @@ struct HistoryView: View {
                     // Outcome badge
                     outcomeLabel(event.outcome)
 
-                    // Context tag if present
-                    if let contextTag = event.contextTag,
-                       let context = TemptationEvent.ContextTag(rawValue: contextTag) {
-                        Text(context.displayName)
-                            .font(.caption2)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(Color.gray.opacity(0.2))
-                            .cornerRadius(4)
+                    // Context tags
+                    ForEach(event.contextTags, id: \.self) { tagRaw in
+                        if let tag = TemptationEvent.ContextTag(rawValue: tagRaw) {
+                            Text(tag.displayName)
+                                .font(.caption2)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Color.gray.opacity(0.2))
+                                .cornerRadius(4)
+                        }
                     }
                 }
 
@@ -243,10 +244,13 @@ struct EventDetailSheet: View {
                 }
 
                 // Context section
-                if let contextTag = event.contextTag,
-                   let context = TemptationEvent.ContextTag(rawValue: contextTag) {
+                if !event.contextTags.isEmpty {
                     Section("Context") {
-                        Text(context.displayName)
+                        ForEach(event.contextTags, id: \.self) { tagRaw in
+                            if let tag = TemptationEvent.ContextTag(rawValue: tagRaw) {
+                                Text(tag.displayName)
+                            }
+                        }
                     }
                 }
 

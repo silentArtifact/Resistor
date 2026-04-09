@@ -4,11 +4,11 @@ import SwiftData
 
 @Model
 final class TemptationEvent {
-    @Attribute(.unique) var id: UUID
+    var id: UUID
     var occurredAt: Date
     var intensity: Int?
     var outcome: String
-    var contextTag: String?
+    var contextTags: [String]
     var note: String?
 
     var habit: Habit?
@@ -19,7 +19,7 @@ final class TemptationEvent {
         occurredAt: Date = Date(),
         intensity: Int? = nil,
         outcome: String = "unknown",
-        contextTag: String? = nil,
+        contextTags: [String] = [],
         note: String? = nil
     ) {
         self.id = id
@@ -27,7 +27,7 @@ final class TemptationEvent {
         self.occurredAt = occurredAt
         self.intensity = intensity
         self.outcome = outcome
-        self.contextTag = contextTag
+        self.contextTags = contextTags
         self.note = note
     }
 }
@@ -42,7 +42,7 @@ extension TemptationEvent {
             switch self {
             case .resisted: return "Resisted"
             case .gaveIn: return "Gave In"
-            case .unknown: return "Unknown"
+            case .unknown: return "Not recorded"
             }
         }
 

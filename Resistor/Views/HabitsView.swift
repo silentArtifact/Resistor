@@ -6,9 +6,21 @@ struct HabitsView: View {
     @Query private var userSettings: [UserSettings]
 
     @State private var viewModel: HabitsViewModel?
-    @StateObject private var notificationManager = NotificationManager.shared
-    @State private var showingTimePicker = false
-    @State private var selectedReminderTime = Date()
+    @State private var showDeleteAllConfirmation = false
+    @State private var showExportSheet = false
+    @State private var exportURL: URL?
+
+    private static let accentColors: [(name: String, hex: String)] = [
+        ("Slate Blue", "#6B7FA3"),
+        ("Storm Gray", "#7A7F8A"),
+        ("Sage", "#7A8F7A"),
+        ("Dusty Rose", "#A37A7A"),
+        ("Copper", "#A3897A"),
+        ("Lavender", "#8A7FA3"),
+        ("Teal", "#6B9E9E"),
+        ("Charcoal", "#5A5A5F"),
+        ("Dusk", "#8A7A99"),
+    ]
 
     var body: some View {
         NavigationStack {
@@ -36,15 +48,6 @@ struct HabitsView: View {
             } else {
                 viewModel?.fetchHabits()
             }
-            // Initialize selectedReminderTime from settings
-            if let settings = userSettings.first {
-                var components = DateComponents()
-                components.hour = settings.dailyReminderHour ?? 20
-                components.minute = settings.dailyReminderMinute ?? 0
-                if let date = Calendar.current.date(from: components) {
-                    selectedReminderTime = date
-                }
-            }
         }
         .sheet(isPresented: Binding(
             get: { viewModel?.showAddHabitSheet ?? false },
@@ -53,9 +56,6 @@ struct HabitsView: View {
             if let vm = viewModel {
                 habitFormSheet(vm)
             }
-        }
-        .sheet(isPresented: $showingTimePicker) {
-            timePickerSheet
         }
         .alert("Delete Habit?", isPresented: Binding(
             get: { viewModel?.showDeleteConfirmation ?? false },
@@ -70,59 +70,17 @@ struct HabitsView: View {
         } message: {
             Text("This will permanently delete this habit and all its logged events. This cannot be undone.")
         }
-    }
-
-    @ViewBuilder
-    private var timePickerSheet: some View {
-        NavigationStack {
-            VStack(spacing: 20) {
-                Text("Choose reminder time")
-                    .font(.headline)
-                    .padding(.top)
-
-                DatePicker(
-                    "Reminder Time",
-                    selection: $selectedReminderTime,
-                    displayedComponents: .hourAndMinute
-                )
-                .datePickerStyle(.wheel)
-                .labelsHidden()
-
-                Spacer()
+        .alert("Delete all data?", isPresented: $showDeleteAllConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete Everything", role: .destructive) {
+                deleteAllData()
             }
-            .padding()
-            .navigationTitle("Reminder Time")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        showingTimePicker = false
-                    }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        saveReminderTime()
-                        showingTimePicker = false
-                    }
-                }
-            }
+        } message: {
+            Text("This removes all habits, events, and settings. This cannot be undone.")
         }
-        .presentationDetents([.medium])
-    }
-
-    private func saveReminderTime() {
-        guard let settings = userSettings.first else { return }
-
-        let hour = Calendar.current.component(.hour, from: selectedReminderTime)
-        let minute = Calendar.current.component(.minute, from: selectedReminderTime)
-
-        settings.dailyReminderHour = hour
-        settings.dailyReminderMinute = minute
-        try? modelContext.save()
-
-        if settings.dailyReminderEnabled {
-            Task {
-                await notificationManager.scheduleDailyReminder(hour: hour, minute: minute)
+        .sheet(isPresented: $showExportSheet) {
+            if let url = exportURL {
+                ShareSheet(url: url)
             }
         }
     }
@@ -150,6 +108,9 @@ struct HabitsView: View {
 
             // Settings section
             settingsSection
+
+            // Data section
+            dataSection
         }
         .listStyle(.insetGrouped)
         .overlay {
@@ -170,9 +131,21 @@ struct HabitsView: View {
 
             // Info
             VStack(alignment: .leading, spacing: 2) {
-                Text(habit.name)
-                    .font(.body)
-                    .fontWeight(.medium)
+                HStack(spacing: 6) {
+                    Text(habit.name)
+                        .font(.body)
+                        .fontWeight(.medium)
+
+                    if userSettings.first?.defaultHabitId == habit.id {
+                        Text("Default")
+                            .font(.caption2)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.blue.opacity(0.15))
+                            .foregroundStyle(.blue)
+                            .cornerRadius(4)
+                    }
+                }
 
                 if let description = habit.habitDescription, !description.isEmpty {
                     Text(description)
@@ -197,6 +170,18 @@ struct HabitsView: View {
         .contentShape(Rectangle())
         .onTapGesture {
             vm.prepareEditHabit(habit)
+        }
+        .contextMenu {
+            if !isArchived {
+                Button {
+                    setDefaultHabit(habit)
+                } label: {
+                    Label(
+                        userSettings.first?.defaultHabitId == habit.id ? "Remove as Default" : "Set as Default",
+                        systemImage: "star"
+                    )
+                }
+            }
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             Button(role: .destructive) {
@@ -223,6 +208,16 @@ struct HabitsView: View {
         }
     }
 
+    private func setDefaultHabit(_ habit: Habit) {
+        guard let settings = userSettings.first else { return }
+        if settings.defaultHabitId == habit.id {
+            settings.defaultHabitId = nil
+        } else {
+            settings.defaultHabitId = habit.id
+        }
+        try? modelContext.save()
+    }
+
     @ViewBuilder
     private var settingsSection: some View {
         Section("Settings") {
@@ -235,52 +230,113 @@ struct HabitsView: View {
                         try? modelContext.save()
                     }
                 ))
+
+                // Accent color picker
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Accent Color")
+                        .font(.body)
+
+                    HStack(spacing: 8) {
+                        ForEach(Self.accentColors, id: \.hex) { color in
+                            Circle()
+                                .fill(Color(hex: color.hex) ?? .blue)
+                                .frame(width: 36, height: 36)
+                                .overlay(
+                                    Image(systemName: "checkmark")
+                                        .font(.caption.bold())
+                                        .foregroundStyle(.white)
+                                        .opacity(settings.accentColorHex == color.hex ? 1 : 0)
+                                )
+                                .onTapGesture {
+                                    settings.accentColorHex = color.hex
+                                    try? modelContext.save()
+                                }
+                                .accessibilityLabel(color.name)
+                        }
+                    }
+                }
+                .padding(.vertical, 4)
             }
         }
+    }
 
-        Section("Daily Reminder") {
-            if let settings = userSettings.first {
-                Toggle("Enable daily reminder", isOn: Binding(
-                    get: { settings.dailyReminderEnabled },
-                    set: { newValue in
-                        settings.dailyReminderEnabled = newValue
-                        try? modelContext.save()
-                        if newValue {
-                            let hour = settings.dailyReminderHour ?? 20
-                            let minute = settings.dailyReminderMinute ?? 0
-                            Task {
-                                await notificationManager.scheduleDailyReminder(hour: hour, minute: minute)
-                            }
-                        } else {
-                            notificationManager.cancelDailyReminder()
-                        }
-                    }
-                ))
-
-                if settings.dailyReminderEnabled {
-                    HStack {
-                        Text("Reminder time")
-                        Spacer()
-                        Button(action: { showingTimePicker = true }) {
-                            Text(notificationManager.formatTime(
-                                hour: settings.dailyReminderHour ?? 20,
-                                minute: settings.dailyReminderMinute ?? 0
-                            ))
-                            .foregroundStyle(.blue)
-                        }
-                    }
-                }
-
-                if !notificationManager.isAuthorized && notificationManager.authorizationStatus == .denied {
-                    HStack {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundStyle(.orange)
-                        Text("Notifications are disabled. Enable them in Settings.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
+    @ViewBuilder
+    private var dataSection: some View {
+        Section {
+            Button("Export Data") {
+                exportData()
             }
+
+            Button("Delete All Data", role: .destructive) {
+                showDeleteAllConfirmation = true
+            }
+        }
+    }
+
+    private func exportData() {
+        do {
+            let habits = try modelContext.fetch(FetchDescriptor<Habit>())
+            let events = try modelContext.fetch(FetchDescriptor<TemptationEvent>())
+
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
+            let habitsJSON: [[String: Any]] = habits.map { habit in
+                [
+                    "id": habit.id.uuidString,
+                    "name": habit.name,
+                    "description": habit.habitDescription as Any,
+                    "color_hex": habit.colorHex as Any,
+                    "icon_name": habit.iconName as Any,
+                    "is_archived": habit.isArchived,
+                    "created_at": formatter.string(from: habit.createdAt)
+                ]
+            }
+
+            let eventsJSON: [[String: Any]] = events.map { event in
+                [
+                    "id": event.id.uuidString,
+                    "habit_id": event.habit?.id.uuidString as Any,
+                    "occurred_at": formatter.string(from: event.occurredAt),
+                    "intensity": event.intensity as Any,
+                    "outcome": event.outcome,
+                    "context_tags": event.contextTags,
+                    "note": event.note as Any
+                ]
+            }
+
+            let exportData: [String: Any] = [
+                "exported_at": formatter.string(from: Date()),
+                "habits": habitsJSON,
+                "events": eventsJSON
+            ]
+
+            let jsonData = try JSONSerialization.data(withJSONObject: exportData, options: [.prettyPrinted, .sortedKeys])
+
+            let tempDir = FileManager.default.temporaryDirectory
+            let fileURL = tempDir.appendingPathComponent("resistor-export.json")
+            try jsonData.write(to: fileURL)
+
+            exportURL = fileURL
+            showExportSheet = true
+        } catch {
+            print("Failed to export data: \(error)")
+        }
+    }
+
+    private func deleteAllData() {
+        do {
+            try modelContext.delete(model: TemptationEvent.self)
+            try modelContext.delete(model: Habit.self)
+            try modelContext.delete(model: UserSettings.self)
+
+            let newSettings = UserSettings()
+            modelContext.insert(newSettings)
+            try modelContext.save()
+
+            viewModel?.fetchHabits()
+        } catch {
+            print("Failed to delete all data: \(error)")
         }
     }
 
@@ -405,6 +461,18 @@ struct HabitsView: View {
             }
         }
     }
+}
+
+// MARK: - Share Sheet
+
+private struct ShareSheet: UIViewControllerRepresentable {
+    let url: URL
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: [url], applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 
 #Preview {
