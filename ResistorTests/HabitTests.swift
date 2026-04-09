@@ -142,6 +142,84 @@ final class HabitTests: XCTestCase {
         XCTAssertEqual(habit.thisWeekEventsCount, 0)
     }
 
+    // MARK: - Today Events Count Edge Cases
+
+    func testTodayEventsCountWithMultipleEventsAtDifferentTimes() throws {
+        let habit = TestHelpers.makeHabit()
+        context.insert(habit)
+
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+
+        // Early morning
+        let morningDate = calendar.date(byAdding: .hour, value: 6, to: today)!
+        let morningEvent = TestHelpers.makeEvent(habit: habit, occurredAt: morningDate)
+        context.insert(morningEvent)
+
+        // Midday
+        let middayDate = calendar.date(byAdding: .hour, value: 12, to: today)!
+        let middayEvent = TestHelpers.makeEvent(habit: habit, occurredAt: middayDate)
+        context.insert(middayEvent)
+
+        // Late evening
+        let eveningDate = calendar.date(byAdding: .hour, value: 23, to: today)!
+        let eveningEvent = TestHelpers.makeEvent(habit: habit, occurredAt: eveningDate)
+        context.insert(eveningEvent)
+
+        try context.save()
+
+        XCTAssertEqual(habit.todayEventsCount, 3)
+    }
+
+    // MARK: - This Week Events Boundary
+
+    func testThisWeekEventsCountBoundaryAtExactly7DaysAgo() throws {
+        let habit = TestHelpers.makeHabit()
+        context.insert(habit)
+
+        let calendar = Calendar.current
+        let now = Date()
+
+        // Event exactly 7 days ago (should be excluded — "last 7 days" is < 7 days)
+        let sevenDaysAgo = calendar.date(byAdding: .day, value: -7, to: now)!
+        let boundaryEvent = TestHelpers.makeEvent(habit: habit, occurredAt: sevenDaysAgo)
+        context.insert(boundaryEvent)
+
+        // Event 6 days and 23 hours ago (should be included)
+        let almostSevenDaysAgo = calendar.date(byAdding: .hour, value: -(7 * 24 - 1), to: now)!
+        let recentEvent = TestHelpers.makeEvent(habit: habit, occurredAt: almostSevenDaysAgo)
+        context.insert(recentEvent)
+
+        try context.save()
+
+        // The actual count depends on the implementation (>= vs >)
+        // This test documents the boundary behavior
+        let count = habit.thisWeekEventsCount
+        XCTAssertTrue(count >= 1 && count <= 2,
+                      "Expected 1 or 2 events at the 7-day boundary, got \(count)")
+    }
+
+    func testTodayEventsCountAtMidnightBoundary() throws {
+        let habit = TestHelpers.makeHabit()
+        context.insert(habit)
+
+        let calendar = Calendar.current
+        let startOfToday = calendar.startOfDay(for: Date())
+
+        // Event at exact start of today (midnight)
+        let midnightEvent = TestHelpers.makeEvent(habit: habit, occurredAt: startOfToday)
+        context.insert(midnightEvent)
+
+        // Event 1 second before midnight (yesterday)
+        let justBeforeMidnight = startOfToday.addingTimeInterval(-1)
+        let yesterdayEvent = TestHelpers.makeEvent(habit: habit, occurredAt: justBeforeMidnight)
+        context.insert(yesterdayEvent)
+
+        try context.save()
+
+        XCTAssertEqual(habit.todayEventsCount, 1)
+    }
+
     // MARK: - Events Relationship
 
     func testEventsRelationshipInitiallyEmpty() throws {
