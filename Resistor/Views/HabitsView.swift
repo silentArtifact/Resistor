@@ -290,28 +290,24 @@ struct HabitsView: View {
             } header: {
                 Text("Tip Jar")
             }
-        } else if !tipJarViewModel.products.isEmpty {
+        } else if let product = tipJarViewModel.product {
             Section {
-                ForEach(tipJarViewModel.products, id: \.id) { product in
-                    Button {
-                        Task { await tipJarViewModel.purchase(product) }
-                    } label: {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(product.displayName)
-                                    .font(.body)
-                                Text(product.displayPrice)
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            if tipJarViewModel.purchaseState == .purchasing {
-                                ProgressView()
-                            }
+                Button {
+                    Task { await tipJarViewModel.purchase() }
+                } label: {
+                    HStack {
+                        Text("Leave a Tip")
+                            .font(.body)
+                        Spacer()
+                        if tipJarViewModel.purchaseState == .purchasing {
+                            ProgressView()
+                        } else {
+                            Text(product.displayPrice)
+                                .foregroundStyle(.secondary)
                         }
                     }
-                    .disabled(tipJarViewModel.purchaseState == .purchasing)
                 }
+                .disabled(tipJarViewModel.purchaseState == .purchasing)
             } header: {
                 Text("Tip Jar")
             } footer: {

@@ -3,9 +3,9 @@ import StoreKit
 
 @MainActor @Observable
 final class TipJarViewModel {
-    private(set) var products: [Product] = []
+    private(set) var product: Product?
     private(set) var purchaseState: PurchaseState = .idle
-    private var updates: Task<Void, Never>?
+    nonisolated(unsafe) private var updates: Task<Void, Never>?
 
     enum PurchaseState {
         case idle
@@ -13,31 +13,28 @@ final class TipJarViewModel {
         case thanked
     }
 
-    static let productIds: [String] = [
-        "com.resistor.tip.small",
-        "com.resistor.tip.medium",
-        "com.resistor.tip.large"
-    ]
+    static let productId = "com.resistor.tip"
 
     init() {
         updates = observeTransactions()
-        Task { await loadProducts() }
+        Task { await loadProduct() }
     }
 
     deinit {
         updates?.cancel()
     }
 
-    func loadProducts() async {
+    func loadProduct() async {
         do {
-            let storeProducts = try await Product.products(for: Self.productIds)
-            products = storeProducts.sorted { $0.price < $1.price }
+            let storeProducts = try await Product.products(for: [Self.productId])
+            product = storeProducts.first
         } catch {
-            print("Failed to load products: \(error)")
+            print("Failed to load product: \(error)")
         }
     }
 
-    func purchase(_ product: Product) async {
+    func purchase() async {
+        guard let product else { return }
         purchaseState = .purchasing
         do {
             let result = try await product.purchase()

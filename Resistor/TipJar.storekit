@@ -7,46 +7,16 @@
     {
       "displayPrice" : "1.99",
       "familyShareable" : false,
-      "internalID" : "tip_small",
+      "internalID" : "tip",
       "localizations" : [
         {
-          "description" : "A small tip to support development",
-          "displayName" : "Small Tip",
+          "description" : "A tip to support development",
+          "displayName" : "Tip",
           "locale" : "en_US"
         }
       ],
-      "productID" : "com.resistor.tip.small",
-      "referenceName" : "Small Tip",
-      "type" : "Consumable"
-    },
-    {
-      "displayPrice" : "4.99",
-      "familyShareable" : false,
-      "internalID" : "tip_medium",
-      "localizations" : [
-        {
-          "description" : "A medium tip to support development",
-          "displayName" : "Medium Tip",
-          "locale" : "en_US"
-        }
-      ],
-      "productID" : "com.resistor.tip.medium",
-      "referenceName" : "Medium Tip",
-      "type" : "Consumable"
-    },
-    {
-      "displayPrice" : "9.99",
-      "familyShareable" : false,
-      "internalID" : "tip_large",
-      "localizations" : [
-        {
-          "description" : "A large tip to support development",
-          "displayName" : "Large Tip",
-          "locale" : "en_US"
-        }
-      ],
-      "productID" : "com.resistor.tip.large",
-      "referenceName" : "Large Tip",
+      "productID" : "com.resistor.tip",
+      "referenceName" : "Tip",
       "type" : "Consumable"
     }
   ],
