@@ -621,10 +621,8 @@ Testers: Matt (Sugar, iPhone 16 Pro) + 3-4 friends.
 
 ### Tip Jar (StoreKit 2)
 
-Located at bottom of Settings section. Three consumable IAPs:
-- Small Tip: $1.99
-- Medium Tip: $4.99
-- Large Tip: $9.99
+Located at bottom of Settings section. Single consumable IAP:
+- Tip: $1.99 (`com.resistor.tip`)
 
 On success: "Thank you." text. On failure/cancel: no message. No nag screens.
 
