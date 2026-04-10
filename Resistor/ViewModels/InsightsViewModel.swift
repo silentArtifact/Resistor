@@ -7,8 +7,12 @@ final class InsightsViewModel {
     private var modelContext: ModelContext
 
     var habits: [Habit] = []
-    var selectedHabitIndex: Int = 0
-    var selectedTimeRange: TimeRange = .week
+    var selectedHabitIndex: Int = 0 {
+        didSet { refreshEventsInRange() }
+    }
+    var selectedTimeRange: TimeRange = .week {
+        didSet { refreshEventsInRange() }
+    }
 
     enum TimeRange: String, CaseIterable {
         case week = "7 Days"
@@ -50,34 +54,52 @@ final class InsightsViewModel {
             print("Failed to fetch habits: \(error)")
             habits = []
         }
+        if !habits.isEmpty && selectedHabitIndex >= habits.count {
+            selectedHabitIndex = habits.count - 1  // didSet triggers refreshEventsInRange()
+        } else {
+            refreshEventsInRange()
+        }
     }
 
     // MARK: - Statistics
 
-    func eventsInRange() -> [TemptationEvent] {
-        guard let habit = selectedHabit else { return [] }
+    /// Cached events for the current range. Call `refreshEventsInRange()` when habit or time range changes.
+    private(set) var cachedEventsInRange: [TemptationEvent] = []
+    private(set) var cachedPreviousPeriodCount: Int = 0
+
+    func refreshEventsInRange() {
+        guard let habit = selectedHabit else {
+            cachedEventsInRange = []
+            cachedPreviousPeriodCount = 0
+            return
+        }
         let calendar = Calendar.current
         let startOfToday = calendar.startOfDay(for: Date())
-        guard let startDate = calendar.date(byAdding: .day, value: -(selectedTimeRange.days - 1), to: startOfToday) else {
-            return []
+        let days = selectedTimeRange.days
+        guard let currentPeriodStart = calendar.date(byAdding: .day, value: -(days - 1), to: startOfToday) else {
+            cachedEventsInRange = []
+            cachedPreviousPeriodCount = 0
+            return
         }
-        return habit.safeEvents.filter { $0.occurredAt >= startDate }
+        cachedEventsInRange = habit.safeEvents.filter { $0.occurredAt >= currentPeriodStart }
+
+        if let previousPeriodStart = calendar.date(byAdding: .day, value: -days, to: currentPeriodStart) {
+            cachedPreviousPeriodCount = habit.safeEvents.filter { $0.occurredAt >= previousPeriodStart && $0.occurredAt < currentPeriodStart }.count
+        } else {
+            cachedPreviousPeriodCount = 0
+        }
+    }
+
+    func eventsInRange() -> [TemptationEvent] {
+        cachedEventsInRange
     }
 
     var totalEventsInRange: Int {
-        eventsInRange().count
+        cachedEventsInRange.count
     }
 
     var previousPeriodEvents: Int {
-        guard let habit = selectedHabit else { return 0 }
-        let calendar = Calendar.current
-        let days = selectedTimeRange.days
-        let startOfToday = calendar.startOfDay(for: Date())
-        guard let currentPeriodStart = calendar.date(byAdding: .day, value: -(days - 1), to: startOfToday),
-              let previousPeriodStart = calendar.date(byAdding: .day, value: -days, to: currentPeriodStart) else {
-            return 0
-        }
-        return habit.safeEvents.filter { $0.occurredAt >= previousPeriodStart && $0.occurredAt < currentPeriodStart }.count
+        cachedPreviousPeriodCount
     }
 
     var changeFromPreviousPeriod: Int {
@@ -92,7 +114,7 @@ final class InsightsViewModel {
     // MARK: - Daily Distribution
 
     func dailyDistribution() -> [(date: Date, count: Int)] {
-        let events = eventsInRange()
+        let events = cachedEventsInRange
         let calendar = Calendar.current
 
         var distribution: [Date: Int] = [:]
@@ -117,7 +139,7 @@ final class InsightsViewModel {
     // MARK: - Time of Day Distribution
 
     func timeOfDayDistribution() -> [(period: String, count: Int)] {
-        let events = eventsInRange()
+        let events = cachedEventsInRange
         var distribution: [String: Int] = [
             "Morning": 0,
             "Afternoon": 0,
@@ -137,7 +159,7 @@ final class InsightsViewModel {
     // MARK: - Day of Week Distribution
 
     func dayOfWeekDistribution() -> [(day: String, count: Int)] {
-        let events = eventsInRange()
+        let events = cachedEventsInRange
         let calendar = Calendar.current
         let weekdaySymbols = calendar.shortWeekdaySymbols
 
@@ -157,7 +179,7 @@ final class InsightsViewModel {
     // MARK: - Hourly Distribution
 
     func hourlyDistribution() -> [(hour: Int, count: Int)] {
-        let events = eventsInRange()
+        let events = cachedEventsInRange
         var distribution: [Int: Int] = [:]
 
         for hour in 0..<24 {
@@ -175,7 +197,7 @@ final class InsightsViewModel {
     // MARK: - Outcome Breakdown
 
     func outcomeBreakdown() -> [(outcome: TemptationEvent.Outcome, count: Int)] {
-        let events = eventsInRange()
+        let events = cachedEventsInRange
         var counts: [TemptationEvent.Outcome: Int] = [
             .resisted: 0,
             .gaveIn: 0,

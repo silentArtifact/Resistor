@@ -7,6 +7,25 @@ struct HistoryView: View {
 
     let habit: Habit?
 
+    private static let groupDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        return formatter
+    }()
+
+    fileprivate static let timeFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        return formatter
+    }()
+
+    fileprivate static let detailDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .long
+        return formatter
+    }()
+
     private var events: [TemptationEvent] {
         if let habit = habit {
             return allEvents.filter { $0.habit?.id == habit.id }
@@ -16,16 +35,13 @@ struct HistoryView: View {
 
     private var groupedEvents: [(String, [TemptationEvent])] {
         let calendar = Calendar.current
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .none
 
         let grouped = Dictionary(grouping: events) { event in
             calendar.startOfDay(for: event.occurredAt)
         }
 
         return grouped.sorted { $0.key > $1.key }
-            .map { (formatter.string(from: $0.key), $0.value) }
+            .map { (Self.groupDateFormatter.string(from: $0.key), $0.value) }
     }
 
     @State private var selectedEvent: TemptationEvent?
@@ -163,9 +179,7 @@ struct HistoryView: View {
     }
 
     private func formatTime(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.timeStyle = .short
-        return formatter.string(from: date)
+        Self.timeFormatter.string(from: date)
     }
 
     private func deleteEvent(_ event: TemptationEvent) {
@@ -266,15 +280,11 @@ struct EventDetailSheet: View {
     }
 
     private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .long
-        return formatter.string(from: date)
+        HistoryView.detailDateFormatter.string(from: date)
     }
 
     private func formatTime(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.timeStyle = .short
-        return formatter.string(from: date)
+        HistoryView.timeFormatter.string(from: date)
     }
 
 }

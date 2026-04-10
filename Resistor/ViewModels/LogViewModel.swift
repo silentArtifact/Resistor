@@ -43,6 +43,9 @@ final class LogViewModel {
             print("Failed to fetch habits: \(error)")
             habits = []
         }
+        if !habits.isEmpty && selectedHabitIndex >= habits.count {
+            selectedHabitIndex = habits.count - 1
+        }
     }
 
     func logTemptation() {
