@@ -25,6 +25,8 @@
 
 		A1000011000000000000001A /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000011000000000000000A /* HistoryView.swift */; };
 
+		A1000012000000000000001A /* TipJarViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000012000000000000000A /* TipJarViewModel.swift */; };
+
 		B2000001000000000000001A /* TestHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000001000000000000000A /* TestHelpers.swift */; };
 		B2000002000000000000001A /* InsightsViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000002000000000000000A /* InsightsViewModelTests.swift */; };
 		B2000003000000000000001A /* TemptationEventTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000003000000000000000A /* TemptationEventTests.swift */; };
@@ -67,6 +69,10 @@
 		A100000F000000000000000A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 
 		A1000011000000000000000A /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
+
+		A1000012000000000000000A /* TipJarViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TipJarViewModel.swift; sourceTree = "<group>"; };
+		A1000013000000000000000A /* Resistor.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Resistor.entitlements; sourceTree = "<group>"; };
+		A1000014000000000000000A /* TipJar.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = TipJar.storekit; sourceTree = "<group>"; };
 
 		B2000000000000000000000A /* ResistorTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ResistorTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		B2000001000000000000000A /* TestHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestHelpers.swift; sourceTree = "<group>"; };
@@ -119,6 +125,8 @@
 				A1000006000000000000003A /* Extensions */,
 				A1000007000000000000003A /* Services */,
 				A100000F000000000000000A /* Assets.xcassets */,
+				A1000013000000000000000A /* Resistor.entitlements */,
+				A1000014000000000000000A /* TipJar.storekit */,
 			);
 			path = Resistor;
 			sourceTree = "<group>";
@@ -162,6 +170,7 @@
 				A1000008000000000000000A /* OnboardingViewModel.swift */,
 				A1000009000000000000000A /* HabitsViewModel.swift */,
 				A100000A000000000000000A /* InsightsViewModel.swift */,
+				A1000012000000000000000A /* TipJarViewModel.swift */,
 			);
 			path = ViewModels;
 			sourceTree = "<group>";
@@ -306,6 +315,7 @@
 				A100000E000000000000001A /* Color+Hex.swift in Sources */,
 
 				A1000011000000000000001A /* HistoryView.swift in Sources */,
+				A1000012000000000000001A /* TipJarViewModel.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

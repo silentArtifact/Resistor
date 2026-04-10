@@ -180,6 +180,8 @@ struct LogView: View {
                         .frame(width: 8, height: 8)
                 }
             }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Habit \(vm.selectedHabitIndex + 1) of \(vm.habits.count)")
         }
     }
 
@@ -210,7 +212,11 @@ struct LogView: View {
         .frame(maxWidth: .infinity)
         .background(
             RoundedRectangle(cornerRadius: 20)
-                .fill(Color(hex: habit.colorHex ?? "#007AFF")?.opacity(0.1) ?? Color.blue.opacity(0.1))
+                .fill(Color(.secondarySystemBackground))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20)
+                        .fill(Color(hex: habit.colorHex ?? "#007AFF")?.opacity(0.15) ?? Color.blue.opacity(0.15))
+                )
         )
         .accessibilityElement(children: .combine)
         .padding(.horizontal, 24)
@@ -281,7 +287,11 @@ struct LogView: View {
         .background(
             RoundedRectangle(cornerRadius: 12)
                 .fill(Color(.systemBackground))
-                .shadow(radius: 4)
+                .shadow(color: Color.black.opacity(0.15), radius: 4)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color(.separator), lineWidth: 0.5)
         )
         .padding(.top, 8)
     }
