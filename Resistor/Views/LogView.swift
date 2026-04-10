@@ -17,9 +17,8 @@ struct LogView: View {
 
     @State private var viewModel: LogViewModel?
     @State private var locationManager = LocationManager()
-    @State private var showContextSheet = false
-    @State private var contextNote: String = ""
-    @State private var selectedContextTags: Set<TemptationEvent.ContextTag> = []
+    @Query(sort: \ContextTag.createdAt) private var contextTags: [ContextTag]
+    @State private var selectedTagNames: Set<String> = []
     @State private var showAddHabitSheet = false
     @State private var cardDragOffset: CGFloat = 0
     @State private var isHolding = false
@@ -34,22 +33,14 @@ struct LogView: View {
     @State private var pulseRingScale: CGFloat = 1.0
     @State private var pulseRingOpacity: CGFloat = 1.0
 
-    private var showContextPrompt: Bool {
-        userSettings.first?.showContextPrompt ?? true
-    }
-
     private func logTemptationAction(_ vm: LogViewModel) {
-        selectedContextTags = []
-        contextNote = ""
+        // Intersect with current tags to drop any that were deleted while selected
+        let validNames = Set(contextTags.map(\.name))
+        let tagsToLog = selectedTagNames.intersection(validNames)
 
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        vm.logTemptation()
-
-        if showContextPrompt {
-            showContextSheet = true
-        } else {
-            vm.triggerConfirmation()
-        }
+        vm.logTemptation(contextTags: Array(tagsToLog))
+        vm.triggerConfirmation()
     }
 
     private func startHold(_ vm: LogViewModel) {
@@ -199,6 +190,13 @@ struct LogView: View {
                         .foregroundStyle(.tertiary)
                         .padding(.top, 12)
                         .opacity(1.0 - dimAmount)
+
+                    // Context tags (pre-select before logging)
+                    if !contextTags.isEmpty {
+                        tagChips
+                            .padding(.top, 16)
+                            .opacity(1.0 - dimAmount)
+                    }
                 }
 
                 Spacer()
@@ -228,11 +226,6 @@ struct LogView: View {
             }
         }
         .animation(reduceMotion ? .none : .easeInOut(duration: 0.3), value: vm.showConfirmation)
-        .sheet(isPresented: $showContextSheet, onDismiss: {
-            vm.triggerConfirmation()
-        }) {
-            contextSheet(vm)
-        }
     }
 
     @ViewBuilder
@@ -439,75 +432,33 @@ struct LogView: View {
     }
 
     @ViewBuilder
-    private func contextSheet(_ vm: LogViewModel) -> some View {
-        NavigationStack {
-            VStack(spacing: 24) {
-                Text("Add context (optional)")
-                    .font(.headline)
-                    .padding(.top)
-
-                // Context tags (multi-select)
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 100))], spacing: 12) {
-                    ForEach(TemptationEvent.ContextTag.allCases, id: \.self) { tag in
-                        Button(action: {
-                            if selectedContextTags.contains(tag) {
-                                selectedContextTags.remove(tag)
-                            } else {
-                                selectedContextTags.insert(tag)
-                            }
-                        }) {
-                            Text(tag.displayName)
-                                .font(.subheadline)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 10)
-                                .frame(maxWidth: .infinity)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .fill(selectedContextTags.contains(tag) ? accentColor : Color.gray.opacity(0.2))
-                                )
-                                .foregroundStyle(selectedContextTags.contains(tag) ? .white : .primary)
-                        }
-                        .accessibilityLabel(tag.displayName)
-                        .accessibilityAddTraits(selectedContextTags.contains(tag) ? .isSelected : [])
+    private var tagChips: some View {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 80))], spacing: 8) {
+            ForEach(contextTags) { tag in
+                let isSelected = selectedTagNames.contains(tag.name)
+                Button {
+                    if isSelected {
+                        selectedTagNames.remove(tag.name)
+                    } else {
+                        selectedTagNames.insert(tag.name)
                     }
-                }
-                .padding(.horizontal)
-
-                // Note field
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Note (optional)")
+                } label: {
+                    Text(tag.name)
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
-
-                    TextField("Add a note...", text: $contextNote, axis: .vertical)
-                        .textFieldStyle(.roundedBorder)
-                        .lineLimit(3...6)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .frame(maxWidth: .infinity)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(isSelected ? accentColor : Color.gray.opacity(0.2))
+                        )
+                        .foregroundStyle(isSelected ? .white : .primary)
                 }
-                .padding(.horizontal)
-
-                Spacer()
-            }
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Skip") {
-                        showContextSheet = false
-                        selectedContextTags = []
-                        contextNote = ""
-                    }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        let tags = selectedContextTags.map(\.rawValue)
-                        vm.updateEventContext(contextTags: tags, note: contextNote)
-                        showContextSheet = false
-                        selectedContextTags = []
-                        contextNote = ""
-                    }
-                }
+                .accessibilityLabel(tag.name)
+                .accessibilityAddTraits(isSelected ? .isSelected : [])
             }
         }
-        .presentationDetents([.medium])
+        .padding(.horizontal, 24)
     }
 }
 
@@ -598,5 +549,5 @@ private struct AddHabitFromLogSheet: View {
 
 #Preview {
     LogView()
-        .modelContainer(for: [Habit.self, TemptationEvent.self, UserSettings.self], inMemory: true)
+        .modelContainer(for: [Habit.self, TemptationEvent.self, UserSettings.self, ContextTag.self], inMemory: true)
 }

@@ -40,6 +40,7 @@
 		B200000B000000000000001A /* InsightsViewModelPerformanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000B000000000000000A /* InsightsViewModelPerformanceTests.swift */; };
 		B200000C000000000000001A /* TipJarViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000C000000000000000A /* TipJarViewModelTests.swift */; };
 		B200000D000000000000001A /* DataExporterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000D000000000000000A /* DataExporterTests.swift */; };
+		C1000001000000000000001A /* ContextTag.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000001000000000000000A /* ContextTag.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -91,6 +92,7 @@
 		B200000B000000000000000A /* InsightsViewModelPerformanceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsViewModelPerformanceTests.swift; sourceTree = "<group>"; };
 		B200000C000000000000000A /* TipJarViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TipJarViewModelTests.swift; sourceTree = "<group>"; };
 		B200000D000000000000000A /* DataExporterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataExporterTests.swift; sourceTree = "<group>"; };
+		C1000001000000000000000A /* ContextTag.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContextTag.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -152,6 +154,7 @@
 				A100000B000000000000000A /* Habit.swift */,
 				A100000C000000000000000A /* TemptationEvent.swift */,
 				A100000D000000000000000A /* UserSettings.swift */,
+				C1000001000000000000000A /* ContextTag.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -325,6 +328,7 @@
 				A100000B000000000000001A /* Habit.swift in Sources */,
 				A100000C000000000000001A /* TemptationEvent.swift in Sources */,
 				A100000D000000000000001A /* UserSettings.swift in Sources */,
+				C1000001000000000000001A /* ContextTag.swift in Sources */,
 				A100000E000000000000001A /* Color+Hex.swift in Sources */,
 				A1000011000000000000001A /* HistoryView.swift in Sources */,
 				A1000012000000000000001A /* TipJarViewModel.swift in Sources */,

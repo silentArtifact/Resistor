@@ -128,14 +128,12 @@ struct HistoryView: View {
 
                     // Context tags
                     ForEach(event.contextTags, id: \.self) { tagRaw in
-                        if let tag = TemptationEvent.ContextTag(rawValue: tagRaw) {
-                            Text(tag.displayName)
-                                .font(.caption2)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(Color.gray.opacity(0.2))
-                                .cornerRadius(4)
-                        }
+                        Text(TemptationEvent.displayName(for: tagRaw))
+                            .font(.caption2)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.gray.opacity(0.2))
+                            .cornerRadius(4)
                     }
 
                     // Location badge
@@ -267,9 +265,7 @@ struct EventDetailSheet: View {
                 if !event.contextTags.isEmpty {
                     Section("Context") {
                         ForEach(event.contextTags, id: \.self) { tagRaw in
-                            if let tag = TemptationEvent.ContextTag(rawValue: tagRaw) {
-                                Text(tag.displayName)
-                            }
+                            Text(TemptationEvent.displayName(for: tagRaw))
                         }
                     }
                 }
@@ -333,6 +329,6 @@ struct EventDetailSheet: View {
 #Preview {
     NavigationStack {
         HistoryView(habit: nil)
-            .modelContainer(for: [Habit.self, TemptationEvent.self, UserSettings.self], inMemory: true)
+            .modelContainer(for: [Habit.self, TemptationEvent.self, UserSettings.self, ContextTag.self], inMemory: true)
     }
 }

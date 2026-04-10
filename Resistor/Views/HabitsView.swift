@@ -8,9 +8,11 @@ struct HabitsView: View {
 
     @State private var viewModel: HabitsViewModel?
     @State private var tipJarViewModel = TipJarViewModel()
+    @Query(sort: \ContextTag.createdAt) private var contextTags: [ContextTag]
     @State private var showDeleteAllConfirmation = false
     @State private var showExportSheet = false
     @State private var exportURL: URL?
+    @State private var newTagName: String = ""
 
     private static let accentColors: [(name: String, hex: String)] = [
         ("Slate Blue", "#6B7FA3"),
@@ -226,16 +228,7 @@ struct HabitsView: View {
     @ViewBuilder
     private var settingsSection: some View {
         Section("Settings") {
-            // Context prompt toggle
             if let settings = userSettings.first {
-                Toggle("Show context prompt after logging", isOn: Binding(
-                    get: { settings.showContextPrompt },
-                    set: { newValue in
-                        settings.showContextPrompt = newValue
-                        try? modelContext.save()
-                    }
-                ))
-
                 // Accent color picker
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Accent Color")
@@ -264,6 +257,44 @@ struct HabitsView: View {
                 .padding(.vertical, 4)
             }
         }
+
+        Section("Context Tags") {
+            ForEach(contextTags) { tag in
+                Text(tag.name)
+            }
+            .onDelete { indexSet in
+                for index in indexSet {
+                    modelContext.delete(contextTags[index])
+                }
+                try? modelContext.save()
+            }
+
+            HStack {
+                TextField("New tag", text: $newTagName)
+                    .textFieldStyle(.roundedBorder)
+                    .onSubmit { addTag() }
+
+                Button(action: addTag) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.title2)
+                        .foregroundStyle(.blue)
+                }
+                .disabled(newTagName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        }
+    }
+
+    private func addTag() {
+        let trimmed = newTagName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        guard !contextTags.contains(where: { $0.name == trimmed }) else {
+            newTagName = ""
+            return
+        }
+        let tag = ContextTag(name: trimmed)
+        modelContext.insert(tag)
+        try? modelContext.save()
+        newTagName = ""
     }
 
     @ViewBuilder
@@ -333,6 +364,7 @@ struct HabitsView: View {
         do {
             try modelContext.delete(model: TemptationEvent.self)
             try modelContext.delete(model: Habit.self)
+            try modelContext.delete(model: ContextTag.self)
             try modelContext.delete(model: UserSettings.self)
 
             let newSettings = UserSettings()
@@ -486,5 +518,5 @@ private struct ShareSheet: UIViewControllerRepresentable {
 
 #Preview {
     HabitsView()
-        .modelContainer(for: [Habit.self, TemptationEvent.self, UserSettings.self], inMemory: true)
+        .modelContainer(for: [Habit.self, TemptationEvent.self, UserSettings.self, ContextTag.self], inMemory: true)
 }

@@ -57,10 +57,10 @@ final class LogViewModel {
         }
     }
 
-    func logTemptation() {
+    func logTemptation(contextTags: [String] = []) {
         guard let habit = selectedHabit else { return }
 
-        let event = TemptationEvent(habit: habit)
+        let event = TemptationEvent(habit: habit, contextTags: contextTags)
         modelContext.insert(event)
 
         do {

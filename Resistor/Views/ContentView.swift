@@ -73,6 +73,13 @@ struct ContentView: View {
         if userSettings.isEmpty {
             let settings = UserSettings()
             modelContext.insert(settings)
+
+            // Seed default context tags on first launch only
+            let defaults = ["Stressed", "Bored", "Alone", "At Home", "At Work", "On Phone", "With Friends", "At Store"]
+            for name in defaults {
+                modelContext.insert(ContextTag(name: name))
+            }
+
             try? modelContext.save()
         }
     }
@@ -80,5 +87,5 @@ struct ContentView: View {
 
 #Preview {
     ContentView()
-        .modelContainer(for: [Habit.self, TemptationEvent.self, UserSettings.self], inMemory: true)
+        .modelContainer(for: [Habit.self, TemptationEvent.self, UserSettings.self, ContextTag.self], inMemory: true)
 }

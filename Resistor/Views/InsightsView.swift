@@ -657,5 +657,5 @@ struct LocationStatCard: View {
 
 #Preview {
     InsightsView()
-        .modelContainer(for: [Habit.self, TemptationEvent.self, UserSettings.self], inMemory: true)
+        .modelContainer(for: [Habit.self, TemptationEvent.self, UserSettings.self, ContextTag.self], inMemory: true)
 }

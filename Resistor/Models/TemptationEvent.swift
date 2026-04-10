@@ -118,6 +118,15 @@ extension TemptationEvent {
         }
     }
 
+    /// Returns a display-friendly name for a context tag string.
+    /// Handles both old enum-style raw values (e.g. "at_store") and new custom tag names.
+    static func displayName(for tagRaw: String) -> String {
+        if let legacy = ContextTag(rawValue: tagRaw) {
+            return legacy.displayName
+        }
+        return tagRaw
+    }
+
     var hasLocation: Bool {
         latitude != nil && longitude != nil
     }

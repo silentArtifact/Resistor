@@ -7,7 +7,8 @@ struct ResistorApp: App {
         let schema = Schema([
             Habit.self,
             TemptationEvent.self,
-            UserSettings.self
+            UserSettings.self,
+            ContextTag.self
         ])
         let modelConfiguration = ModelConfiguration(
             schema: schema,
