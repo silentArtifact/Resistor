@@ -92,29 +92,7 @@ final class LogViewModel {
         }
     }
 
-    func updateEventIntensity(_ intensity: Int) {
-        guard let event = lastLoggedEvent else { return }
 
-        event.intensity = intensity
-
-        do {
-            try modelContext.save()
-        } catch {
-            print("Failed to update event intensity: \(error)")
-        }
-    }
-
-    func updateEventOutcome(_ outcome: TemptationEvent.Outcome) {
-        guard let event = lastLoggedEvent else { return }
-
-        event.outcome = outcome.rawValue
-
-        do {
-            try modelContext.save()
-        } catch {
-            print("Failed to update event outcome: \(error)")
-        }
-    }
 
     func selectHabit(at index: Int) {
         guard index >= 0, index < habits.count else { return }

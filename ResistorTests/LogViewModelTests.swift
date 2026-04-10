@@ -241,43 +241,6 @@ final class LogViewModelTests: XCTestCase {
 
     // MARK: - Update Event
 
-    func testUpdateEventOutcome() throws {
-        let habit = TestHelpers.makeHabit()
-        context.insert(habit)
-        try context.save()
-
-        let vm = LogViewModel(modelContext: context)
-        vm.logTemptation()
-        vm.updateEventOutcome(.resisted)
-
-        XCTAssertEqual(vm.lastLoggedEvent?.outcome, "resisted")
-        XCTAssertEqual(vm.lastLoggedEvent?.outcomeEnum, .resisted)
-    }
-
-    func testUpdateEventOutcomeDoesNothingWithoutEvent() throws {
-        let vm = LogViewModel(modelContext: context)
-        // Should not crash
-        vm.updateEventOutcome(.resisted)
-    }
-
-    func testUpdateEventIntensity() throws {
-        let habit = TestHelpers.makeHabit()
-        context.insert(habit)
-        try context.save()
-
-        let vm = LogViewModel(modelContext: context)
-        vm.logTemptation()
-        vm.updateEventIntensity(4)
-
-        XCTAssertEqual(vm.lastLoggedEvent?.intensity, 4)
-    }
-
-    func testUpdateEventIntensityDoesNothingWithoutEvent() throws {
-        let vm = LogViewModel(modelContext: context)
-        // Should not crash
-        vm.updateEventIntensity(3)
-    }
-
     func testUpdateEventContext() throws {
         let habit = TestHelpers.makeHabit()
         context.insert(habit)

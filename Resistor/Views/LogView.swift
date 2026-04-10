@@ -17,12 +17,8 @@ struct LogView: View {
 
     @State private var viewModel: LogViewModel?
     @State private var showContextSheet = false
-    @State private var showOutcomeSheet = false
     @State private var contextNote: String = ""
     @State private var selectedContextTags: Set<TemptationEvent.ContextTag> = []
-    @State private var selectedOutcome: TemptationEvent.Outcome?
-    @State private var selectedIntensity: Int? = nil
-    @State private var shouldShowContextAfterOutcome = false
     @State private var showAddHabitSheet = false
     @State private var cardDragOffset: CGFloat = 0
     @State private var isHolding = false
@@ -37,15 +33,17 @@ struct LogView: View {
     }
 
     private func logTemptationAction(_ vm: LogViewModel) {
-        selectedIntensity = nil
-        selectedOutcome = nil
         selectedContextTags = []
         contextNote = ""
-        shouldShowContextAfterOutcome = false
 
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         vm.logTemptation()
-        showOutcomeSheet = true
+
+        if showContextPrompt {
+            showContextSheet = true
+        } else {
+            vm.triggerConfirmation()
+        }
     }
 
     private func startHold(_ vm: LogViewModel) {
@@ -164,11 +162,11 @@ struct LogView: View {
 
             Spacer()
 
-            // Current habit card (tap to log, hold to resist)
+            // Current habit card (tap or hold to log)
             if let habit = vm.selectedHabit {
                 habitCard(habit, vm: vm)
 
-                Text("Tap to log · Hold to resist")
+                Text("Tap or hold to log")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
                     .padding(.top, 12)
@@ -191,16 +189,6 @@ struct LogView: View {
             }
         }
         .animation(reduceMotion ? .none : .easeInOut(duration: 0.3), value: vm.showConfirmation)
-        .sheet(isPresented: $showOutcomeSheet, onDismiss: {
-            if shouldShowContextAfterOutcome {
-                shouldShowContextAfterOutcome = false
-                showContextSheet = true
-            } else {
-                vm.triggerConfirmation()
-            }
-        }) {
-            outcomeSheet(vm)
-        }
         .sheet(isPresented: $showContextSheet, onDismiss: {
             vm.triggerConfirmation()
         }) {
@@ -300,7 +288,7 @@ struct LogView: View {
         .scaleEffect(reduceMotion ? 1.0 : cardScale)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Log temptation for \(habit.name)")
-        .accessibilityHint("Tap to log, or press and hold to resist")
+        .accessibilityHint("Tap or hold to log a temptation")
         .accessibilityAddTraits(.isButton)
         .padding(.horizontal, 24)
         .offset(x: cardDragOffset)
@@ -380,129 +368,6 @@ struct LogView: View {
                 .stroke(Color(.separator), lineWidth: 0.5)
         )
         .padding(.top, 8)
-    }
-
-    @ViewBuilder
-    private func outcomeSheet(_ vm: LogViewModel) -> some View {
-        NavigationStack {
-            VStack(spacing: 32) {
-                Text("How did it go?")
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                    .padding(.top, 24)
-
-                Text("Did you resist or give in to the temptation?")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
-
-                // Intensity
-                VStack(spacing: 8) {
-                    Text("How strong was the urge?")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-
-                    HStack(spacing: 12) {
-                        ForEach(1...5, id: \.self) { level in
-                            Button(action: { selectedIntensity = level }) {
-                                Text("\(level)")
-                                    .font(.title3)
-                                    .fontWeight(.semibold)
-                                    .frame(width: 44, height: 44)
-                                    .background(
-                                        Circle()
-                                            .fill(selectedIntensity == level ? accentColor : Color.gray.opacity(0.2))
-                                    )
-                                    .foregroundStyle(selectedIntensity == level ? .white : .primary)
-                            }
-                            .accessibilityLabel("Intensity \(level) of 5")
-                        }
-                    }
-
-                    HStack {
-                        Text("Mild")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                        Text("Overwhelming")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding(.horizontal, 8)
-                }
-                .padding(.horizontal, 24)
-
-                VStack(spacing: 16) {
-                    // Resisted button
-                    Button(action: {
-                        selectedOutcome = .resisted
-                        vm.updateEventOutcome(.resisted)
-                        if let intensity = selectedIntensity {
-                            vm.updateEventIntensity(intensity)
-                        }
-                        shouldShowContextAfterOutcome = showContextPrompt
-                        showOutcomeSheet = false
-                    }) {
-                        HStack(spacing: 12) {
-                            Image(systemName: "hand.raised.fill")
-                                .font(.title2)
-                            Text("I Resisted")
-                                .font(.title3)
-                                .fontWeight(.semibold)
-                        }
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 18)
-                        .background(Color.green)
-                        .cornerRadius(14)
-                    }
-                    .accessibilityLabel("I Resisted")
-
-                    // Gave in button
-                    Button(action: {
-                        selectedOutcome = .gaveIn
-                        vm.updateEventOutcome(.gaveIn)
-                        if let intensity = selectedIntensity {
-                            vm.updateEventIntensity(intensity)
-                        }
-                        shouldShowContextAfterOutcome = showContextPrompt
-                        showOutcomeSheet = false
-                    }) {
-                        HStack(spacing: 12) {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.title2)
-                            Text("I Gave In")
-                                .font(.title3)
-                                .fontWeight(.semibold)
-                        }
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 18)
-                        .background(Color.orange)
-                        .cornerRadius(14)
-                    }
-                    .accessibilityLabel("I Gave In")
-                }
-                .padding(.horizontal, 24)
-
-                Spacer()
-            }
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Skip") {
-                        selectedOutcome = nil
-                        if let intensity = selectedIntensity {
-                            vm.updateEventIntensity(intensity)
-                        }
-                        shouldShowContextAfterOutcome = showContextPrompt
-                        showOutcomeSheet = false
-                    }
-                }
-            }
-        }
-        .presentationDetents([.medium])
     }
 
     @ViewBuilder

@@ -109,25 +109,15 @@ final class IntegrationTests: XCTestCase {
         logVM.logTemptation()
         XCTAssertNotNil(logVM.lastLoggedEvent)
 
-        // Step 4: Update the outcome
-        logVM.updateEventOutcome(.resisted)
-        XCTAssertEqual(logVM.lastLoggedEvent?.outcomeEnum, .resisted)
-
-        // Step 5: Update intensity
-        logVM.updateEventIntensity(4)
-        XCTAssertEqual(logVM.lastLoggedEvent?.intensity, 4)
-
-        // Step 6: Update context
+        // Step 4: Update context
         logVM.updateEventContext(contextTags: ["stressed", "at_work"], note: "After meeting")
         XCTAssertEqual(logVM.lastLoggedEvent?.contextTags, ["stressed", "at_work"])
         XCTAssertEqual(logVM.lastLoggedEvent?.note, "After meeting")
 
-        // Step 7: Verify everything persisted correctly
+        // Step 5: Verify everything persisted correctly
         let events = try context.fetch(FetchDescriptor<TemptationEvent>())
         XCTAssertEqual(events.count, 1)
         let event = events.first!
-        XCTAssertEqual(event.outcome, "resisted")
-        XCTAssertEqual(event.intensity, 4)
         XCTAssertEqual(event.contextTags, ["stressed", "at_work"])
         XCTAssertEqual(event.note, "After meeting")
         XCTAssertEqual(event.habit?.name, "Smoking")
