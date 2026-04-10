@@ -25,9 +25,70 @@ struct LogView: View {
     @State private var shouldShowContextAfterOutcome = false
     @State private var showAddHabitSheet = false
     @State private var cardDragOffset: CGFloat = 0
+    @State private var isHolding = false
+    @State private var holdProgress: CGFloat = 0
+    @State private var holdTimer: Timer?
+    @State private var holdStartTime: Date?
+    // Track whether the drag gesture triggered a hold, so onTapGesture can skip
+    @State private var didHold = false
 
     private var showContextPrompt: Bool {
         userSettings.first?.showContextPrompt ?? true
+    }
+
+    private func logTemptationAction(_ vm: LogViewModel) {
+        selectedIntensity = nil
+        selectedOutcome = nil
+        selectedContextTags = []
+        contextNote = ""
+        shouldShowContextAfterOutcome = false
+
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        vm.logTemptation()
+        showOutcomeSheet = true
+    }
+
+    private func startHold(_ vm: LogViewModel) {
+        isHolding = true
+        didHold = true
+        holdProgress = 0
+        holdStartTime = Date()
+        vm.startContinuousHaptic()
+        // Use holdStartTime to compute progress each tick, avoiding stale capture
+        holdTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [self] _ in
+            guard let start = holdStartTime else { return }
+            let elapsed = Date().timeIntervalSince(start)
+            let newProgress = min(CGFloat(elapsed / 3.0), 1.0) // 3 second ramp
+            holdProgress = newProgress
+            vm.updateHapticIntensity(Float(newProgress))
+        }
+    }
+
+    private func endHold(_ vm: LogViewModel) {
+        holdTimer?.invalidate()
+        holdTimer = nil
+        holdStartTime = nil
+        vm.stopHaptic()
+        let wasHolding = isHolding
+        isHolding = false
+        if wasHolding {
+            withAnimation(reduceMotion ? .none : .easeOut(duration: 0.2)) {
+                holdProgress = 0
+            }
+            logTemptationAction(vm)
+        }
+    }
+
+    private func cancelHold(_ vm: LogViewModel) {
+        holdTimer?.invalidate()
+        holdTimer = nil
+        holdStartTime = nil
+        vm.stopHaptic()
+        isHolding = false
+        didHold = false
+        withAnimation(reduceMotion ? .none : .easeOut(duration: 0.2)) {
+            holdProgress = 0
+        }
     }
 
     var body: some View {
@@ -45,10 +106,12 @@ struct LogView: View {
         }
         .onAppear {
             if viewModel == nil {
-                viewModel = LogViewModel(
+                let vm = LogViewModel(
                     modelContext: modelContext,
                     defaultHabitId: userSettings.first?.defaultHabitId
                 )
+                vm.prepareHaptics()
+                viewModel = vm
             } else {
                 viewModel?.fetchHabits()
             }
@@ -101,15 +164,17 @@ struct LogView: View {
 
             Spacer()
 
-            // Current habit card
+            // Current habit card (tap to log, hold to resist)
             if let habit = vm.selectedHabit {
                 habitCard(habit, vm: vm)
+
+                Text("Tap to log · Hold to resist")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                    .padding(.top, 12)
             }
 
             Spacer()
-
-            // Log button
-            logButton(vm)
 
             // Today's count
             if let habit = vm.selectedHabit {
@@ -187,11 +252,15 @@ struct LogView: View {
 
     @ViewBuilder
     private func habitCard(_ habit: Habit, vm: LogViewModel) -> some View {
+        let habitColor = Color(hex: habit.colorHex ?? "#007AFF") ?? .blue
+        let glowOpacity = 0.15 + (holdProgress * 0.45)
+        let cardScale = 1.0 + (holdProgress * 0.03)
+
         VStack(spacing: 16) {
             // Icon
             Image(systemName: habit.iconName ?? "circle.fill")
                 .font(.system(size: 48))
-                .foregroundStyle(Color(hex: habit.colorHex ?? "#007AFF") ?? .blue)
+                .foregroundStyle(habitColor)
 
             // Name
             Text(habit.name)
@@ -215,65 +284,82 @@ struct LogView: View {
                 .fill(Color(.secondarySystemBackground))
                 .overlay(
                     RoundedRectangle(cornerRadius: 20)
-                        .fill(Color(hex: habit.colorHex ?? "#007AFF")?.opacity(0.15) ?? Color.blue.opacity(0.15))
+                        .fill(habitColor.opacity(glowOpacity))
                 )
         )
+        .overlay(
+            // Progress border during hold
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(habitColor, lineWidth: 3)
+                .opacity(isHolding ? Double(holdProgress) : 0)
+        )
+        .shadow(
+            color: habitColor.opacity(isHolding ? Double(holdProgress) * 0.4 : 0),
+            radius: isHolding ? 12 + (holdProgress * 12) : 0
+        )
+        .scaleEffect(reduceMotion ? 1.0 : cardScale)
         .accessibilityElement(children: .combine)
+        .accessibilityLabel("Log temptation for \(habit.name)")
+        .accessibilityHint("Tap to log, or press and hold to resist")
+        .accessibilityAddTraits(.isButton)
         .padding(.horizontal, 24)
         .offset(x: cardDragOffset)
-        .gesture(
-            DragGesture(minimumDistance: 30)
+        .contentShape(RoundedRectangle(cornerRadius: 20))
+        .onTapGesture {
+            // Only handle tap if the drag gesture didn't trigger a hold
+            if !didHold {
+                logTemptationAction(vm)
+            }
+            didHold = false
+        }
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
                 .onChanged { value in
-                    cardDragOffset = value.translation.width * 0.4
+                    let distance = sqrt(value.translation.width * value.translation.width + value.translation.height * value.translation.height)
+
+                    if distance > 30 {
+                        // User is swiping, cancel hold and handle carousel
+                        if isHolding {
+                            cancelHold(vm)
+                        }
+                        cardDragOffset = value.translation.width * 0.4
+                    } else if !isHolding && distance < 10 {
+                        // Finger staying still — start hold
+                        startHold(vm)
+                    }
                 }
                 .onEnded { value in
-                    if value.translation.width > 50 {
-                        vm.selectPreviousHabit()
-                    } else if value.translation.width < -50 {
-                        vm.selectNextHabit()
-                    }
-                    if reduceMotion {
-                        cardDragOffset = 0
-                    } else {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                            cardDragOffset = 0
+                    let distance = sqrt(value.translation.width * value.translation.width + value.translation.height * value.translation.height)
+
+                    if distance > 30 {
+                        // Swipe gesture ended — cancel any hold state
+                        didHold = false
+                        if value.translation.width > 50 {
+                            vm.selectPreviousHabit()
+                        } else if value.translation.width < -50 {
+                            vm.selectNextHabit()
                         }
+                        if reduceMotion {
+                            cardDragOffset = 0
+                        } else {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                cardDragOffset = 0
+                            }
+                        }
+                    } else if isHolding {
+                        // Hold released — log temptation
+                        endHold(vm)
                     }
                 }
         )
-        .animation(reduceMotion ? .none : .interactiveSpring, value: cardDragOffset)
-    }
-
-    @ViewBuilder
-    private func logButton(_ vm: LogViewModel) -> some View {
-        Button(action: {
-            // Reset all sheet state
-            selectedIntensity = nil
-            selectedOutcome = nil
-            selectedContextTags = []
-            contextNote = ""
-            shouldShowContextAfterOutcome = false
-
-            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-            vm.logTemptation()
-            showOutcomeSheet = true
-        }) {
-            HStack(spacing: 12) {
-                Image(systemName: "plus.circle.fill")
-                    .font(.title2)
-                Text("Log Temptation")
-                    .font(.title2)
-                    .fontWeight(.semibold)
-            }
-            .foregroundStyle(.white)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 20)
-            .background(accentColor)
-            .cornerRadius(16)
+        .onDisappear {
+            // Clean up timer if view disappears mid-hold
+            holdTimer?.invalidate()
+            holdTimer = nil
+            holdStartTime = nil
         }
-        .accessibilityLabel("Log temptation for \(vm.selectedHabit?.name ?? "habit")")
-        .padding(.horizontal, 24)
-        .padding(.bottom, 8)
+        .animation(reduceMotion ? .none : .interactiveSpring, value: cardDragOffset)
+        .animation(reduceMotion ? .none : .easeInOut(duration: 0.1), value: holdProgress)
     }
 
     private var confirmationBanner: some View {
