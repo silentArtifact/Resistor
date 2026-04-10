@@ -5,6 +5,7 @@ struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var habits: [Habit]
     @Query private var userSettings: [UserSettings]
+    @Query private var contextTags: [ContextTag]
 
     @State private var showOnboarding = false
     @State private var selectedTab: Tab = .log
@@ -73,15 +74,18 @@ struct ContentView: View {
         if userSettings.isEmpty {
             let settings = UserSettings()
             modelContext.insert(settings)
+        }
 
-            // Seed default context tags on first launch only
+        // Seed default context tags if none exist (covers both fresh installs
+        // and upgrades from before tag seeding was added)
+        if contextTags.isEmpty {
             let defaults = ["Stressed", "Bored", "Alone", "At Home", "At Work", "On Phone", "With Friends", "At Store"]
             for name in defaults {
                 modelContext.insert(ContextTag(name: name))
             }
-
-            try? modelContext.save()
         }
+
+        try? modelContext.save()
     }
 }
 
