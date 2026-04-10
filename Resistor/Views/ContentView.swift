@@ -23,10 +23,6 @@ struct ContentView: View {
         return !settings.hasCompletedOnboarding
     }
 
-    private var hasNoHabits: Bool {
-        habits.filter { !$0.isArchived }.isEmpty
-    }
-
     private var accentColor: Color {
         if let hex = userSettings.first?.accentColorHex,
            let color = Color(hex: hex) {

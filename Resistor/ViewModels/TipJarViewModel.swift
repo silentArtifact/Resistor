@@ -5,7 +5,7 @@ import StoreKit
 final class TipJarViewModel {
     private(set) var product: Product?
     private(set) var purchaseState: PurchaseState = .idle
-    nonisolated(unsafe) private var updates: Task<Void, Never>?
+    @ObservationIgnored private var updates: Task<Void, Never>?
 
     enum PurchaseState {
         case idle
@@ -88,7 +88,4 @@ final class TipJarViewModel {
         }
     }
 
-    enum StoreError: Error {
-        case verificationFailed
-    }
 }
