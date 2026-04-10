@@ -21,19 +21,22 @@ Resistor/
 │   ├── Habit.swift                   # @Model — habit entity
 │   ├── TemptationEvent.swift         # @Model — logged event entity
 │   └── UserSettings.swift            # @Model — singleton settings
-├── Services/                         # (empty — NotificationManager deleted)
+├── Services/
+│   ├── DataExporter.swift            # CSV/JSON export of temptation events
+│   └── LocationManager.swift         # GPS location capture for events
 ├── ViewModels/
-│   ├── LogViewModel.swift            # Log screen logic
+│   ├── LogViewModel.swift            # Log screen logic + Core Haptics engine
 │   ├── InsightsViewModel.swift       # Stats, charts, distributions
 │   ├── HabitsViewModel.swift         # Habit CRUD, color/icon lists
 │   ├── OnboardingViewModel.swift     # First-run habit creation
 │   └── TipJarViewModel.swift         # StoreKit 2 tip jar purchases
 └── Views/
     ├── ContentView.swift             # TabView + onboarding gate + accent color
-    ├── LogView.swift                 # Core logging flow (S1)
+    ├── LogView.swift                 # Core logging flow + hold effect (S1)
     ├── InsightsView.swift            # Charts and trends (S2)
     ├── HabitsView.swift              # Habit management + settings (S3)
     ├── HistoryView.swift             # Past events list + detail sheet
+    ├── EventMapView.swift            # Map view for location-tagged events
     └── OnboardingView.swift          # First-run flow (S0)
 ```
 
@@ -139,6 +142,29 @@ for event in habit.events { modelContext.delete(event) }
 modelContext.delete(habit)
 ```
 
+### Hold-to-Log Effect
+
+The Log screen's habit card supports both tap and hold-to-log. The hold interaction uses a multi-layered visual effect system:
+
+**State management:**
+- `holdProgress` (0→1) — driven by a 30fps `Timer` over 3 seconds
+- `glowPulsing` (Bool) — toggled with `.easeInOut(duration: 0.8).repeatForever(autoreverses: true)` for breathing glow
+- `isHolding` — tracks active hold state for conditional rendering
+
+**Visual layers (in order):**
+1. **Background tint** — habit color fill opacity ramps from 0.1→0.3 with progress
+2. **Progress trim ring** — `RoundedRectangle.trim(from: 0, to: holdProgress)` shows concrete progress
+3. **Blurred glow border** — stroke with `.blur(radius: 4)`, opacity modulated by pulse animation
+4. **Radiating pulse ring** — background stroke that scales to 1.15x and fades, creating outward energy
+5. **Layered shadows** — tight (radius 12→28) + wide (radius 30→60) shadows for halo glow
+6. **Scale** — card grows to 1.08x during hold
+7. **Icon glow** — SF Symbol gets its own shadow that intensifies
+8. **UI dimming** — surrounding elements (carousel, labels, count) fade to 50% opacity
+
+**Haptics:** `LogViewModel` manages a `CHHapticEngine` with a continuous haptic pattern. Intensity ramps from 0.2→1.0 and sharpness from 0.1→0.5 via `CHHapticDynamicParameter`, synchronized with `holdProgress`.
+
+All visual effects are gated on `!reduceMotion` for accessibility. The glow pulse uses SwiftUI's native animation system (not manual sine computation) for smooth interpolation.
+
 ## CloudKit Constraints
 
 iCloud sync via SwiftData + CloudKit imposes these restrictions:
@@ -159,7 +185,7 @@ iCloud sync via SwiftData + CloudKit imposes these restrictions:
 | Notifications | **None, permanently.** Do not add notification features. |
 | iCloud sync | Required for v1 — SwiftData + CloudKit container |
 | Distribution | TestFlight -> App Store, free with optional tip jar |
-| Haptics | Log action only (`UIImpactFeedbackGenerator`, `.medium`) |
+| Haptics | Tap log: `UIImpactFeedbackGenerator(.medium)`. Hold log: Core Haptics continuous pattern with escalating intensity. |
 | Navigation | Max one level deep. Tab bar primary. History is only push nav. |
 | Error handling | `try? modelContext.save()` with print. No user-facing errors in v1. |
 | Sheets | Half-sheet (`.medium`) for quick input, full for forms |
@@ -185,7 +211,7 @@ xcodebuild -project Resistor.xcodeproj \
 **Simulator:** iPhone 17 Pro (iOS 26). Do not use iPhone 16 runtimes.
 **Physical device:** iPhone 16 Pro.
 **No CI/CD.** Local builds only.
-**No test targets yet.** See `docs/design.md` for test plan.
+**Test target:** `ResistorTests` — unit tests for ViewModels, Models, and Services.
 
 ## Open GitHub Issues
 

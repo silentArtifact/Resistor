@@ -28,6 +28,11 @@ struct LogView: View {
     @State private var holdStartTime: Date?
     // Track whether the drag gesture triggered a hold, so onTapGesture can skip
     @State private var didHold = false
+    // Pulsing glow toggle (driven by repeating animation)
+    @State private var glowPulsing = false
+    // Expanding ripple ring counter
+    @State private var pulseRingScale: CGFloat = 1.0
+    @State private var pulseRingOpacity: CGFloat = 1.0
 
     private var showContextPrompt: Bool {
         userSettings.first?.showContextPrompt ?? true
@@ -53,8 +58,14 @@ struct LogView: View {
         holdProgress = 0
         holdStartTime = Date()
         vm.startContinuousHaptic()
+
+        // Start pulsing glow animation
+        withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
+            glowPulsing = true
+        }
+
         // Use holdStartTime to compute progress each tick, avoiding stale capture
-        holdTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [self] _ in
+        holdTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 30.0, repeats: true) { [self] _ in
             guard let start = holdStartTime else { return }
             let elapsed = Date().timeIntervalSince(start)
             let newProgress = min(CGFloat(elapsed / 3.0), 1.0) // 3 second ramp
@@ -70,6 +81,9 @@ struct LogView: View {
         vm.stopHaptic()
         let wasHolding = isHolding
         isHolding = false
+        withAnimation(.easeOut(duration: 0.25)) {
+            glowPulsing = false
+        }
         if wasHolding {
             withAnimation(reduceMotion ? .none : .easeOut(duration: 0.2)) {
                 holdProgress = 0
@@ -85,6 +99,9 @@ struct LogView: View {
         vm.stopHaptic()
         isHolding = false
         didHold = false
+        withAnimation(.easeOut(duration: 0.25)) {
+            glowPulsing = false
+        }
         withAnimation(reduceMotion ? .none : .easeOut(duration: 0.2)) {
             holdProgress = 0
         }
@@ -161,32 +178,47 @@ struct LogView: View {
 
     @ViewBuilder
     private func logContentView(_ vm: LogViewModel) -> some View {
-        VStack(spacing: 0) {
-            // Habit carousel
-            if vm.habits.count > 1 {
-                habitCarousel(vm)
+        let dimAmount = reduceMotion ? 0.0 : holdProgress * 0.5
+
+        ZStack {
+            VStack(spacing: 0) {
+                // Habit carousel
+                if vm.habits.count > 1 {
+                    habitCarousel(vm)
+                        .opacity(1.0 - dimAmount)
+                }
+
+                Spacer()
+
+                // Current habit card (tap or hold to log)
+                if let habit = vm.selectedHabit {
+                    habitCard(habit, vm: vm)
+
+                    Text("Tap or hold to log")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .padding(.top, 12)
+                        .opacity(1.0 - dimAmount)
+                }
+
+                Spacer()
+
+                // Today's count
+                if let habit = vm.selectedHabit {
+                    Text("Today: \(habit.todayEventsCount) logged")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .padding(.bottom, 24)
+                        .opacity(1.0 - dimAmount)
+                }
             }
 
-            Spacer()
-
-            // Current habit card (tap or hold to log)
-            if let habit = vm.selectedHabit {
-                habitCard(habit, vm: vm)
-
-                Text("Tap or hold to log")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-                    .padding(.top, 12)
-            }
-
-            Spacer()
-
-            // Today's count
-            if let habit = vm.selectedHabit {
-                Text("Today: \(habit.todayEventsCount) logged")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .padding(.bottom, 24)
+            // Dimming vignette behind the card during hold
+            if isHolding && !reduceMotion {
+                Color.black
+                    .opacity(dimAmount * 0.4)
+                    .ignoresSafeArea()
+                    .allowsHitTesting(false)
             }
         }
         .overlay(alignment: .top) {
@@ -248,14 +280,18 @@ struct LogView: View {
     @ViewBuilder
     private func habitCard(_ habit: Habit, vm: LogViewModel) -> some View {
         let habitColor = Color(hex: habit.colorHex ?? "#007AFF") ?? .blue
-        let glowOpacity = 0.15 + (holdProgress * 0.45)
-        let cardScale = 1.0 + (holdProgress * 0.03)
+        let cardScale = reduceMotion ? 1.0 : 1.0 + (holdProgress * 0.08)
+        let glowPulseIntensity: CGFloat = glowPulsing ? 1.0 : 0.5
 
         VStack(spacing: 16) {
-            // Icon
+            // Icon — gets its own glow during hold
             Image(systemName: habit.iconName ?? "circle.fill")
                 .font(.system(size: 48))
                 .foregroundStyle(habitColor)
+                .shadow(
+                    color: habitColor.opacity(isHolding ? holdProgress * 0.8 : 0),
+                    radius: isHolding ? 6 + holdProgress * 14 : 0
+                )
 
             // Name
             Text(habit.name)
@@ -278,21 +314,47 @@ struct LogView: View {
             RoundedRectangle(cornerRadius: 20)
                 .fill(Color(.secondarySystemBackground))
                 .overlay(
+                    // Background tint intensifies during hold
                     RoundedRectangle(cornerRadius: 20)
-                        .fill(habitColor.opacity(glowOpacity))
+                        .fill(habitColor.opacity(0.1 + holdProgress * 0.2))
                 )
         )
         .overlay(
-            // Progress border during hold
+            // Progress trim ring — shows exactly how far along the hold is
             RoundedRectangle(cornerRadius: 20)
-                .stroke(habitColor, lineWidth: 3)
-                .opacity(isHolding ? Double(holdProgress) : 0)
+                .trim(from: 0, to: holdProgress)
+                .stroke(habitColor, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                .opacity(isHolding ? 1 : 0)
+        )
+        .overlay(
+            // Pulsing glow border — breathes via repeating animation
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(
+                    habitColor.opacity(holdProgress * glowPulseIntensity * 0.8),
+                    lineWidth: 2 + holdProgress * 3
+                )
+                .blur(radius: 4)
+                .opacity(isHolding ? 1 : 0)
+        )
+        // Radiating pulse ring — expands outward and fades (Hacking with Swift pattern)
+        .background(
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(habitColor.opacity(0.4), lineWidth: 2)
+                .scaleEffect(isHolding && !reduceMotion ? 1.0 + holdProgress * 0.15 : 1.0)
+                .opacity(isHolding ? Double(1.0 - holdProgress) * 0.6 : 0)
+        )
+        // Layered shadow glow — tight inner + wide outer, pulse-modulated
+        .shadow(
+            color: habitColor.opacity(isHolding ? holdProgress * glowPulseIntensity * 0.5 : 0),
+            radius: isHolding ? 12 + holdProgress * 16 : 0
         )
         .shadow(
-            color: habitColor.opacity(isHolding ? Double(holdProgress) * 0.4 : 0),
-            radius: isHolding ? 12 + (holdProgress * 12) : 0
+            color: habitColor.opacity(isHolding ? holdProgress * glowPulseIntensity * 0.25 : 0),
+            radius: isHolding ? 30 + holdProgress * 30 : 0
         )
-        .scaleEffect(reduceMotion ? 1.0 : cardScale)
+        .scaleEffect(cardScale)
+        .animation(reduceMotion ? .none : .easeOut(duration: 0.15), value: cardScale)
+        .zIndex(isHolding ? 1 : 0)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Log temptation for \(habit.name)")
         .accessibilityHint("Tap or hold to log a temptation")
@@ -354,7 +416,6 @@ struct LogView: View {
             holdStartTime = nil
         }
         .animation(reduceMotion ? .none : .interactiveSpring, value: cardDragOffset)
-        .animation(reduceMotion ? .none : .easeInOut(duration: 0.1), value: holdProgress)
     }
 
     private var confirmationBanner: some View {
