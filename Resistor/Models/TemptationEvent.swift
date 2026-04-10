@@ -57,7 +57,7 @@ extension TemptationEvent {
         var color: Color {
             switch self {
             case .resisted: return .green
-            case .gaveIn: return .red
+            case .gaveIn: return .orange
             case .unknown: return .gray
             }
         }
