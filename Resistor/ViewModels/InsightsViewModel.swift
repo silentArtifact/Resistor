@@ -232,4 +232,112 @@ final class InsightsViewModel {
         guard let peak = dist.max(by: { $0.count < $1.count }), peak.count > 0 else { return nil }
         return peak.day
     }
+
+    // MARK: - Intensity Trend
+
+    func intensityTrend() -> [(date: Date, averageIntensity: Double)] {
+        let events = cachedEventsInRange.filter { $0.intensity != nil }
+        guard !events.isEmpty else { return [] }
+
+        let calendar = Calendar.current
+        let grouped = Dictionary(grouping: events) { event in
+            calendar.startOfDay(for: event.occurredAt)
+        }
+
+        return grouped.sorted { $0.key < $1.key }.map { date, dayEvents in
+            let total = dayEvents.compactMap(\.intensity).reduce(0, +)
+            let avg = Double(total) / Double(dayEvents.count)
+            return (date, avg)
+        }
+    }
+
+    var averageIntensity: Double? {
+        let events = cachedEventsInRange.compactMap(\.intensity)
+        guard !events.isEmpty else { return nil }
+        return Double(events.reduce(0, +)) / Double(events.count)
+    }
+
+    // MARK: - Period Summaries
+
+    func weekSummaries() -> [PeriodSummary] {
+        guard let habit = selectedHabit else { return [] }
+        let events = habit.safeEvents
+        guard !events.isEmpty else { return [] }
+
+        let calendar = Calendar.current
+        let grouped = Dictionary(grouping: events) { event in
+            let components = calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: event.occurredAt)
+            return calendar.date(from: components) ?? event.occurredAt
+        }
+
+        return grouped.sorted { $0.key > $1.key }.prefix(8).map { weekStart, weekEvents in
+            let resisted = weekEvents.filter { $0.outcomeEnum == .resisted }.count
+            let intensities = weekEvents.compactMap(\.intensity)
+            let avgIntensity = intensities.isEmpty ? nil : Double(intensities.reduce(0, +)) / Double(intensities.count)
+            return PeriodSummary(
+                startDate: weekStart,
+                totalEvents: weekEvents.count,
+                resistedCount: resisted,
+                averageIntensity: avgIntensity
+            )
+        }
+    }
+
+    func monthSummaries() -> [PeriodSummary] {
+        guard let habit = selectedHabit else { return [] }
+        let events = habit.safeEvents
+        guard !events.isEmpty else { return [] }
+
+        let calendar = Calendar.current
+        let grouped = Dictionary(grouping: events) { event in
+            let components = calendar.dateComponents([.year, .month], from: event.occurredAt)
+            return calendar.date(from: components) ?? event.occurredAt
+        }
+
+        return grouped.sorted { $0.key > $1.key }.prefix(6).map { monthStart, monthEvents in
+            let resisted = monthEvents.filter { $0.outcomeEnum == .resisted }.count
+            let intensities = monthEvents.compactMap(\.intensity)
+            let avgIntensity = intensities.isEmpty ? nil : Double(intensities.reduce(0, +)) / Double(intensities.count)
+            return PeriodSummary(
+                startDate: monthStart,
+                totalEvents: monthEvents.count,
+                resistedCount: resisted,
+                averageIntensity: avgIntensity
+            )
+        }
+    }
+
+    // MARK: - Location Distribution
+
+    func locationDistribution() -> [(location: String, count: Int)] {
+        var counts: [String: Int] = [:]
+        for event in cachedEventsInRange {
+            if let name = event.locationName, !name.isEmpty {
+                counts[name, default: 0] += 1
+            }
+        }
+        guard !counts.isEmpty else { return [] }
+
+        return counts.sorted { $0.value > $1.value }
+            .prefix(5)
+            .map { ($0.key, $0.value) }
+    }
+
+    var topLocation: String? {
+        locationDistribution().first?.location
+    }
+}
+
+struct PeriodSummary: Identifiable {
+    let startDate: Date
+    let totalEvents: Int
+    let resistedCount: Int
+    let averageIntensity: Double?
+
+    var id: Date { startDate }
+
+    var resistedPercentage: Int? {
+        guard totalEvents > 0 else { return nil }
+        return Int(Double(resistedCount) / Double(totalEvents) * 100)
+    }
 }

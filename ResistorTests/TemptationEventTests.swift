@@ -260,4 +260,78 @@ final class TemptationEventTests: XCTestCase {
         XCTAssertEqual(event.contextTags, ["stressed", "alone"])
         XCTAssertEqual(event.note, "Test note")
     }
+
+    // MARK: - Location Properties
+
+    func testHasLocationTrueWhenBothCoordinatesPresent() {
+        let habit = TestHelpers.makeHabit()
+        let event = TestHelpers.makeEvent(
+            habit: habit,
+            latitude: 40.7128,
+            longitude: -74.0060
+        )
+        XCTAssertTrue(event.hasLocation)
+    }
+
+    func testHasLocationFalseWhenNoCoordinates() {
+        let habit = TestHelpers.makeHabit()
+        let event = TestHelpers.makeEvent(habit: habit)
+        XCTAssertFalse(event.hasLocation)
+    }
+
+    func testHasLocationFalseWhenOnlyLatitude() {
+        let habit = TestHelpers.makeHabit()
+        let event = TestHelpers.makeEvent(habit: habit, latitude: 40.7128)
+        XCTAssertFalse(event.hasLocation)
+    }
+
+    func testLocationDisplayNameReturnsLocationName() {
+        let habit = TestHelpers.makeHabit()
+        let event = TestHelpers.makeEvent(
+            habit: habit,
+            latitude: 40.7128,
+            longitude: -74.0060,
+            locationName: "Midtown, New York"
+        )
+        XCTAssertEqual(event.locationDisplayName, "Midtown, New York")
+    }
+
+    func testLocationDisplayNameFallsBackToCoordinates() {
+        let habit = TestHelpers.makeHabit()
+        let event = TestHelpers.makeEvent(
+            habit: habit,
+            latitude: 40.7128,
+            longitude: -74.0060
+        )
+        XCTAssertEqual(event.locationDisplayName, "40.7128, -74.0060")
+    }
+
+    func testLocationDisplayNameNilWhenNoLocation() {
+        let habit = TestHelpers.makeHabit()
+        let event = TestHelpers.makeEvent(habit: habit)
+        XCTAssertNil(event.locationDisplayName)
+    }
+
+    func testEventInitWithLocationValues() {
+        let habit = TestHelpers.makeHabit()
+        let event = TemptationEvent(
+            habit: habit,
+            latitude: 51.5074,
+            longitude: -0.1278,
+            locationName: "London, UK"
+        )
+
+        XCTAssertEqual(event.latitude, 51.5074)
+        XCTAssertEqual(event.longitude, -0.1278)
+        XCTAssertEqual(event.locationName, "London, UK")
+    }
+
+    func testEventDefaultLocationValuesNil() {
+        let habit = TestHelpers.makeHabit()
+        let event = TemptationEvent(habit: habit)
+
+        XCTAssertNil(event.latitude)
+        XCTAssertNil(event.longitude)
+        XCTAssertNil(event.locationName)
+    }
 }

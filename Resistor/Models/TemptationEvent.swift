@@ -10,6 +10,9 @@ final class TemptationEvent {
     var outcome: String = "unknown"
     var contextTags: [String] = []
     var note: String?
+    var latitude: Double?
+    var longitude: Double?
+    var locationName: String?
 
     var habit: Habit?
 
@@ -20,7 +23,10 @@ final class TemptationEvent {
         intensity: Int? = nil,
         outcome: String = "unknown",
         contextTags: [String] = [],
-        note: String? = nil
+        note: String? = nil,
+        latitude: Double? = nil,
+        longitude: Double? = nil,
+        locationName: String? = nil
     ) {
         self.id = id
         self.habit = habit
@@ -29,6 +35,9 @@ final class TemptationEvent {
         self.outcome = outcome
         self.contextTags = contextTags
         self.note = note
+        self.latitude = latitude
+        self.longitude = longitude
+        self.locationName = locationName
     }
 }
 
@@ -107,5 +116,15 @@ extension TemptationEvent {
         case 17..<21: return "Evening"
         default: return "Night"
         }
+    }
+
+    var hasLocation: Bool {
+        latitude != nil && longitude != nil
+    }
+
+    var locationDisplayName: String? {
+        if let name = locationName, !name.isEmpty { return name }
+        guard let lat = latitude, let lon = longitude else { return nil }
+        return String(format: "%.4f, %.4f", lat, lon)
     }
 }

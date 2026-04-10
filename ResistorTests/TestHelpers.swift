@@ -35,7 +35,10 @@ enum TestHelpers {
         intensity: Int? = nil,
         outcome: String = "unknown",
         contextTags: [String] = [],
-        note: String? = nil
+        note: String? = nil,
+        latitude: Double? = nil,
+        longitude: Double? = nil,
+        locationName: String? = nil
     ) -> TemptationEvent {
         TemptationEvent(
             habit: habit,
@@ -43,7 +46,10 @@ enum TestHelpers {
             intensity: intensity,
             outcome: outcome,
             contextTags: contextTags,
-            note: note
+            note: note,
+            latitude: latitude,
+            longitude: longitude,
+            locationName: locationName
         )
     }
 

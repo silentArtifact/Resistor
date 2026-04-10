@@ -564,4 +564,104 @@ final class InsightsViewModelTests: XCTestCase {
         vm.selectedHabitIndex = 0
         XCTAssertNotNil(vm.selectedHabit)
     }
+
+    // MARK: - Location Distribution
+
+    func testLocationDistributionReturnsTopFive() throws {
+        let habit = TestHelpers.makeHabit()
+        context.insert(habit)
+
+        let now = Date()
+        let locations = ["Home", "Office", "Gym", "Park", "Store", "Cafe"]
+        for (i, loc) in locations.enumerated() {
+            for j in 0...(locations.count - i) {
+                let date = Calendar.current.date(byAdding: .minute, value: -(i * 10 + j), to: now)!
+                let event = TestHelpers.makeEvent(
+                    habit: habit,
+                    occurredAt: date,
+                    outcome: "resisted",
+                    latitude: 40.0 + Double(i),
+                    longitude: -74.0 + Double(i),
+                    locationName: loc
+                )
+                context.insert(event)
+            }
+        }
+        try context.save()
+
+        let vm = InsightsViewModel(modelContext: context)
+        vm.selectedTimeRange = .month
+        let dist = vm.locationDistribution()
+
+        XCTAssertLessThanOrEqual(dist.count, 5)
+        // First location should have the highest count
+        if dist.count >= 2 {
+            XCTAssertGreaterThanOrEqual(dist[0].count, dist[1].count)
+        }
+    }
+
+    func testLocationDistributionEmptyWhenNoLocations() throws {
+        let habit = TestHelpers.makeHabit()
+        context.insert(habit)
+
+        let event = TestHelpers.makeEvent(habit: habit, occurredAt: Date(), outcome: "resisted")
+        context.insert(event)
+        try context.save()
+
+        let vm = InsightsViewModel(modelContext: context)
+        vm.selectedTimeRange = .week
+        let dist = vm.locationDistribution()
+
+        XCTAssertTrue(dist.isEmpty)
+    }
+
+    func testTopLocationReturnsHighestCount() throws {
+        let habit = TestHelpers.makeHabit()
+        context.insert(habit)
+
+        let now = Date()
+
+        // 3 events at "Office"
+        for i in 0..<3 {
+            let date = Calendar.current.date(byAdding: .minute, value: -i, to: now)!
+            let event = TestHelpers.makeEvent(
+                habit: habit,
+                occurredAt: date,
+                outcome: "resisted",
+                latitude: 40.7,
+                longitude: -74.0,
+                locationName: "Office"
+            )
+            context.insert(event)
+        }
+
+        // 1 event at "Home"
+        let event = TestHelpers.makeEvent(
+            habit: habit,
+            occurredAt: now,
+            outcome: "resisted",
+            latitude: 40.8,
+            longitude: -73.9,
+            locationName: "Home"
+        )
+        context.insert(event)
+        try context.save()
+
+        let vm = InsightsViewModel(modelContext: context)
+        vm.selectedTimeRange = .week
+
+        XCTAssertEqual(vm.topLocation, "Office")
+    }
+
+    func testTopLocationNilWhenNoLocations() throws {
+        let habit = TestHelpers.makeHabit()
+        context.insert(habit)
+
+        let event = TestHelpers.makeEvent(habit: habit, occurredAt: Date(), outcome: "resisted")
+        context.insert(event)
+        try context.save()
+
+        let vm = InsightsViewModel(modelContext: context)
+        XCTAssertNil(vm.topLocation)
+    }
 }

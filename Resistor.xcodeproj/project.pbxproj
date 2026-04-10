@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		43CA41D12F89724100D11E7D /* LocationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43CA41D02F89724100D11E7D /* LocationManager.swift */; };
+		43CA41D32F89730100D11E7D /* EventMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43CA41D22F89730100D11E7D /* EventMapView.swift */; };
 		A1000001000000000000001A /* ResistorApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000001000000000000000A /* ResistorApp.swift */; };
 		A1000002000000000000001A /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000002000000000000000A /* ContentView.swift */; };
 		A1000003000000000000001A /* LogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000003000000000000000A /* LogView.swift */; };
@@ -23,9 +25,8 @@
 		A100000E000000000000001A /* Color+Hex.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000E000000000000000A /* Color+Hex.swift */; };
 		A100000F000000000000001A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A100000F000000000000000A /* Assets.xcassets */; };
 		A1000011000000000000001A /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000011000000000000000A /* HistoryView.swift */; };
-
 		A1000012000000000000001A /* TipJarViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000012000000000000000A /* TipJarViewModel.swift */; };
-
+		A1000015000000000000001A /* DataExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000015000000000000000A /* DataExporter.swift */; };
 		B2000001000000000000001A /* TestHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000001000000000000000A /* TestHelpers.swift */; };
 		B2000002000000000000001A /* InsightsViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000002000000000000000A /* InsightsViewModelTests.swift */; };
 		B2000003000000000000001A /* TemptationEventTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000003000000000000000A /* TemptationEventTests.swift */; };
@@ -37,6 +38,8 @@
 		B2000009000000000000001A /* UserSettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000009000000000000000A /* UserSettingsTests.swift */; };
 		B200000A000000000000001A /* IntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000A000000000000000A /* IntegrationTests.swift */; };
 		B200000B000000000000001A /* InsightsViewModelPerformanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000B000000000000000A /* InsightsViewModelPerformanceTests.swift */; };
+		B200000C000000000000001A /* TipJarViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000C000000000000000A /* TipJarViewModelTests.swift */; };
+		B200000D000000000000001A /* DataExporterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000D000000000000000A /* DataExporterTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -51,6 +54,8 @@
 
 /* Begin PBXFileReference section */
 		43CA41CF2F890C0100D11E7D /* Resistor.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Resistor.entitlements; sourceTree = "<group>"; };
+		43CA41D02F89724100D11E7D /* LocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationManager.swift; sourceTree = "<group>"; };
+		43CA41D22F89730100D11E7D /* EventMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventMapView.swift; sourceTree = "<group>"; };
 		A1000000000000000000000A /* Resistor.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Resistor.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A1000001000000000000000A /* ResistorApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResistorApp.swift; sourceTree = "<group>"; };
 		A1000002000000000000000A /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -68,11 +73,10 @@
 		A100000E000000000000000A /* Color+Hex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+Hex.swift"; sourceTree = "<group>"; };
 		A100000F000000000000000A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A1000011000000000000000A /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
-
 		A1000012000000000000000A /* TipJarViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TipJarViewModel.swift; sourceTree = "<group>"; };
 		A1000013000000000000000A /* Resistor.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Resistor.entitlements; sourceTree = "<group>"; };
 		A1000014000000000000000A /* TipJar.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = TipJar.storekit; sourceTree = "<group>"; };
-
+		A1000015000000000000000A /* DataExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataExporter.swift; sourceTree = "<group>"; };
 		B2000000000000000000000A /* ResistorTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ResistorTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		B2000001000000000000000A /* TestHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestHelpers.swift; sourceTree = "<group>"; };
 		B2000002000000000000000A /* InsightsViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsViewModelTests.swift; sourceTree = "<group>"; };
@@ -85,6 +89,8 @@
 		B2000009000000000000000A /* UserSettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserSettingsTests.swift; sourceTree = "<group>"; };
 		B200000A000000000000000A /* IntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntegrationTests.swift; sourceTree = "<group>"; };
 		B200000B000000000000000A /* InsightsViewModelPerformanceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsViewModelPerformanceTests.swift; sourceTree = "<group>"; };
+		B200000C000000000000000A /* TipJarViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TipJarViewModelTests.swift; sourceTree = "<group>"; };
+		B200000D000000000000000A /* DataExporterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataExporterTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -159,6 +165,7 @@
 				A1000005000000000000000A /* HabitsView.swift */,
 				A1000006000000000000000A /* InsightsView.swift */,
 				A1000011000000000000000A /* HistoryView.swift */,
+				43CA41D22F89730100D11E7D /* EventMapView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -186,6 +193,8 @@
 		A1000007000000000000003A /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				A1000015000000000000000A /* DataExporter.swift */,
+				43CA41D02F89724100D11E7D /* LocationManager.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -204,6 +213,8 @@
 				B2000009000000000000000A /* UserSettingsTests.swift */,
 				B200000A000000000000000A /* IntegrationTests.swift */,
 				B200000B000000000000000A /* InsightsViewModelPerformanceTests.swift */,
+				B200000C000000000000000A /* TipJarViewModelTests.swift */,
+				B200000D000000000000000A /* DataExporterTests.swift */,
 			);
 			path = ResistorTests;
 			sourceTree = "<group>";
@@ -302,11 +313,13 @@
 				A1000001000000000000001A /* ResistorApp.swift in Sources */,
 				A1000002000000000000001A /* ContentView.swift in Sources */,
 				A1000003000000000000001A /* LogView.swift in Sources */,
+				43CA41D32F89730100D11E7D /* EventMapView.swift in Sources */,
 				A1000004000000000000001A /* OnboardingView.swift in Sources */,
 				A1000005000000000000001A /* HabitsView.swift in Sources */,
 				A1000006000000000000001A /* InsightsView.swift in Sources */,
 				A1000007000000000000001A /* LogViewModel.swift in Sources */,
 				A1000008000000000000001A /* OnboardingViewModel.swift in Sources */,
+				43CA41D12F89724100D11E7D /* LocationManager.swift in Sources */,
 				A1000009000000000000001A /* HabitsViewModel.swift in Sources */,
 				A100000A000000000000001A /* InsightsViewModel.swift in Sources */,
 				A100000B000000000000001A /* Habit.swift in Sources */,
@@ -315,6 +328,7 @@
 				A100000E000000000000001A /* Color+Hex.swift in Sources */,
 				A1000011000000000000001A /* HistoryView.swift in Sources */,
 				A1000012000000000000001A /* TipJarViewModel.swift in Sources */,
+				A1000015000000000000001A /* DataExporter.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -333,6 +347,8 @@
 				B2000009000000000000001A /* UserSettingsTests.swift in Sources */,
 				B200000A000000000000001A /* IntegrationTests.swift in Sources */,
 				B200000B000000000000001A /* InsightsViewModelPerformanceTests.swift in Sources */,
+				B200000C000000000000001A /* TipJarViewModelTests.swift in Sources */,
+				B200000D000000000000001A /* DataExporterTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

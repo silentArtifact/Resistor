@@ -6,6 +6,7 @@ import CoreHaptics
 @Observable
 final class LogViewModel {
     private var modelContext: ModelContext
+    private var locationManager: LocationProviding?
 
     var habits: [Habit] = []
     var selectedHabitIndex: Int = 0
@@ -30,8 +31,9 @@ final class LogViewModel {
         !habits.isEmpty
     }
 
-    init(modelContext: ModelContext, defaultHabitId: UUID? = nil) {
+    init(modelContext: ModelContext, defaultHabitId: UUID? = nil, locationManager: LocationProviding? = nil) {
         self.modelContext = modelContext
+        self.locationManager = locationManager
         fetchHabits()
         if let defaultId = defaultHabitId,
            let index = habits.firstIndex(where: { $0.id == defaultId }) {
@@ -64,8 +66,37 @@ final class LogViewModel {
         do {
             try modelContext.save()
             lastLoggedEvent = event
+
+            // Capture location asynchronously (fire-and-forget) only after successful save
+            if let locationManager = locationManager, locationManager.isAuthorized {
+                Task { @MainActor in
+                    await captureLocation(for: event)
+                }
+            }
         } catch {
             print("Failed to save temptation event: \(error)")
+        }
+    }
+
+    @MainActor
+    private func captureLocation(for event: TemptationEvent) async {
+        guard let locationManager = locationManager else { return }
+        guard let location = await locationManager.requestCurrentLocation() else { return }
+
+        event.latitude = location.coordinate.latitude
+        event.longitude = location.coordinate.longitude
+
+        if let placeName = await locationManager.reverseGeocode(
+            latitude: location.coordinate.latitude,
+            longitude: location.coordinate.longitude
+        ) {
+            event.locationName = placeName
+        }
+
+        do {
+            try modelContext.save()
+        } catch {
+            print("Failed to save location for event: \(error)")
         }
     }
 

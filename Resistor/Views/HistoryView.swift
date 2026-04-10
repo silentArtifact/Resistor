@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import MapKit
 
 struct HistoryView: View {
     @Environment(\.modelContext) private var modelContext
@@ -136,6 +137,21 @@ struct HistoryView: View {
                                 .cornerRadius(4)
                         }
                     }
+
+                    // Location badge
+                    if let locName = event.locationDisplayName {
+                        HStack(spacing: 2) {
+                            Image(systemName: "location.fill")
+                                .font(.caption2)
+                            Text(locName)
+                                .font(.caption2)
+                                .lineLimit(1)
+                        }
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.gray.opacity(0.2))
+                        .cornerRadius(4)
+                    }
                 }
 
                 // Note if present
@@ -254,6 +270,31 @@ struct EventDetailSheet: View {
                             if let tag = TemptationEvent.ContextTag(rawValue: tagRaw) {
                                 Text(tag.displayName)
                             }
+                        }
+                    }
+                }
+
+                // Location section
+                if event.hasLocation {
+                    Section("Location") {
+                        HStack(spacing: 8) {
+                            Image(systemName: "location.fill")
+                                .foregroundStyle(.secondary)
+                            Text(event.locationDisplayName ?? "Unknown")
+                        }
+
+                        if let lat = event.latitude, let lon = event.longitude {
+                            Map(initialPosition: .region(MKCoordinateRegion(
+                                center: CLLocationCoordinate2D(latitude: lat, longitude: lon),
+                                latitudinalMeters: 500,
+                                longitudinalMeters: 500
+                            ))) {
+                                Marker("", coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lon))
+                            }
+                            .frame(height: 150)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .allowsHitTesting(false)
+                            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                         }
                     }
                 }

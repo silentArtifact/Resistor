@@ -16,6 +16,7 @@ struct LogView: View {
     }
 
     @State private var viewModel: LogViewModel?
+    @State private var locationManager = LocationManager()
     @State private var showContextSheet = false
     @State private var contextNote: String = ""
     @State private var selectedContextTags: Set<TemptationEvent.ContextTag> = []
@@ -103,10 +104,15 @@ struct LogView: View {
             .navigationTitle("Log")
         }
         .onAppear {
+            if locationManager.authorizationStatus == .notDetermined {
+                locationManager.requestPermission()
+            }
+
             if viewModel == nil {
                 let vm = LogViewModel(
                     modelContext: modelContext,
-                    defaultHabitId: userSettings.first?.defaultHabitId
+                    defaultHabitId: userSettings.first?.defaultHabitId,
+                    locationManager: locationManager
                 )
                 vm.prepareHaptics()
                 viewModel = vm
@@ -141,7 +147,8 @@ struct LogView: View {
                 if viewModel == nil {
                     viewModel = LogViewModel(
                         modelContext: modelContext,
-                        defaultHabitId: userSettings.first?.defaultHabitId
+                        defaultHabitId: userSettings.first?.defaultHabitId,
+                        locationManager: locationManager
                     )
                 } else {
                     viewModel?.fetchHabits()
