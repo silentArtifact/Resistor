@@ -4,11 +4,11 @@ import SwiftData
 
 @Model
 final class TemptationEvent {
-    var id: UUID
-    var occurredAt: Date
+    var id: UUID = UUID()
+    var occurredAt: Date = Date()
     var intensity: Int?
-    var outcome: String
-    var contextTags: [String]
+    var outcome: String = "unknown"
+    var contextTags: [String] = []
     var note: String?
 
     var habit: Habit?

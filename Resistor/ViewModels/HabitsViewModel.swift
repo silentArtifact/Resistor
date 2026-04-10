@@ -122,7 +122,7 @@ final class HabitsViewModel {
         guard let habit = habitToDelete else { return }
 
         // Manual cascade: delete all events for this habit first
-        for event in habit.events {
+        for event in habit.safeEvents {
             modelContext.delete(event)
         }
         modelContext.delete(habit)

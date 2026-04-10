@@ -164,7 +164,7 @@ struct HabitsView: View {
 
             // Count
             VStack(alignment: .trailing) {
-                Text("\(habit.events.count)")
+                Text("\(habit.safeEvents.count)")
                     .font(.headline)
                     .foregroundStyle(.secondary)
                 Text("total")

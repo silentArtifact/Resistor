@@ -229,7 +229,7 @@ final class HabitTests: XCTestCase {
         context.insert(habit)
         try context.save()
 
-        XCTAssertTrue(habit.events.isEmpty)
+        XCTAssertTrue(habit.safeEvents.isEmpty)
     }
 
     func testEventsRelationshipLinksCorrectly() throws {
@@ -246,7 +246,7 @@ final class HabitTests: XCTestCase {
         context.insert(event3)
         try context.save()
 
-        XCTAssertEqual(habit1.events.count, 2)
-        XCTAssertEqual(habit2.events.count, 1)
+        XCTAssertEqual(habit1.safeEvents.count, 2)
+        XCTAssertEqual(habit2.safeEvents.count, 1)
     }
 }

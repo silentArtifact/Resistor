@@ -3,11 +3,11 @@ import SwiftData
 
 @Model
 final class UserSettings {
-    var id: UUID
+    var id: UUID = UUID()
     var defaultHabitId: UUID?
-    var showContextPrompt: Bool
+    var showContextPrompt: Bool = true
     var accentColorHex: String?
-    var hasCompletedOnboarding: Bool
+    var hasCompletedOnboarding: Bool = false
 
     init(
         id: UUID = UUID(),

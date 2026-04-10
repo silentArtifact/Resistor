@@ -3,16 +3,16 @@ import SwiftData
 
 @Model
 final class Habit {
-    var id: UUID
-    var name: String
+    var id: UUID = UUID()
+    var name: String = ""
     var habitDescription: String?
     var colorHex: String?
     var iconName: String?
-    var isArchived: Bool
-    var createdAt: Date
+    var isArchived: Bool = false
+    var createdAt: Date = Date()
 
     @Relationship(inverse: \TemptationEvent.habit)
-    var events: [TemptationEvent] = []
+    var events: [TemptationEvent]? = []
 
     init(
         id: UUID = UUID(),
@@ -34,19 +34,23 @@ final class Habit {
 }
 
 extension Habit {
+    var safeEvents: [TemptationEvent] {
+        events ?? []
+    }
+
     var activeEventsCount: Int {
-        events.count
+        safeEvents.count
     }
 
     var todayEventsCount: Int {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
-        return events.filter { calendar.isDate($0.occurredAt, inSameDayAs: today) }.count
+        return safeEvents.filter { calendar.isDate($0.occurredAt, inSameDayAs: today) }.count
     }
 
     var thisWeekEventsCount: Int {
         let calendar = Calendar.current
         guard let weekAgo = calendar.date(byAdding: .day, value: -7, to: Date()) else { return 0 }
-        return events.filter { $0.occurredAt >= weekAgo }.count
+        return safeEvents.filter { $0.occurredAt >= weekAgo }.count
     }
 }

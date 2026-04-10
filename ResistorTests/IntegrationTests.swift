@@ -201,8 +201,8 @@ final class IntegrationTests: XCTestCase {
 
         // Event should be linked to Drinking, not to the other habits
         XCTAssertEqual(logVM.lastLoggedEvent?.habit?.name, "Drinking")
-        XCTAssertEqual(habit2.events.count, 1)
-        XCTAssertTrue(habit1.events.isEmpty)
-        XCTAssertTrue(habit3.events.isEmpty)
+        XCTAssertEqual(habit2.safeEvents.count, 1)
+        XCTAssertTrue(habit1.safeEvents.isEmpty)
+        XCTAssertTrue(habit3.safeEvents.isEmpty)
     }
 }

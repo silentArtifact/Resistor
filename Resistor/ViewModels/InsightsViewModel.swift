@@ -31,7 +31,7 @@ final class InsightsViewModel {
 
     var hasData: Bool {
         guard let habit = selectedHabit else { return false }
-        return !habit.events.isEmpty
+        return !habit.safeEvents.isEmpty
     }
 
     init(modelContext: ModelContext) {
@@ -61,7 +61,7 @@ final class InsightsViewModel {
         guard let startDate = calendar.date(byAdding: .day, value: -(selectedTimeRange.days - 1), to: startOfToday) else {
             return []
         }
-        return habit.events.filter { $0.occurredAt >= startDate }
+        return habit.safeEvents.filter { $0.occurredAt >= startDate }
     }
 
     var totalEventsInRange: Int {
@@ -77,7 +77,7 @@ final class InsightsViewModel {
               let previousPeriodStart = calendar.date(byAdding: .day, value: -days, to: currentPeriodStart) else {
             return 0
         }
-        return habit.events.filter { $0.occurredAt >= previousPeriodStart && $0.occurredAt < currentPeriodStart }.count
+        return habit.safeEvents.filter { $0.occurredAt >= previousPeriodStart && $0.occurredAt < currentPeriodStart }.count
     }
 
     var changeFromPreviousPeriod: Int {
