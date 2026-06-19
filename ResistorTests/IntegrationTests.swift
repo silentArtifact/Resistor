@@ -126,8 +126,10 @@ final class IntegrationTests: XCTestCase {
         let insightsVM = InsightsViewModel(modelContext: context)
         XCTAssertTrue(insightsVM.hasData)
         XCTAssertEqual(insightsVM.totalEventsInRange, 1)
-        XCTAssertEqual(insightsVM.resistedCount, 1)
-        XCTAssertEqual(insightsVM.resistedPercentage, 100)
+        // Logging no longer captures an outcome (the outcome sheet was removed),
+        // so a bare log defaults to "unknown" and is not counted as resisted.
+        XCTAssertEqual(insightsVM.resistedCount, 0)
+        XCTAssertEqual(insightsVM.resistedPercentage, 0)
     }
 
     // MARK: - Unarchive Makes Habit Visible Again

@@ -285,11 +285,12 @@ final class LogViewModelTests: XCTestCase {
         vm.triggerConfirmation()
         XCTAssertTrue(vm.showConfirmation)
 
+        // The banner auto-hides after 4s (extended from 1.5s to give time to Undo).
         let expectation = expectation(description: "Confirmation dismissed")
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4.5) {
             expectation.fulfill()
         }
-        wait(for: [expectation], timeout: 3.0)
+        wait(for: [expectation], timeout: 5.5)
         XCTAssertFalse(vm.showConfirmation)
     }
 
@@ -311,20 +312,21 @@ final class LogViewModelTests: XCTestCase {
         vm.triggerConfirmation()
         XCTAssertTrue(vm.showConfirmation)
 
-        // Wait past when the first timer would have fired (1.5s total from first call)
+        // Wait past when the first timer would have fired (4s from the first
+        // call ≈ 3.5s from here) but before the second timer fires.
         let firstTimerExpectation = expectation(description: "Past first timer")
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.7) {
             firstTimerExpectation.fulfill()
         }
-        wait(for: [firstTimerExpectation], timeout: 2.0)
+        wait(for: [firstTimerExpectation], timeout: 4.5)
 
         // Should still be showing because the second timer hasn't fired yet
-        // (1.5s from the second call = 2.0s from start, we're at ~1.7s)
+        // (~4.2s from the first call; the second timer fires at ~4.5s).
         XCTAssertTrue(vm.showConfirmation)
 
-        // Wait for the second timer to fire
+        // Wait for the second timer (4s from the second call) to fire.
         let finalExpectation = expectation(description: "Second timer fired")
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
             finalExpectation.fulfill()
         }
         wait(for: [finalExpectation], timeout: 2.0)

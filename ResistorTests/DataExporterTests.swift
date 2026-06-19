@@ -255,8 +255,10 @@ final class DataExporterTests: XCTestCase {
         let events = json["events"] as! [[String: Any]]
         let e = events[0]
 
-        XCTAssertEqual(e["latitude"] as? Double, 40.7128, accuracy: 0.0001)
-        XCTAssertEqual(e["longitude"] as? Double, -74.0060, accuracy: 0.0001)
+        let latitude = try XCTUnwrap(e["latitude"] as? Double)
+        let longitude = try XCTUnwrap(e["longitude"] as? Double)
+        XCTAssertEqual(latitude, 40.7128, accuracy: 0.0001)
+        XCTAssertEqual(longitude, -74.0060, accuracy: 0.0001)
         XCTAssertEqual(e["location_name"] as? String, "Downtown, New York")
     }
 
