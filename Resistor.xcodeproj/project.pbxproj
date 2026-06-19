@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1EA2AB1E243FA4FF3695A153 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D550B62AA43FA6F8E07A3859 /* Foundation.framework */; };
 		43CA41D12F89724100D11E7D /* LocationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43CA41D02F89724100D11E7D /* LocationManager.swift */; };
 		43CA41D32F89730100D11E7D /* EventMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43CA41D22F89730100D11E7D /* EventMapView.swift */; };
 		A1000001000000000000001A /* ResistorApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000001000000000000000A /* ResistorApp.swift */; };
@@ -41,10 +42,19 @@
 		B200000C000000000000001A /* TipJarViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000C000000000000000A /* TipJarViewModelTests.swift */; };
 		B200000D000000000000001A /* DataExporterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000D000000000000000A /* DataExporterTests.swift */; };
 		C1000001000000000000001A /* ContextTag.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000001000000000000000A /* ContextTag.swift */; };
+		D354EB66006655563DFD61FB /* UITestSeed.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7A986130363EAECA937D1B7 /* UITestSeed.swift */; };
+		D4CBA1C324611D3CB789BE3E /* SnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A7A220FBBC346EEC2773BB4 /* SnapshotTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
 		B2000001000000000000007A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A1000000000000000000005A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A1000000000000000000004A;
+			remoteInfo = Resistor;
+		};
+		DB19973F018B8962B41E9727 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = A1000000000000000000005A /* Project object */;
 			proxyType = 1;
@@ -57,6 +67,8 @@
 		43CA41CF2F890C0100D11E7D /* Resistor.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Resistor.entitlements; sourceTree = "<group>"; };
 		43CA41D02F89724100D11E7D /* LocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationManager.swift; sourceTree = "<group>"; };
 		43CA41D22F89730100D11E7D /* EventMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventMapView.swift; sourceTree = "<group>"; };
+		912EC19ED1BF0A2FAA78B0EA /* ResistorUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ResistorUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		9A7A220FBBC346EEC2773BB4 /* SnapshotTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SnapshotTests.swift; sourceTree = "<group>"; };
 		A1000000000000000000000A /* Resistor.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Resistor.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A1000001000000000000000A /* ResistorApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResistorApp.swift; sourceTree = "<group>"; };
 		A1000002000000000000000A /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -93,9 +105,19 @@
 		B200000C000000000000000A /* TipJarViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TipJarViewModelTests.swift; sourceTree = "<group>"; };
 		B200000D000000000000000A /* DataExporterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataExporterTests.swift; sourceTree = "<group>"; };
 		C1000001000000000000000A /* ContextTag.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContextTag.swift; sourceTree = "<group>"; };
+		D550B62AA43FA6F8E07A3859 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		E7A986130363EAECA937D1B7 /* UITestSeed.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UITestSeed.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		89C43C4A14FC556B163FA582 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1EA2AB1E243FA4FF3695A153 /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		A1000000000000000000002A /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -113,12 +135,31 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		34EE3083C015C6E3C9BB1CD1 /* ResistorUITests */ = {
+			isa = PBXGroup;
+			children = (
+				9A7A220FBBC346EEC2773BB4 /* SnapshotTests.swift */,
+			);
+			name = ResistorUITests;
+			path = ResistorUITests;
+			sourceTree = "<group>";
+		};
+		969C8B9E7218FDE17632ABE0 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				CE705E2CBA64036A22E00A5A /* iOS */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		A1000000000000000000003A = {
 			isa = PBXGroup;
 			children = (
 				A1000001000000000000003A /* Resistor */,
 				B2000001000000000000003A /* ResistorTests */,
 				A1000002000000000000003A /* Products */,
+				969C8B9E7218FDE17632ABE0 /* Frameworks */,
+				34EE3083C015C6E3C9BB1CD1 /* ResistorUITests */,
 			);
 			sourceTree = "<group>";
 		};
@@ -144,6 +185,7 @@
 			children = (
 				A1000000000000000000000A /* Resistor.app */,
 				B2000000000000000000000A /* ResistorTests.xctest */,
+				912EC19ED1BF0A2FAA78B0EA /* ResistorUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -198,6 +240,7 @@
 			children = (
 				A1000015000000000000000A /* DataExporter.swift */,
 				43CA41D02F89724100D11E7D /* LocationManager.swift */,
+				E7A986130363EAECA937D1B7 /* UITestSeed.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -220,6 +263,14 @@
 				B200000D000000000000000A /* DataExporterTests.swift */,
 			);
 			path = ResistorTests;
+			sourceTree = "<group>";
+		};
+		CE705E2CBA64036A22E00A5A /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				D550B62AA43FA6F8E07A3859 /* Foundation.framework */,
+			);
+			name = iOS;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -259,6 +310,24 @@
 			productReference = B2000000000000000000000A /* ResistorTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
+		B9F79058ED76416224DE5D15 /* ResistorUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8E2093EE44BA43A6B52F3E88 /* Build configuration list for PBXNativeTarget "ResistorUITests" */;
+			buildPhases = (
+				AAC7D9B4B927670E141B7E64 /* Sources */,
+				89C43C4A14FC556B163FA582 /* Frameworks */,
+				D3029735FB6B7E044A7646EB /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				810BE6D2447D5FA6B637022C /* PBXTargetDependency */,
+			);
+			name = ResistorUITests;
+			productName = ResistorUITests;
+			productReference = 912EC19ED1BF0A2FAA78B0EA /* ResistorUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -293,6 +362,7 @@
 			targets = (
 				A1000000000000000000004A /* Resistor */,
 				B2000000000000000000004A /* ResistorTests */,
+				B9F79058ED76416224DE5D15 /* ResistorUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -303,6 +373,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				A100000F000000000000001A /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D3029735FB6B7E044A7646EB /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -333,6 +410,15 @@
 				A1000011000000000000001A /* HistoryView.swift in Sources */,
 				A1000012000000000000001A /* TipJarViewModel.swift in Sources */,
 				A1000015000000000000001A /* DataExporter.swift in Sources */,
+				D354EB66006655563DFD61FB /* UITestSeed.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AAC7D9B4B927670E141B7E64 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D4CBA1C324611D3CB789BE3E /* SnapshotTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -359,6 +445,12 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		810BE6D2447D5FA6B637022C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = Resistor;
+			target = A1000000000000000000004A /* Resistor */;
+			targetProxy = DB19973F018B8962B41E9727 /* PBXContainerItemProxy */;
+		};
 		B2000001000000000000008A /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = A1000000000000000000004A /* Resistor */;
@@ -367,6 +459,43 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		0131C3D772940933BB081C62 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = HBXLU45HR7;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.resistor.app.ResistorUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = Resistor;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		1C63783B50430CC7C0A4B44E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = HBXLU45HR7;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.resistor.app.ResistorUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = Resistor;
+			};
+			name = Debug;
+		};
 		A1000001000000000000006A /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -601,6 +730,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		8E2093EE44BA43A6B52F3E88 /* Build configuration list for PBXNativeTarget "ResistorUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0131C3D772940933BB081C62 /* Release */,
+				1C63783B50430CC7C0A4B44E /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		A1000001000000000000005A /* Build configuration list for PBXProject "Resistor" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
