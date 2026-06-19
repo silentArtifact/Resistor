@@ -110,15 +110,15 @@ final class IntegrationTests: XCTestCase {
         XCTAssertNotNil(logVM.lastLoggedEvent)
 
         // Step 4: Update context
-        logVM.updateEventContext(contextTags: ["stressed", "at_work"], note: "After meeting")
-        XCTAssertEqual(logVM.lastLoggedEvent?.contextTags, ["stressed", "at_work"])
+        logVM.updateEventContext(contextTags: ["stressed", "bored"], note: "After meeting")
+        XCTAssertEqual(logVM.lastLoggedEvent?.contextTags, ["stressed", "bored"])
         XCTAssertEqual(logVM.lastLoggedEvent?.note, "After meeting")
 
         // Step 5: Verify everything persisted correctly
         let events = try context.fetch(FetchDescriptor<TemptationEvent>())
         XCTAssertEqual(events.count, 1)
         let event = events.first!
-        XCTAssertEqual(event.contextTags, ["stressed", "at_work"])
+        XCTAssertEqual(event.contextTags, ["stressed", "bored"])
         XCTAssertEqual(event.note, "After meeting")
         XCTAssertEqual(event.habit?.name, "Smoking")
 

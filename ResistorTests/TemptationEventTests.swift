@@ -78,27 +78,21 @@ final class TemptationEventTests: XCTestCase {
     // MARK: - Context Tag
 
     func testContextTagDisplayNames() {
-        XCTAssertEqual(TemptationEvent.ContextTag.atStore.displayName, "At Store")
         XCTAssertEqual(TemptationEvent.ContextTag.onPhone.displayName, "On Phone")
         XCTAssertEqual(TemptationEvent.ContextTag.withFriends.displayName, "With Friends")
         XCTAssertEqual(TemptationEvent.ContextTag.alone.displayName, "Alone")
-        XCTAssertEqual(TemptationEvent.ContextTag.atWork.displayName, "At Work")
-        XCTAssertEqual(TemptationEvent.ContextTag.atHome.displayName, "At Home")
         XCTAssertEqual(TemptationEvent.ContextTag.stressed.displayName, "Stressed")
         XCTAssertEqual(TemptationEvent.ContextTag.bored.displayName, "Bored")
     }
 
     func testContextTagAllCasesComplete() {
-        XCTAssertEqual(TemptationEvent.ContextTag.allCases.count, 8)
+        XCTAssertEqual(TemptationEvent.ContextTag.allCases.count, 5)
     }
 
     func testContextTagRawValues() {
-        XCTAssertEqual(TemptationEvent.ContextTag.atStore.rawValue, "at_store")
         XCTAssertEqual(TemptationEvent.ContextTag.onPhone.rawValue, "on_phone")
         XCTAssertEqual(TemptationEvent.ContextTag.withFriends.rawValue, "with_friends")
         XCTAssertEqual(TemptationEvent.ContextTag.alone.rawValue, "alone")
-        XCTAssertEqual(TemptationEvent.ContextTag.atWork.rawValue, "at_work")
-        XCTAssertEqual(TemptationEvent.ContextTag.atHome.rawValue, "at_home")
         XCTAssertEqual(TemptationEvent.ContextTag.stressed.rawValue, "stressed")
         XCTAssertEqual(TemptationEvent.ContextTag.bored.rawValue, "bored")
     }

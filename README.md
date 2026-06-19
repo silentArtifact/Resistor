@@ -76,12 +76,12 @@ Edge cases:
 
 Flow 4: Optional context logging (manual, simple)
 Story:
-As a user, I want to optionally add simple context (like “At store” or “On phone”) to a temptation log so I can see which situations are riskiest.
+As a user, I want to optionally add simple context (like "Stressed" or "On phone") to a temptation log so I can see which situations are riskiest.
 
 Steps:
 1. User taps “Log temptation” on the Log screen.
 2. Immediately logged event is created so core flow is not blocked.
-3. Optionally, a small sheet appears with quick context buttons (e.g., “At store”, “On phone”, “With friends”, “Alone”) plus an optional note field.
+3. Optionally, a small sheet appears with quick context buttons (e.g., "Stressed", "On phone", "With friends", "Alone") plus an optional note field.
 4. User taps a context or dismisses the sheet; app updates that event with context if provided.
 
 Edge cases:
@@ -248,7 +248,7 @@ Fields:
 - occurredAt: Date
 - intensity: Int? (optional; e.g., 1–5 scale)
 - outcome: String (e.g., "resisted", "gave_in", "unknown")
-- contextTag: String? (e.g., "at_store", "on_phone", "with_friends", "alone")
+- contextTag: String? (e.g., "stressed", "on_phone", "with_friends", "alone")
 - note: String? (optional, free-text note)
 
 Notes:

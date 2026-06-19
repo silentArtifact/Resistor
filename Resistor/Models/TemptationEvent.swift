@@ -73,23 +73,17 @@ extension TemptationEvent {
     }
 
     enum ContextTag: String, CaseIterable {
-        case atStore = "at_store"
         case onPhone = "on_phone"
         case withFriends = "with_friends"
         case alone = "alone"
-        case atWork = "at_work"
-        case atHome = "at_home"
         case stressed = "stressed"
         case bored = "bored"
 
         var displayName: String {
             switch self {
-            case .atStore: return "At Store"
             case .onPhone: return "On Phone"
             case .withFriends: return "With Friends"
             case .alone: return "Alone"
-            case .atWork: return "At Work"
-            case .atHome: return "At Home"
             case .stressed: return "Stressed"
             case .bored: return "Bored"
             }

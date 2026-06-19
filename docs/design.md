@@ -84,10 +84,12 @@ Edge cases:
 
 ### Flow 4: Context Logging
 
-1. After "Log Temptation" tap and outcome selection.
-2. Context sheet presents with quick tags + optional note.
-3. User selects tags (multi-select) and/or writes note, or dismisses.
-4. Event updated with context. Dismissing leaves event with no context.
+Context tags are user-defined and managed via the `ContextTag` SwiftData model. Tags are displayed as selectable chips directly on the Log screen (pre-selected before logging), rather than in a post-log sheet.
+
+1. Before logging, user optionally selects context tag chips on the Log screen.
+2. On log, selected tags are attached to the event immediately.
+3. Tag names stored as raw strings in `TemptationEvent.contextTags`.
+4. Users create/delete tags from the Habits & Settings screen.
 
 ---
 
@@ -361,7 +363,7 @@ Rules:
 - "Skip" / "Save"
 
 **Context Tags:**
-At Store, On Phone, With Friends, Alone, At Work, At Home, Stressed, Bored
+User-defined. Managed via the `ContextTag` SwiftData model. Users create and delete tags from the Habits & Settings screen. Tags are displayed as selectable chips on the Log screen (pre-select before logging) using a flow layout. Default seed tags for new installs: Stressed, Bored, Alone, On Phone, With Friends. Location-based tags (At Store, At Work, At Home) were removed because GPS location tracking already captures where events occur.
 
 **Insights:**
 - "No habits to analyze" / "No data yet"
@@ -711,7 +713,7 @@ On success: "Thank you." text. On failure/cancel: no message. No nag screens.
 
 ### Tier 3: Future Consideration
 
-- Custom context tags (user-defined beyond preset 8)
+- ~~Custom context tags (user-defined beyond preset 8)~~ — Done: `ContextTag` SwiftData model with inline management
 - Intensity trends (average intensity over time chart)
 - Weekly/monthly summary view
 - Import data (complement to export)
@@ -746,8 +748,8 @@ Summary of all design decisions made during the design phase.
 | Watch + Widget | Post-v1 | Enhancement, not core |
 | Testing | Unit + UI tests | Not manual QA only |
 | Export format | JSON only | Simpler than CSV + JSON |
-| Context tags | Multiple allowed | Single tag too limiting |
+| Context tags | User-defined, multiple allowed | Single tag too limiting; hardcoded set too rigid |
 | Intensity default | Nil (not 3) | Nil = didn't engage, preserves data integrity |
-| Banner timing | After all sheets dismiss | Was hidden behind sheets |
+| Banner timing | After all sheets dismiss, 4s with undo | Was hidden behind sheets; undo prevents accidental logs |
 | Default habit | User-settable via context menu | Core for fast logging |
 | Time zones | Store UTC, display local | Standard practice |

@@ -20,7 +20,8 @@ Resistor/
 ├── Models/
 │   ├── Habit.swift                   # @Model — habit entity
 │   ├── TemptationEvent.swift         # @Model — logged event entity
-│   └── UserSettings.swift            # @Model — singleton settings
+│   ├── UserSettings.swift            # @Model — singleton settings
+│   └── ContextTag.swift              # @Model — user-defined context tag
 ├── Services/
 │   ├── DataExporter.swift            # CSV/JSON export of temptation events
 │   └── LocationManager.swift         # GPS location capture for events
@@ -42,7 +43,7 @@ Resistor/
 
 ## Data Model (SwiftData)
 
-All three entities use the `@Model` macro. CloudKit compatibility constraints apply (see below).
+All four entities use the `@Model` macro. CloudKit compatibility constraints apply (see below).
 
 ### Habit
 
@@ -67,7 +68,7 @@ Computed: `todayEventsCount`, `thisWeekEventsCount`, `activeEventsCount`.
 | `occurredAt` | `Date` | Timestamp of log |
 | `intensity` | `Int?` | 1–5 scale. Nil = user didn't engage (not "chose 3") |
 | `outcome` | `String` | Raw string: `"resisted"`, `"gave_in"`, `"unknown"` |
-| `contextTags` | `[String]` | Array of raw strings from `ContextTag` enum. Multiple allowed. |
+| `contextTags` | `[String]` | Array of raw tag name strings. Multiple allowed. |
 | `note` | `String?` | Free-text |
 | `habit` | `Habit?` | Inverse of `Habit.events` |
 
@@ -75,7 +76,17 @@ Computed: `todayEventsCount`, `thisWeekEventsCount`, `activeEventsCount`.
 
 Enums defined in extensions:
 - `Outcome` — `.resisted`, `.gaveIn`, `.unknown` with `displayName`, `iconName`, `color`
-- `ContextTag` — `.atStore`, `.onPhone`, `.withFriends`, `.alone`, `.atWork`, `.atHome`, `.stressed`, `.bored`
+- `ContextTag` (legacy enum) — `.onPhone`, `.withFriends`, `.alone`, `.stressed`, `.bored`. Kept for backward compatibility with old raw values. Location-based cases removed (GPS covers location). New tags are user-defined strings.
+
+### ContextTag
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `id` | `UUID` | No `@Attribute(.unique)` (CloudKit) |
+| `name` | `String` | User-facing tag name, stored as-is in `TemptationEvent.contextTags` |
+| `createdAt` | `Date` | Set at init |
+
+User-defined context tags managed from the Habits & Settings screen. Displayed as selectable chips on the Log screen before logging. Tag names are stored directly in `TemptationEvent.contextTags` as raw strings.
 
 ### UserSettings
 

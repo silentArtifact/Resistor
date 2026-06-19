@@ -79,7 +79,7 @@ struct ContentView: View {
         // Seed default context tags if none exist (covers both fresh installs
         // and upgrades from before tag seeding was added)
         if contextTags.isEmpty {
-            let defaults = ["Stressed", "Bored", "Alone", "At Home", "At Work", "On Phone", "With Friends", "At Store"]
+            let defaults = ["Stressed", "Bored", "Alone", "On Phone", "With Friends"]
             for name in defaults {
                 modelContext.insert(ContextTag(name: name))
             }

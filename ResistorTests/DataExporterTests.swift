@@ -100,7 +100,7 @@ final class DataExporterTests: XCTestCase {
             habit: habit,
             intensity: 4,
             outcome: "resisted",
-            contextTags: ["stressed", "at_home"],
+            contextTags: ["stressed", "alone"],
             note: "Felt strong"
         )
         context.insert(event)
@@ -115,7 +115,7 @@ final class DataExporterTests: XCTestCase {
         XCTAssertEqual(e["outcome"] as? String, "resisted")
         XCTAssertEqual(e["intensity"] as? Int, 4)
         XCTAssertEqual(e["note"] as? String, "Felt strong")
-        XCTAssertEqual(e["context_tags"] as? [String], ["stressed", "at_home"])
+        XCTAssertEqual(e["context_tags"] as? [String], ["stressed", "alone"])
         XCTAssertEqual(e["habit_id"] as? String, habit.id.uuidString)
         XCTAssertNotNil(e["id"])
         XCTAssertNotNil(e["occurred_at"])
