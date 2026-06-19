@@ -96,7 +96,6 @@ final class SnapshotTests: XCTestCase {
 
     /// Captures a full-screen screenshot and attaches it under `name`.
     private func snapshot(_ app: XCUIApplication, name: String) {
-        // Brief settle so animations/charts finish rendering before capture.
         let screenshot = XCUIScreen.main.screenshot()
         let attachment = XCTAttachment(screenshot: screenshot)
         attachment.name = name

@@ -40,8 +40,9 @@ enum UITestSeed {
         )
         context.insert(settings)
 
-        // Context tags shown as chips on the Log screen.
-        for name in ["Stressed", "Bored", "Alone", "On Phone", "With Friends", "At Home", "At Work"] {
+        // Context tags shown as chips on the Log screen. Matches the app's
+        // default seed set (location-based tags were dropped — GPS covers them).
+        for name in ["Stressed", "Bored", "Alone", "On Phone", "With Friends"] {
             context.insert(ContextTag(name: name))
         }
 
@@ -66,8 +67,8 @@ enum UITestSeed {
         // History have real shape: varied outcomes, intensities, contexts, hours.
         let outcomes = ["resisted", "gave_in", "resisted", "resisted", "gave_in", "unknown"]
         let tagSets: [[String]] = [
-            ["Stressed"], ["Bored", "On Phone"], ["Alone"], ["At Work"],
-            ["With Friends"], ["At Home", "Bored"], []
+            ["Stressed"], ["Bored", "On Phone"], ["Alone"], ["Stressed", "Bored"],
+            ["With Friends"], ["Alone", "Bored"], []
         ]
         var seedIndex = 0
         for habit in [sugar, phone] {
