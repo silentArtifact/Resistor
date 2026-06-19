@@ -64,10 +64,7 @@ struct InsightsView: View {
                     // Outcome breakdown
                     outcomeBreakdown(vm)
 
-                    // Time range picker
-                    timeRangePicker(vm)
-
-                    // Daily trend chart
+                    // Daily trend chart (with embedded time range picker)
                     dailyTrendChart(vm)
 
                     // Time of day distribution
@@ -92,7 +89,8 @@ struct InsightsView: View {
                     viewHistoryButton(vm)
                 }
             }
-            .padding()
+            .padding(.horizontal, 24)
+            .padding(.vertical, 16)
         }
     }
 
@@ -101,43 +99,49 @@ struct InsightsView: View {
         let data = vm.outcomeBreakdown()
         let total = data.reduce(0) { $0 + $1.count }
 
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("Outcomes")
-                    .font(.headline)
-                Spacer()
-                if let pct = vm.resistedPercentage {
+        SectionCard(
+            title: "Outcomes",
+            accessory: vm.resistedPercentage.map { pct in
+                AnyView(
                     Text("\(pct)% resisted")
                         .font(.subheadline)
-                        .foregroundStyle(.green)
                         .fontWeight(.medium)
-                }
+                        .foregroundStyle(.green)
+                )
             }
-
+        ) {
             if total > 0 {
                 // Stacked bar
                 GeometryReader { geo in
                     HStack(spacing: 2) {
                         ForEach(data.filter { $0.count > 0 }, id: \.outcome) { item in
-                            RoundedRectangle(cornerRadius: 4)
+                            Rectangle()
                                 .fill(item.outcome.color)
                                 .frame(width: max(geo.size.width * CGFloat(item.count) / CGFloat(total) - 2, 4))
                         }
                     }
                 }
-                .frame(height: 24)
+                .frame(height: 12)
+                .clipShape(Capsule())
 
                 // Legend
-                HStack(spacing: 16) {
+                HStack(alignment: .top, spacing: 12) {
                     ForEach(data, id: \.outcome) { item in
-                        HStack(spacing: 4) {
+                        HStack(spacing: 5) {
                             Circle()
                                 .fill(item.outcome.color)
                                 .frame(width: 8, height: 8)
-                            Text("\(item.outcome.displayName): \(item.count)")
+                            Text(item.outcome.displayName)
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
+                            Text("\(item.count)")
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundStyle(.primary)
+                                .monospacedDigit()
                         }
+                        .fixedSize()
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
             } else {
@@ -146,11 +150,6 @@ struct InsightsView: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.secondarySystemBackground))
-        )
     }
 
     @ViewBuilder
@@ -192,13 +191,13 @@ struct InsightsView: View {
                                 Text(habit.name)
                                     .font(.subheadline)
                             }
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 9)
                             .background(
                                 Capsule()
                                     .fill(vm.selectedHabitIndex == index
                                           ? (Color(hex: habit.colorHex ?? "#007AFF") ?? .blue)
-                                          : Color.gray.opacity(0.2))
+                                          : Color(.secondarySystemBackground))
                             )
                             .foregroundStyle(vm.selectedHabitIndex == index ? .white : .primary)
                         }
@@ -227,8 +226,8 @@ struct InsightsView: View {
 
     @ViewBuilder
     private func summaryStats(_ vm: InsightsViewModel) -> some View {
-        VStack(spacing: 16) {
-            HStack(spacing: 16) {
+        VStack(spacing: 12) {
+            HStack(spacing: 12) {
                 // Total this period
                 StatCard(
                     title: "This \(vm.selectedTimeRange == .week ? "Week" : "Month")",
@@ -246,7 +245,7 @@ struct InsightsView: View {
             }
 
             if vm.peakTimeOfDay != nil || vm.peakDayOfWeek != nil {
-                HStack(spacing: 16) {
+                HStack(spacing: 12) {
                     if let peak = vm.peakTimeOfDay {
                         StatCard(
                             title: "Peak Time",
@@ -325,9 +324,8 @@ struct InsightsView: View {
     private func dailyTrendChart(_ vm: InsightsViewModel) -> some View {
         let data = vm.dailyDistribution()
 
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Daily Trend")
-                .font(.headline)
+        SectionCard(title: "Daily Trend") {
+            timeRangePicker(vm)
 
             Chart(data, id: \.date) { item in
                 BarMark(
@@ -344,21 +342,13 @@ struct InsightsView: View {
                 }
             }
         }
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.secondarySystemBackground))
-        )
     }
 
     @ViewBuilder
     private func timeOfDayChart(_ vm: InsightsViewModel) -> some View {
         let data = vm.timeOfDayDistribution()
 
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Time of Day")
-                .font(.headline)
-
+        SectionCard(title: "Time of Day") {
             Chart(data, id: \.period) { item in
                 BarMark(
                     x: .value("Period", item.period),
@@ -368,11 +358,6 @@ struct InsightsView: View {
             }
             .frame(height: 150)
         }
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.secondarySystemBackground))
-        )
     }
 
     @ViewBuilder
@@ -380,18 +365,16 @@ struct InsightsView: View {
         let data = vm.intensityTrend()
 
         if !data.isEmpty {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Text("Intensity Trend")
-                        .font(.headline)
-                    Spacer()
-                    if let avg = vm.averageIntensity {
-                        Text("Avg: \(String(format: "%.1f", avg))")
+            SectionCard(
+                title: "Intensity Trend",
+                accessory: vm.averageIntensity.map { avg in
+                    AnyView(
+                        Text("Avg \(String(format: "%.1f", avg))")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
-                    }
+                    )
                 }
-
+            ) {
                 Chart(data, id: \.date) { item in
                     LineMark(
                         x: .value("Date", item.date, unit: .day),
@@ -417,11 +400,6 @@ struct InsightsView: View {
                     }
                 }
             }
-            .padding()
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(.secondarySystemBackground))
-            )
         }
     }
 
@@ -443,71 +421,83 @@ struct InsightsView: View {
         let monthData = vm.monthSummaries()
 
         if !weekData.isEmpty || !monthData.isEmpty {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Summary")
-                    .font(.headline)
-
-                if !weekData.isEmpty {
-                    Text("By Week")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-
-                    ForEach(weekData) { summary in
-                        summaryRow(
-                            label: "Week of \(Self.summaryWeekFormatter.string(from: summary.startDate))",
-                            summary: summary
-                        )
+            SectionCard(title: "Summary") {
+                Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 10) {
+                    // Column headers explain the otherwise-bare numbers.
+                    GridRow {
+                        Text("Period")
+                        Text("Events")
+                            .gridColumnAlignment(.trailing)
+                        Text("Resisted")
+                            .gridColumnAlignment(.trailing)
+                        Text("Intensity")
+                            .gridColumnAlignment(.trailing)
                     }
-                }
+                    .font(.caption2)
+                    .textCase(.uppercase)
+                    .foregroundStyle(.secondary)
 
-                if !monthData.isEmpty {
-                    Text("By Month")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .padding(.top, 4)
+                    if !weekData.isEmpty {
+                        summaryGroupHeader("By Week")
+                        ForEach(weekData) { summary in
+                            summaryRow(
+                                label: Self.summaryWeekFormatter.string(from: summary.startDate),
+                                summary: summary
+                            )
+                        }
+                    }
 
-                    ForEach(monthData) { summary in
-                        summaryRow(
-                            label: Self.summaryMonthFormatter.string(from: summary.startDate),
-                            summary: summary
-                        )
+                    if !monthData.isEmpty {
+                        summaryGroupHeader("By Month")
+                        ForEach(monthData) { summary in
+                            summaryRow(
+                                label: Self.summaryMonthFormatter.string(from: summary.startDate),
+                                summary: summary
+                            )
+                        }
                     }
                 }
             }
-            .padding()
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(.secondarySystemBackground))
-            )
         }
     }
 
     @ViewBuilder
+    private func summaryGroupHeader(_ text: String) -> some View {
+        GridRow {
+            Text(text)
+                .font(.caption)
+                .fontWeight(.semibold)
+                .foregroundStyle(.secondary)
+                .gridCellColumns(4)
+        }
+        .padding(.top, 4)
+    }
+
+    @ViewBuilder
     private func summaryRow(label: String, summary: PeriodSummary) -> some View {
-        HStack {
+        GridRow {
             Text(label)
-                .font(.caption)
-                .frame(width: 100, alignment: .leading)
+                .font(.subheadline)
 
-            Spacer()
-
-            Text("\(summary.totalEvents) events")
-                .font(.caption)
+            Text("\(summary.totalEvents)")
+                .font(.subheadline)
                 .foregroundStyle(.secondary)
 
             if let pct = summary.resistedPercentage {
                 Text("\(pct)%")
-                    .font(.caption)
+                    .font(.subheadline)
                     .fontWeight(.medium)
                     .foregroundStyle(.green)
-                    .frame(width: 40, alignment: .trailing)
+            } else {
+                Text("—").font(.subheadline).foregroundStyle(.tertiary)
             }
 
             if let avg = summary.averageIntensity {
                 Text(String(format: "%.1f", avg))
-                    .font(.caption)
+                    .font(.subheadline)
                     .foregroundStyle(.orange)
-                    .frame(width: 30, alignment: .trailing)
+            } else {
+                Text("—").font(.subheadline).foregroundStyle(.tertiary)
             }
         }
     }
@@ -516,10 +506,7 @@ struct InsightsView: View {
     private func dayOfWeekChart(_ vm: InsightsViewModel) -> some View {
         let data = vm.dayOfWeekDistribution()
 
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Day of Week")
-                .font(.headline)
-
+        SectionCard(title: "Day of Week") {
             Chart(data, id: \.day) { item in
                 BarMark(
                     x: .value("Day", item.day),
@@ -529,11 +516,6 @@ struct InsightsView: View {
             }
             .frame(height: 150)
         }
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.secondarySystemBackground))
-        )
     }
 
     @ViewBuilder
@@ -541,10 +523,7 @@ struct InsightsView: View {
         let data = vm.locationDistribution()
 
         if !data.isEmpty {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Top Locations")
-                    .font(.headline)
-
+            SectionCard(title: "Top Locations") {
                 Chart(data, id: \.location) { item in
                     BarMark(
                         x: .value("Count", item.count),
@@ -557,11 +536,6 @@ struct InsightsView: View {
                     AxisMarks(values: .automatic(desiredCount: 4))
                 }
             }
-            .padding()
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(.secondarySystemBackground))
-            )
         }
     }
 
@@ -590,6 +564,36 @@ struct InsightsView: View {
     }
 }
 
+// MARK: - Section Card
+
+/// Wraps a section's content in the standard surface card used across Insights:
+/// a titled block on `secondarySystemBackground` with consistent padding,
+/// corner radius, and internal spacing. Keeps every section visually uniform.
+private struct SectionCard<Content: View>: View {
+    let title: String
+    var accessory: AnyView? = nil
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(title)
+                    .font(.headline)
+                Spacer(minLength: 8)
+                if let accessory {
+                    accessory
+                }
+            }
+            content()
+        }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(.secondarySystemBackground))
+        )
+    }
+}
+
 // MARK: - Stat Card Component
 
 struct StatCard: View {
@@ -599,7 +603,7 @@ struct StatCard: View {
     var valueColor: Color = .primary
 
     var body: some View {
-        VStack(spacing: 4) {
+        VStack(alignment: .leading, spacing: 6) {
             Text(title)
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -608,13 +612,16 @@ struct StatCard: View {
                 .font(.title)
                 .fontWeight(.bold)
                 .foregroundStyle(valueColor)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
 
             Text(subtitle)
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }
-        .frame(maxWidth: .infinity)
-        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
         .background(
             RoundedRectangle(cornerRadius: 12)
                 .fill(Color(.secondarySystemBackground))
@@ -630,7 +637,7 @@ struct LocationStatCard: View {
     let subtitle: String
 
     var body: some View {
-        VStack(spacing: 4) {
+        VStack(alignment: .leading, spacing: 6) {
             Text(title)
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -645,8 +652,9 @@ struct LocationStatCard: View {
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }
-        .frame(maxWidth: .infinity)
-        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
         .background(
             RoundedRectangle(cornerRadius: 12)
                 .fill(Color(.secondarySystemBackground))

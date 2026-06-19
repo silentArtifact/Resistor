@@ -107,7 +107,20 @@ final class LogViewModel {
             self?.showConfirmation = false
         }
         confirmationWorkItem = workItem
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5, execute: workItem)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4.0, execute: workItem)
+    }
+
+    func undoLastLog() {
+        guard let event = lastLoggedEvent else { return }
+        confirmationWorkItem?.cancel()
+        showConfirmation = false
+        modelContext.delete(event)
+        do {
+            try modelContext.save()
+        } catch {
+            print("Failed to undo temptation event: \(error)")
+        }
+        lastLoggedEvent = nil
     }
 
     func updateEventContext(contextTags: [String], note: String?) {

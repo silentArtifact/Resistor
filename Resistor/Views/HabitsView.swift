@@ -26,6 +26,14 @@ struct HabitsView: View {
         ("Dusk", "#8A7A99"),
     ]
 
+    /// The user-configured accent color, falling back to the system tint.
+    private var accentColor: Color {
+        if let hex = userSettings.first?.accentColorHex, let color = Color(hex: hex) {
+            return color
+        }
+        return .accentColor
+    }
+
     var body: some View {
         NavigationStack {
             Group {
@@ -146,10 +154,11 @@ struct HabitsView: View {
                     if userSettings.first?.defaultHabitId == habit.id {
                         Text("Default")
                             .font(.caption2)
+                            .fontWeight(.medium)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
-                            .background(Color.blue.opacity(0.15))
-                            .foregroundStyle(.blue)
+                            .background(accentColor.opacity(0.15))
+                            .foregroundStyle(accentColor)
                             .cornerRadius(4)
                     }
                 }
@@ -165,11 +174,12 @@ struct HabitsView: View {
             Spacer()
 
             // Count
-            VStack(alignment: .trailing) {
+            VStack(alignment: .trailing, spacing: 1) {
                 Text("\(habit.safeEvents.count)")
                     .font(.headline)
-                    .foregroundStyle(.secondary)
-                Text("total")
+                    .monospacedDigit()
+                    .foregroundStyle(.primary)
+                Text("logged")
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
             }
@@ -230,12 +240,16 @@ struct HabitsView: View {
         Section("Settings") {
             if let settings = userSettings.first {
                 // Accent color picker
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 12) {
                     Text("Accent Color")
                         .font(.body)
 
-                    HStack(spacing: 8) {
+                    LazyVGrid(
+                        columns: [GridItem(.adaptive(minimum: 40), spacing: 12)],
+                        spacing: 12
+                    ) {
                         ForEach(Self.accentColors, id: \.hex) { color in
+                            let isSelected = settings.accentColorHex == color.hex
                             Circle()
                                 .fill(Color(hex: color.hex) ?? .blue)
                                 .frame(width: 36, height: 36)
@@ -243,18 +257,25 @@ struct HabitsView: View {
                                     Image(systemName: "checkmark")
                                         .font(.caption.bold())
                                         .foregroundStyle(.white)
-                                        .opacity(settings.accentColorHex == color.hex ? 1 : 0)
+                                        .opacity(isSelected ? 1 : 0)
                                 )
+                                .overlay(
+                                    Circle()
+                                        .strokeBorder(Color.primary.opacity(0.9), lineWidth: isSelected ? 2 : 0)
+                                        .padding(-3)
+                                )
+                                .frame(maxWidth: .infinity)
+                                .contentShape(Circle())
                                 .onTapGesture {
                                     settings.accentColorHex = color.hex
                                     try? modelContext.save()
                                 }
                                 .accessibilityLabel(color.name)
-                                .accessibilityAddTraits(settings.accentColorHex == color.hex ? .isSelected : [])
+                                .accessibilityAddTraits(isSelected ? .isSelected : [])
                         }
                     }
                 }
-                .padding(.vertical, 4)
+                .padding(.vertical, 6)
             }
         }
 
@@ -269,16 +290,17 @@ struct HabitsView: View {
                 try? modelContext.save()
             }
 
-            HStack {
-                TextField("New tag", text: $newTagName)
-                    .textFieldStyle(.roundedBorder)
+            HStack(spacing: 12) {
+                TextField("Add a tag", text: $newTagName)
+                    .submitLabel(.done)
                     .onSubmit { addTag() }
 
                 Button(action: addTag) {
                     Image(systemName: "plus.circle.fill")
                         .font(.title2)
-                        .foregroundStyle(.blue)
+                        .foregroundStyle(accentColor)
                 }
+                .buttonStyle(.plain)
                 .disabled(newTagName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
         }
@@ -299,7 +321,7 @@ struct HabitsView: View {
 
     @ViewBuilder
     private var dataSection: some View {
-        Section {
+        Section("Data") {
             Button("Export Data") {
                 exportData()
             }

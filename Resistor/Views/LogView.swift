@@ -173,16 +173,21 @@ struct LogView: View {
 
         ZStack {
             VStack(spacing: 0) {
-                // Habit carousel
-                if vm.habits.count > 1 {
-                    habitCarousel(vm)
-                        .opacity(1.0 - dimAmount)
-                }
+                // Smaller top spacer biases the hero cluster toward the optical
+                // center (slightly above geometric middle) rather than stranding
+                // it low with a large void under the title.
+                Spacer(minLength: 0)
+                    .frame(maxHeight: 56)
 
-                Spacer()
-
-                // Current habit card (tap or hold to log)
+                // Current habit card cluster — pager sits directly above the
+                // card it controls so the relationship reads as one unit.
                 if let habit = vm.selectedHabit {
+                    if vm.habits.count > 1 {
+                        habitCarousel(vm)
+                            .opacity(1.0 - dimAmount)
+                            .padding(.bottom, 20)
+                    }
+
                     habitCard(habit, vm: vm)
 
                     Text("Tap or hold to log")
@@ -194,12 +199,12 @@ struct LogView: View {
                     // Context tags (pre-select before logging)
                     if !contextTags.isEmpty {
                         tagChips
-                            .padding(.top, 16)
+                            .padding(.top, 20)
                             .opacity(1.0 - dimAmount)
                     }
                 }
 
-                Spacer()
+                Spacer(minLength: 0)
 
                 // Today's count
                 if let habit = vm.selectedHabit {
@@ -221,7 +226,7 @@ struct LogView: View {
         }
         .overlay(alignment: .top) {
             if vm.showConfirmation {
-                confirmationBanner
+                confirmationBanner(vm: vm)
                     .transition(reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity))
             }
         }
@@ -255,7 +260,6 @@ struct LogView: View {
                 .accessibilityLabel("Next habit")
             }
             .padding(.horizontal, 24)
-            .padding(.top, 16)
 
             // Habit indicators
             HStack(spacing: 8) {
@@ -298,6 +302,7 @@ struct LogView: View {
                     .font(.body)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
                     .padding(.horizontal)
             }
         }
@@ -411,14 +416,27 @@ struct LogView: View {
         .animation(reduceMotion ? .none : .interactiveSpring, value: cardDragOffset)
     }
 
-    private var confirmationBanner: some View {
-        HStack {
+    @ViewBuilder
+    private func confirmationBanner(vm: LogViewModel) -> some View {
+        HStack(spacing: 12) {
             Image(systemName: "checkmark.circle.fill")
                 .foregroundStyle(.green)
-            Text("Logged!")
+            Text("Logged")
                 .fontWeight(.medium)
+
+            Spacer()
+
+            Button {
+                vm.undoLastLog()
+            } label: {
+                Text("Undo")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            .accessibilityLabel("Undo last log")
         }
-        .padding()
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
         .background(
             RoundedRectangle(cornerRadius: 12)
                 .fill(Color(.systemBackground))
@@ -428,6 +446,7 @@ struct LogView: View {
             RoundedRectangle(cornerRadius: 12)
                 .stroke(Color(.separator), lineWidth: 0.5)
         )
+        .padding(.horizontal, 24)
         .padding(.top, 8)
     }
 

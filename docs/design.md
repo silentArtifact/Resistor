@@ -54,7 +54,7 @@ Comprehensive design document for Resistor, an iOS habit-tracking app that logs 
 5. Event created with timestamp and habit reference.
 6. Outcome sheet presents: intensity selector (1-5) + "I Resisted" / "I Gave In" / "Skip".
 7. If context prompt enabled, context sheet presents: tag grid + note field.
-8. Confirmation banner slides down, auto-hides after 1.5s.
+8. Confirmation banner slides down with "Undo" option, auto-hides after 4s.
 
 Edge cases:
 - No habits configured: redirect to Add Habit flow
@@ -224,7 +224,7 @@ All interactive elements meet 44x44pt minimum tap target.
 
 **Stat Card:** Caption + large value + subtitle. Surface background, 12pt corner radius.
 
-**Confirmation Banner:** Green checkmark + "Logged!". System background, 12pt corner radius, subtle shadow. Slides from top, auto-hides 1.5s.
+**Confirmation Banner:** Green checkmark + "Logged" on left, subtle "Undo" text button on right. Full-width with horizontal padding. System background, 12pt corner radius, subtle shadow. Slides from top, auto-hides 4s. Undo deletes the last logged event and immediately dismisses the banner.
 
 ### App Icon
 
@@ -308,9 +308,11 @@ Rules:
 ### Confirmation Banner
 
 - Triggers after all sheets dismiss
-- Green checkmark + "Logged!"
+- Left side: green checkmark + "Logged". Right side: subtle "Undo" text button (secondary color)
+- Full-width layout with 24pt horizontal padding
 - `.overlay(alignment: .top)` with `.transition(.move(edge: .top).combined(with: .opacity))`
-- Auto-hides after 1.5s via cancellable `DispatchWorkItem`
+- Auto-hides after 4s via cancellable `DispatchWorkItem`
+- Undo deletes `lastLoggedEvent` from the model context and immediately dismisses the banner
 - Does not block interaction or push content
 
 ---
@@ -348,7 +350,7 @@ Rules:
 - "Log Temptation" button
 - "Today: {n} logged"
 - "{n} of {total}" carousel counter
-- "Logged!" confirmation
+- "Logged" confirmation with "Undo" option
 - Empty: "No habits to track" / "Create a habit to start logging temptations." / "Add Habit"
 
 **Outcome Sheet:**
