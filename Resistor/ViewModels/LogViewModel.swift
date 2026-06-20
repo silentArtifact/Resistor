@@ -67,31 +67,27 @@ final class LogViewModel {
     func logTemptation(contextTags: [String] = []) -> Bool {
         guard let habit = selectedHabit else { return false }
 
-        let event = TemptationEvent(
-            habit: habit,
-            outcome: TemptationEvent.Outcome.resisted.rawValue,
+        // Shared event-creation logic, reused by the widget's LogResistedIntent.
+        guard let event = TemptationLogger.logResisted(
+            for: habit,
+            in: modelContext,
             contextTags: contextTags
-        )
-        modelContext.insert(event)
-
-        do {
-            try modelContext.save()
-            lastLoggedEvent = event
-
-            // Capture location asynchronously (fire-and-forget) only after successful save
-            if let locationManager = locationManager, locationManager.isAuthorized {
-                Task { @MainActor in
-                    await captureLocation(for: event)
-                }
-            }
-            return true
-        } catch {
-            print("Failed to save temptation event: \(error)")
-            // Leave the failed insert unsaved and discard it so a stale
-            // lastLoggedEvent isn't surfaced by a confirmation banner.
-            modelContext.delete(event)
+        ) else {
+            // Save failed; TemptationLogger already discarded the insert and
+            // printed. Returning false keeps the confirmation banner from
+            // claiming a log that didn't happen.
             return false
         }
+
+        lastLoggedEvent = event
+
+        // Capture location asynchronously (fire-and-forget) only after successful save
+        if let locationManager = locationManager, locationManager.isAuthorized {
+            Task { @MainActor in
+                await captureLocation(for: event)
+            }
+        }
+        return true
     }
 
     @MainActor

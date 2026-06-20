@@ -7,9 +7,22 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0436E9E21A4995EE8549E6FE /* UserSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000D000000000000000A /* UserSettings.swift */; };
+		16460213A8B00BBED48310E6 /* QuickLogProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D464333421E9C39C03F5A57 /* QuickLogProvider.swift */; };
+		1678E0842EBF3ABBE56F3401 /* ResistorWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F4A323D24B5922D97906FD1 /* ResistorWidget.swift */; };
+		18A195F9B7925BB56D429711 /* ResistorWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = DF18F3D313F229C82C59743E /* ResistorWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		1EA2AB1E243FA4FF3695A153 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D550B62AA43FA6F8E07A3859 /* Foundation.framework */; };
+		3EB933B6532E4FB909C64487 /* QuickLogWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E111D234A6D4D52B3C29F28 /* QuickLogWidgetView.swift */; };
+		400E7DE395ECA6EA4C1D3F9E /* LogResistedIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCA4656BDF208C2526724BEB /* LogResistedIntent.swift */; };
+		411562E8E9D44C6CAE3051F7 /* SelectHabitIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07168381249E78F8A95464E7 /* SelectHabitIntent.swift */; };
 		43CA41D12F89724100D11E7D /* LocationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43CA41D02F89724100D11E7D /* LocationManager.swift */; };
 		43CA41D32F89730100D11E7D /* EventMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43CA41D22F89730100D11E7D /* EventMapView.swift */; };
+		504578B580DC558233088F52 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D550B62AA43FA6F8E07A3859 /* Foundation.framework */; };
+		5B9352C836AFB5E055E3C7D8 /* TemptationEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000C000000000000000A /* TemptationEvent.swift */; };
+		5E290EEDAE694A24601B9B21 /* TemptationLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E671048A9259B7EBC8C1B43 /* TemptationLogger.swift */; };
+		6338F6467C5189388ECC395C /* ContextTag.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000001000000000000000A /* ContextTag.swift */; };
+		77053A802CD8451E81504253 /* HabitAppEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39097DA98DAC5F5C22FA4BD3 /* HabitAppEntity.swift */; };
+		8C41ECC1C5222C46E02AACD8 /* TemptationLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E671048A9259B7EBC8C1B43 /* TemptationLogger.swift */; };
 		A1000001000000000000001A /* ResistorApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000001000000000000000A /* ResistorApp.swift */; };
 		A1000002000000000000001A /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000002000000000000000A /* ContentView.swift */; };
 		A1000003000000000000001A /* LogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000003000000000000000A /* LogView.swift */; };
@@ -30,7 +43,6 @@
 		A1000015000000000000001A /* DataExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000015000000000000000A /* DataExporter.swift */; };
 		B2000001000000000000001A /* TestHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000001000000000000000A /* TestHelpers.swift */; };
 		B2000002000000000000001A /* InsightsViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000002000000000000000A /* InsightsViewModelTests.swift */; };
-		B2000099000000000000001A /* TimeOfDayDrillDownTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000099000000000000000A /* TimeOfDayDrillDownTests.swift */; };
 		B2000003000000000000001A /* TemptationEventTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000003000000000000000A /* TemptationEventTests.swift */; };
 		B2000004000000000000001A /* HabitsViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000004000000000000000A /* HabitsViewModelTests.swift */; };
 		B2000005000000000000001A /* LogViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000005000000000000000A /* LogViewModelTests.swift */; };
@@ -42,12 +54,26 @@
 		B200000B000000000000001A /* InsightsViewModelPerformanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000B000000000000000A /* InsightsViewModelPerformanceTests.swift */; };
 		B200000C000000000000001A /* TipJarViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000C000000000000000A /* TipJarViewModelTests.swift */; };
 		B200000D000000000000001A /* DataExporterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000D000000000000000A /* DataExporterTests.swift */; };
+		B2000099000000000000001A /* TimeOfDayDrillDownTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000099000000000000000A /* TimeOfDayDrillDownTests.swift */; };
+		B2000098000000000000001A /* QuickLogWidgetTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000098000000000000000A /* QuickLogWidgetTests.swift */; };
+		B63040D04E809F970FF44C72 /* Color+Hex.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000E000000000000000A /* Color+Hex.swift */; };
 		C1000001000000000000001A /* ContextTag.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000001000000000000000A /* ContextTag.swift */; };
+		CC9B3EE69FC6CED9DA5C375D /* SharedModelContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D34ABD48A949E05238016CBF /* SharedModelContainer.swift */; };
 		D354EB66006655563DFD61FB /* UITestSeed.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7A986130363EAECA937D1B7 /* UITestSeed.swift */; };
 		D4CBA1C324611D3CB789BE3E /* SnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A7A220FBBC346EEC2773BB4 /* SnapshotTests.swift */; };
+		DB24B141241DF326D4B0E457 /* SharedModelContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D34ABD48A949E05238016CBF /* SharedModelContainer.swift */; };
+		DDE9B5D235853D45E9B21BCD /* ResistorWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = C931270813D632B915D37D59 /* ResistorWidgetBundle.swift */; };
+		EE9C4D3F81EBC93818857F9D /* Habit.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000B000000000000000A /* Habit.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		7DB295D4016A1962AD804F76 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A1000000000000000000005A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 23E13FD62591E63A1BC9D959;
+			remoteInfo = ResistorWidget;
+		};
 		B2000001000000000000007A /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = A1000000000000000000005A /* Project object */;
@@ -64,10 +90,32 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		521C92D8AE7DE0DF6402FFCC /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				18A195F9B7925BB56D429711 /* ResistorWidget.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		07168381249E78F8A95464E7 /* SelectHabitIntent.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SelectHabitIntent.swift; sourceTree = "<group>"; };
+		0E671048A9259B7EBC8C1B43 /* TemptationLogger.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TemptationLogger.swift; sourceTree = "<group>"; };
+		1D464333421E9C39C03F5A57 /* QuickLogProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = QuickLogProvider.swift; sourceTree = "<group>"; };
+		39097DA98DAC5F5C22FA4BD3 /* HabitAppEntity.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HabitAppEntity.swift; sourceTree = "<group>"; };
+		3E111D234A6D4D52B3C29F28 /* QuickLogWidgetView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = QuickLogWidgetView.swift; sourceTree = "<group>"; };
 		43CA41CF2F890C0100D11E7D /* Resistor.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Resistor.entitlements; sourceTree = "<group>"; };
 		43CA41D02F89724100D11E7D /* LocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationManager.swift; sourceTree = "<group>"; };
 		43CA41D22F89730100D11E7D /* EventMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventMapView.swift; sourceTree = "<group>"; };
+		49F792C9FFECBD4172FA9C25 /* ResistorWidget.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = ResistorWidget.entitlements; sourceTree = "<group>"; };
+		656E85A95F778C45397ECA90 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		6F4A323D24B5922D97906FD1 /* ResistorWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ResistorWidget.swift; sourceTree = "<group>"; };
 		912EC19ED1BF0A2FAA78B0EA /* ResistorUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ResistorUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		9A7A220FBBC346EEC2773BB4 /* SnapshotTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SnapshotTests.swift; sourceTree = "<group>"; };
 		A1000000000000000000000A /* Resistor.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Resistor.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -94,7 +142,6 @@
 		B2000000000000000000000A /* ResistorTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ResistorTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		B2000001000000000000000A /* TestHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestHelpers.swift; sourceTree = "<group>"; };
 		B2000002000000000000000A /* InsightsViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsViewModelTests.swift; sourceTree = "<group>"; };
-		B2000099000000000000000A /* TimeOfDayDrillDownTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimeOfDayDrillDownTests.swift; sourceTree = "<group>"; };
 		B2000003000000000000000A /* TemptationEventTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemptationEventTests.swift; sourceTree = "<group>"; };
 		B2000004000000000000000A /* HabitsViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HabitsViewModelTests.swift; sourceTree = "<group>"; };
 		B2000005000000000000000A /* LogViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogViewModelTests.swift; sourceTree = "<group>"; };
@@ -106,8 +153,14 @@
 		B200000B000000000000000A /* InsightsViewModelPerformanceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsViewModelPerformanceTests.swift; sourceTree = "<group>"; };
 		B200000C000000000000000A /* TipJarViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TipJarViewModelTests.swift; sourceTree = "<group>"; };
 		B200000D000000000000000A /* DataExporterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataExporterTests.swift; sourceTree = "<group>"; };
+		B2000099000000000000000A /* TimeOfDayDrillDownTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimeOfDayDrillDownTests.swift; sourceTree = "<group>"; };
+		B2000098000000000000000A /* QuickLogWidgetTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickLogWidgetTests.swift; sourceTree = "<group>"; };
 		C1000001000000000000000A /* ContextTag.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContextTag.swift; sourceTree = "<group>"; };
+		C931270813D632B915D37D59 /* ResistorWidgetBundle.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ResistorWidgetBundle.swift; sourceTree = "<group>"; };
+		D34ABD48A949E05238016CBF /* SharedModelContainer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SharedModelContainer.swift; sourceTree = "<group>"; };
 		D550B62AA43FA6F8E07A3859 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		DCA4656BDF208C2526724BEB /* LogResistedIntent.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LogResistedIntent.swift; sourceTree = "<group>"; };
+		DF18F3D313F229C82C59743E /* ResistorWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ResistorWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		E7A986130363EAECA937D1B7 /* UITestSeed.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UITestSeed.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -134,6 +187,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		DAD9D7F0695C075577653FAA /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				504578B580DC558233088F52 /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -144,6 +205,33 @@
 			);
 			name = ResistorUITests;
 			path = ResistorUITests;
+			sourceTree = "<group>";
+		};
+		38FAD11F73233976C5E40B7B /* ResistorWidget */ = {
+			isa = PBXGroup;
+			children = (
+				39097DA98DAC5F5C22FA4BD3 /* HabitAppEntity.swift */,
+				DCA4656BDF208C2526724BEB /* LogResistedIntent.swift */,
+				1D464333421E9C39C03F5A57 /* QuickLogProvider.swift */,
+				3E111D234A6D4D52B3C29F28 /* QuickLogWidgetView.swift */,
+				6F4A323D24B5922D97906FD1 /* ResistorWidget.swift */,
+				C931270813D632B915D37D59 /* ResistorWidgetBundle.swift */,
+				07168381249E78F8A95464E7 /* SelectHabitIntent.swift */,
+				656E85A95F778C45397ECA90 /* Info.plist */,
+				49F792C9FFECBD4172FA9C25 /* ResistorWidget.entitlements */,
+			);
+			name = ResistorWidget;
+			path = ResistorWidget;
+			sourceTree = "<group>";
+		};
+		8FA9546FF2F51539BFE26BD3 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				D34ABD48A949E05238016CBF /* SharedModelContainer.swift */,
+				0E671048A9259B7EBC8C1B43 /* TemptationLogger.swift */,
+			);
+			name = Shared;
+			path = Shared;
 			sourceTree = "<group>";
 		};
 		969C8B9E7218FDE17632ABE0 /* Frameworks */ = {
@@ -162,6 +250,7 @@
 				A1000002000000000000003A /* Products */,
 				969C8B9E7218FDE17632ABE0 /* Frameworks */,
 				34EE3083C015C6E3C9BB1CD1 /* ResistorUITests */,
+				38FAD11F73233976C5E40B7B /* ResistorWidget */,
 			);
 			sourceTree = "<group>";
 		};
@@ -178,6 +267,7 @@
 				A100000F000000000000000A /* Assets.xcassets */,
 				A1000013000000000000000A /* Resistor.entitlements */,
 				A1000014000000000000000A /* TipJar.storekit */,
+				8FA9546FF2F51539BFE26BD3 /* Shared */,
 			);
 			path = Resistor;
 			sourceTree = "<group>";
@@ -188,6 +278,7 @@
 				A1000000000000000000000A /* Resistor.app */,
 				B2000000000000000000000A /* ResistorTests.xctest */,
 				912EC19ED1BF0A2FAA78B0EA /* ResistorUITests.xctest */,
+				DF18F3D313F229C82C59743E /* ResistorWidget.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -253,6 +344,7 @@
 				B2000001000000000000000A /* TestHelpers.swift */,
 				B2000002000000000000000A /* InsightsViewModelTests.swift */,
 				B2000099000000000000000A /* TimeOfDayDrillDownTests.swift */,
+				B2000098000000000000000A /* QuickLogWidgetTests.swift */,
 				B2000003000000000000000A /* TemptationEventTests.swift */,
 				B2000004000000000000000A /* HabitsViewModelTests.swift */,
 				B2000005000000000000000A /* LogViewModelTests.swift */,
@@ -279,6 +371,23 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		23E13FD62591E63A1BC9D959 /* ResistorWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F06824B6E0DF7C31DAAB3F69 /* Build configuration list for PBXNativeTarget "ResistorWidget" */;
+			buildPhases = (
+				52C65BAE9D322E4A160B0946 /* Sources */,
+				DAD9D7F0695C075577653FAA /* Frameworks */,
+				BDA75F724765732A402420C1 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ResistorWidget;
+			productName = ResistorWidget;
+			productReference = DF18F3D313F229C82C59743E /* ResistorWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		A1000000000000000000004A /* Resistor */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = A1000002000000000000005A /* Build configuration list for PBXNativeTarget "Resistor" */;
@@ -286,10 +395,12 @@
 				A1000001000000000000004A /* Sources */,
 				A1000000000000000000002A /* Frameworks */,
 				A1000002000000000000004A /* Resources */,
+				521C92D8AE7DE0DF6402FFCC /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				30CBD047345AEEC1A47413D4 /* PBXTargetDependency */,
 			);
 			name = Resistor;
 			productName = Resistor;
@@ -366,6 +477,7 @@
 				A1000000000000000000004A /* Resistor */,
 				B2000000000000000000004A /* ResistorTests */,
 				B9F79058ED76416224DE5D15 /* ResistorUITests */,
+				23E13FD62591E63A1BC9D959 /* ResistorWidget */,
 			);
 		};
 /* End PBXProject section */
@@ -379,6 +491,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		BDA75F724765732A402420C1 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		D3029735FB6B7E044A7646EB /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -389,6 +508,27 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		52C65BAE9D322E4A160B0946 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				77053A802CD8451E81504253 /* HabitAppEntity.swift in Sources */,
+				400E7DE395ECA6EA4C1D3F9E /* LogResistedIntent.swift in Sources */,
+				16460213A8B00BBED48310E6 /* QuickLogProvider.swift in Sources */,
+				3EB933B6532E4FB909C64487 /* QuickLogWidgetView.swift in Sources */,
+				1678E0842EBF3ABBE56F3401 /* ResistorWidget.swift in Sources */,
+				DDE9B5D235853D45E9B21BCD /* ResistorWidgetBundle.swift in Sources */,
+				411562E8E9D44C6CAE3051F7 /* SelectHabitIntent.swift in Sources */,
+				EE9C4D3F81EBC93818857F9D /* Habit.swift in Sources */,
+				5B9352C836AFB5E055E3C7D8 /* TemptationEvent.swift in Sources */,
+				0436E9E21A4995EE8549E6FE /* UserSettings.swift in Sources */,
+				6338F6467C5189388ECC395C /* ContextTag.swift in Sources */,
+				B63040D04E809F970FF44C72 /* Color+Hex.swift in Sources */,
+				DB24B141241DF326D4B0E457 /* SharedModelContainer.swift in Sources */,
+				8C41ECC1C5222C46E02AACD8 /* TemptationLogger.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		A1000001000000000000004A /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -414,6 +554,8 @@
 				A1000012000000000000001A /* TipJarViewModel.swift in Sources */,
 				A1000015000000000000001A /* DataExporter.swift in Sources */,
 				D354EB66006655563DFD61FB /* UITestSeed.swift in Sources */,
+				CC9B3EE69FC6CED9DA5C375D /* SharedModelContainer.swift in Sources */,
+				5E290EEDAE694A24601B9B21 /* TemptationLogger.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -432,6 +574,7 @@
 				B2000001000000000000001A /* TestHelpers.swift in Sources */,
 				B2000002000000000000001A /* InsightsViewModelTests.swift in Sources */,
 				B2000099000000000000001A /* TimeOfDayDrillDownTests.swift in Sources */,
+				B2000098000000000000001A /* QuickLogWidgetTests.swift in Sources */,
 				B2000003000000000000001A /* TemptationEventTests.swift in Sources */,
 				B2000004000000000000001A /* HabitsViewModelTests.swift in Sources */,
 				B2000005000000000000001A /* LogViewModelTests.swift in Sources */,
@@ -449,6 +592,12 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		30CBD047345AEEC1A47413D4 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = ResistorWidget;
+			target = 23E13FD62591E63A1BC9D959 /* ResistorWidget */;
+			targetProxy = 7DB295D4016A1962AD804F76 /* PBXContainerItemProxy */;
+		};
 		810BE6D2447D5FA6B637022C /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			name = Resistor;
@@ -499,6 +648,69 @@
 				TEST_TARGET_NAME = Resistor;
 			};
 			name = Debug;
+		};
+		61540A9A9B587FC3F377BEFA /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = ResistorWidget/ResistorWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = HBXLU45HR7;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ResistorWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Resistor;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.resistor.app.ResistorWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		9691103CC2D945FFDAE86DCB /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = ResistorWidget/ResistorWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = HBXLU45HR7;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ResistorWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Resistor;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.resistor.app.ResistorWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
 		};
 		A1000001000000000000006A /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -766,6 +978,15 @@
 			buildConfigurations = (
 				B2000001000000000000006A /* Debug */,
 				B2000002000000000000006A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		F06824B6E0DF7C31DAAB3F69 /* Build configuration list for PBXNativeTarget "ResistorWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9691103CC2D945FFDAE86DCB /* Release */,
+				61540A9A9B587FC3F377BEFA /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
