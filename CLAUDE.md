@@ -224,6 +224,27 @@ xcodebuild -project Resistor.xcodeproj \
 **No CI/CD.** Local builds only.
 **Test target:** `ResistorTests` — unit tests for ViewModels, Models, and Services.
 
+**watchOS runtime required for the iOS test action.** The `Resistor` scheme now
+embeds the `ResistorWatch` watch app (Embed Watch Content phase), so
+`xcodebuild test -scheme Resistor …` builds the watch app and **fails on a fresh
+checkout without the watchOS simulator runtime** ("watchOS … must be installed in
+order to test the scheme"). Install it once with `xcodebuild -downloadPlatform
+watchOS` (~4 GB). Build the watch app directly with:
+
+```bash
+xcodebuild -project Resistor.xcodeproj \
+  -scheme ResistorWatch \
+  -destination 'generic/platform=watchOS Simulator' \
+  build
+```
+
+The watch app (`ResistorWatch/`) is a single-screen, tap-only quick-log
+companion (issue #49). It has its **own** SwiftData `ModelContainer` on the same
+CloudKit container (`iCloud.com.resistor.app`) — App Groups do **not** bridge
+iPhone↔Apple Watch, so phone/watch parity comes from CloudKit sync, not the
+shared App-Group store the widget uses. The target is wired by the idempotent
+`scripts/add_watch_target.rb` (rerun if the target is lost).
+
 ### Xcode MCP bridge (preferred when connected)
 
 An `xcode` MCP server (Apple's `xcrun mcpbridge`) is registered with Claude Code
