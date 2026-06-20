@@ -490,7 +490,11 @@ struct LogView: View {
                         .padding(.vertical, 6)
                         .background(
                             RoundedRectangle(cornerRadius: 8)
-                                .fill(isSelected ? accentColor : Color.gray.opacity(0.2))
+                                // Semantic fill (not a fixed translucent gray) so
+                                // the unselected chip keeps adequate presence in
+                                // both light and dark mode rather than fading into
+                                // the pure-black dark canvas.
+                                .fill(isSelected ? accentColor : Color(.secondarySystemFill))
                         )
                         .foregroundStyle(isSelected ? .white : .primary)
                 }
