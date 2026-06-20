@@ -28,6 +28,42 @@ final class SnapshotTests: XCTestCase {
         captureAllScreens(dark: true)
     }
 
+    /// First-run onboarding intro capture → `00-Onboarding.png` /
+    /// `00-Onboarding-dark.png`. Launches with `-uiTestOnboarding`, which boots
+    /// an empty store with onboarding incomplete and a nil accent (system blue),
+    /// so ContentView routes to the new intro premise screen.
+    func testCaptureOnboardingIntro() {
+        let app = XCUIApplication()
+        app.launchArguments += ["-uiTestMode", "-uiTestOnboarding"]
+        app.launch()
+        _ = app.staticTexts["Resistor"].waitForExistence(timeout: 5)
+        snapshot(app, name: "00-Onboarding")
+    }
+
+    func testCaptureOnboardingIntroDark() {
+        let app = XCUIApplication()
+        app.launchArguments += ["-uiTestMode", "-uiTestOnboarding", "-uiTestDarkMode"]
+        app.launch()
+        _ = app.staticTexts["Resistor"].waitForExistence(timeout: 5)
+        snapshot(app, name: "00-Onboarding-dark")
+    }
+
+    /// Onboarding intro at an accessibility (XXXL) Dynamic Type size, to verify
+    /// the premise text and Continue button reflow/scroll rather than clip.
+    func testCaptureOnboardingIntroLargeText() {
+        let app = XCUIApplication()
+        app.launchArguments += ["-uiTestMode", "-uiTestOnboarding"]
+        app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+        app.launch()
+        _ = app.staticTexts["Resistor"].waitForExistence(timeout: 5)
+        snapshot(app, name: "00-Onboarding-large")
+        // Scroll to the bottom to confirm the Continue button is reachable and
+        // not clipped at the largest Dynamic Type size.
+        app.swipeUp(velocity: .slow)
+        app.swipeUp(velocity: .slow)
+        snapshot(app, name: "00-Onboarding-large-b")
+    }
+
     /// Walks every screen and captures a named screenshot of each. When `dark`
     /// is true the app is launched in forced dark mode and each screenshot name
     /// gets a `-dark` suffix so light and dark captures coexist on disk.

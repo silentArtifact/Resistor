@@ -17,6 +17,13 @@ enum UITestSeed {
         ProcessInfo.processInfo.arguments.contains("-uiTestMode")
     }
 
+    /// True when the run should render the first-run onboarding flow instead of
+    /// the seeded main app. Boots an empty in-memory store with onboarding
+    /// incomplete (and a nil accent color, matching a genuine first run).
+    static var isOnboarding: Bool {
+        isActive && ProcessInfo.processInfo.arguments.contains("-uiTestOnboarding")
+    }
+
     /// Color scheme to force during a screenshot run. `.dark` when launched with
     /// `-uiTestDarkMode` (so dark-mode captures are deterministic), otherwise
     /// `nil` — which means "follow the system" and leaves normal runs untouched.
@@ -29,6 +36,11 @@ enum UITestSeed {
     /// relative shape of the data (today / this week / earlier) stable while
     /// still landing in the current calendar period.
     static func populate(_ context: ModelContext) {
+        // First-run onboarding capture: leave the store empty and onboarding
+        // incomplete so ContentView routes to OnboardingView with a nil accent
+        // (system blue tint), exactly as a genuine first launch.
+        if isOnboarding { return }
+
         let calendar = Calendar.current
         let now = Date()
 
