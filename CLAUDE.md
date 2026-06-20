@@ -221,7 +221,12 @@ xcodebuild -project Resistor.xcodeproj \
 
 **Simulator:** iPhone 17 Pro (iOS 26). Do not use iPhone 16 runtimes.
 **Physical device:** iPhone 16 Pro.
-**No CI/CD.** Local builds only.
+**CI:** GitHub Actions (`.github/workflows/ci.yml`) build-and-tests every PR and
+push to `main` on a `macos-15` runner. It pins **Xcode 26.3** and the **iPhone 17
+Pro** simulator to match local builds — keep CI and local on the same Xcode 26
+toolchain so the Swift type-checker behaves identically (Xcode 16.4's solver timed
+out on `LogView`'s habit card; 26's does not). The workflow downloads the watchOS
+runtime before testing because the scheme embeds the watch app (see below).
 **Test target:** `ResistorTests` — unit tests for ViewModels, Models, and Services.
 
 **watchOS runtime required for the iOS test action.** The `Resistor` scheme now

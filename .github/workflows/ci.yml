@@ -16,15 +16,25 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      # Match the local/dev toolchain (CLAUDE.md): Xcode 26, iPhone 17 Pro /
+      # iOS 26. The macos-15 image ships Xcode 26.3. Keeping CI on the same
+      # Swift compiler as local builds avoids type-checker divergence — Xcode
+      # 16.4's solver timed out on LogView's habit card; 26's does not.
       - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode_16.4.app
+        run: sudo xcode-select -s /Applications/Xcode_26.3.app
+
+      # The Resistor scheme embeds the watchOS app (Embed Watch Content), so the
+      # iOS test action also builds the watch app and needs the watchOS simulator
+      # runtime present (see CLAUDE.md "Build & Development").
+      - name: Install watchOS runtime
+        run: xcodebuild -downloadPlatform watchOS
 
       - name: Build
         run: |
           xcodebuild build-for-testing \
             -project Resistor.xcodeproj \
             -scheme Resistor \
-            -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
+            -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
             -quiet
 
       - name: Test
@@ -32,5 +42,5 @@ jobs:
           xcodebuild test-without-building \
             -project Resistor.xcodeproj \
             -scheme Resistor \
-            -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
+            -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
             -quiet
