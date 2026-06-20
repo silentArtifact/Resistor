@@ -4,22 +4,19 @@ import SwiftData
 @main
 struct ResistorApp: App {
     var sharedModelContainer: ModelContainer = {
-        let schema = Schema([
-            Habit.self,
-            TemptationEvent.self,
-            UserSettings.self,
-            ContextTag.self
-        ])
         #if DEBUG
         // UI-test screenshot runs use a clean in-memory store seeded with
         // deterministic sample data, bypassing onboarding and CloudKit.
         if UITestSeed.isActive {
             let testConfiguration = ModelConfiguration(
-                schema: schema,
+                schema: SharedModelContainer.schema,
                 isStoredInMemoryOnly: true
             )
             do {
-                let container = try ModelContainer(for: schema, configurations: [testConfiguration])
+                let container = try ModelContainer(
+                    for: SharedModelContainer.schema,
+                    configurations: [testConfiguration]
+                )
                 UITestSeed.populate(container.mainContext)
                 return container
             } catch {
@@ -28,14 +25,10 @@ struct ResistorApp: App {
         }
         #endif
 
-        let modelConfiguration = ModelConfiguration(
-            schema: schema,
-            isStoredInMemoryOnly: false,
-            cloudKitDatabase: .automatic
-        )
-
+        // Production store lives in the App Group container so the Home Screen
+        // widget extension shares the same SwiftData store (CloudKit-backed).
         do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
+            return try SharedModelContainer.makeContainer()
         } catch {
             fatalError("Could not create ModelContainer: \(error)")
         }

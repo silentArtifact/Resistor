@@ -34,6 +34,7 @@ Comprehensive design document for Resistor, an iOS habit-tracking app that logs 
 2. Allow the user to log an episode of temptation in under a few seconds from opening the app.
 3. Show simple trends over time: frequency changes, time-of-day spikes, day-of-week patterns.
 4. Capture the outcome (resisted / gave in) of each logged temptation without adding any step to the single-tap log, so the Insights outcome breakdown reflects real behavior instead of "Not recorded".
+5. Let a user log a resisted temptation for a chosen habit from the Home Screen in one tap, without opening the app, via a configurable WidgetKit widget (post-v1; see Quick-Log Widget under User Flows).
 
 ### Non-Goals for v1.0
 
@@ -164,6 +165,72 @@ Context tags are user-defined and managed via the `ContextTag` SwiftData model. 
 2. On log, selected tags are attached to the event immediately.
 3. Tag names stored as raw strings in `TemptationEvent.contextTags`.
 4. Users create/delete tags from the Habits & Settings screen.
+
+### Flow 5: Quick-Log Widget (Home Screen, one-tap log)
+
+A Home Screen widget logs a resisted temptation for one bound habit in a single
+tap, without launching the app. This serves the in-the-urge moment when opening
+the app is itself friction (or a relapse trigger — the home screen is often the
+exact surface the user is trying to resist). It is a second entry point to the
+core loop (Flow 1), not a new feature surface; the event written is identical in
+shape to a tap-logged event.
+
+Each placed widget is **configured to exactly one habit** (long-press → Edit
+Widget → choose habit), backed by the standard `AppIntentConfiguration` /
+`WidgetConfigurationIntent` pattern with a habit-selection parameter over an
+`AppEntity` of the user's non-archived habits. A user may place multiple widgets,
+one per habit. This is a fixed product decision — the widget never shows a habit
+picker at tap time, never logs to a "current" habit, and never shows more than
+one habit.
+
+1. User adds the Resistor widget to the Home Screen and edits it to bind a habit.
+2. At rest, the widget shows the bound habit's icon, name, and today's logged
+   count for that habit.
+3. User taps the widget once. An interactive App Intent (iOS 17+) writes exactly
+   one `TemptationEvent` for the bound habit with `outcome = "resisted"`,
+   `intensity = nil`, and no context tags — the same default a single in-app tap
+   produces (Flow 1, UC-O1).
+4. The app is **not** launched. The widget reloads its timeline and shows the
+   incremented today count.
+
+There is **no confirmation banner, no undo, and no outcome correction in the
+widget** — a widget cannot present transient UI. Correction ("Gave in") and
+deletion (undo) happen later in the app: History event detail (Surface C / UC-O4)
+for outcome, swipe-to-delete in History for removal. The widget is a write-only
+fast path; all editing lives in the app.
+
+Edge cases:
+- **Widget not yet configured (no habit bound):** the widget renders a neutral
+  unconfigured state inviting the user to edit it; a tap does **not** log
+  anything (there is no habit to log to). It opens the widget's configuration or
+  the app rather than writing a stray event.
+- **Bound habit archived after configuration:** the widget shows an
+  unavailable/needs-reconfiguration state and a tap does not log. An archived
+  habit is excluded from logging just as it is excluded from the Log screen.
+- **Bound habit deleted after configuration:** same as archived — the binding no
+  longer resolves to a live habit; the widget shows the needs-reconfiguration
+  state and a tap does not log.
+- **User has zero habits:** the configuration habit list is empty; the widget
+  cannot be bound and shows the unconfigured state. No habit can be created from
+  the widget.
+- **Shared store unavailable or not yet synced:** the widget reads/writes the
+  same SwiftData + CloudKit store the app uses (via an App Group so the widget
+  extension and app share the container). If the store cannot be reached, a tap
+  must not silently drop the event nor write a duplicate; the widget surfaces a
+  non-loggable state for that refresh rather than logging into the void. Offline
+  is normal — a write made offline persists locally and syncs later, exactly as
+  in-app logging does.
+- **Rapid repeated taps (double-log):** each deliberate tap is a real event, as
+  on the Log screen (Flow 1 edge cases). However, an accidental double-fire of a
+  single tap must not create two events; the intent debounces near-simultaneous
+  invocations for the same widget so one physical tap yields exactly one event.
+  A user who genuinely taps twice (two urges) gets two events — that is correct.
+- **Stale count between refreshes:** the at-rest count is a timeline snapshot and
+  may lag reality (e.g. after an in-app log, or a log from another device syncing
+  in). The count is a convenience indicator, not a source of truth; it reconciles
+  on the next timeline reload (after a widget tap, or WidgetKit's normal refresh
+  cadence). The count is never used to make a logging decision, so staleness is
+  cosmetic, never a correctness risk.
 
 ---
 
@@ -688,6 +755,404 @@ All colors here are semantic (outcome system colors + `.primary`) and the sheet 
 standard `List`, so dark mode is automatic. No translucent fills that could disappear
 on the black canvas.
 
+### W1: Quick-Log Widget (Home Screen)
+
+A WidgetKit Home Screen widget that logs a resisted temptation for one bound
+habit in a single tap, without opening the app. It is a second entry point to the
+core loop (Flow 1 / Flow 5), built on system frameworks only (WidgetKit +
+AppIntents — both first-party, so the no-third-party-dependency rule holds). The
+widget extension and the app share one SwiftData + CloudKit store via an App
+Group; the widget writes the same `TemptationEvent` an in-app tap writes.
+
+Fixed product decisions (not open for design re-litigation):
+- **Configurable, single-habit binding.** Each placed widget is locked to one
+  user-chosen habit via `AppIntentConfiguration` / `WidgetConfigurationIntent`,
+  with a habit-selection parameter backed by an `AppEntity` over the user's
+  non-archived habits. Multiple widgets, one per habit, are allowed.
+- **One tap = one resisted log.** A single tap fires an interactive App Intent
+  that writes one `TemptationEvent`: `outcome = "resisted"`, `intensity = nil`,
+  no context tags. No habit picker at tap time, no app launch.
+- **At-rest content:** bound habit's icon, name, and today's logged count.
+- **No confirmation, no undo, no correction in the widget.** Correction and
+  deletion happen in the app (History / UC-O4). After a tap the widget reloads
+  its timeline to show the updated count.
+
+#### Quick-Log Widget (use cases)
+
+The widget exists to remove the last bit of friction from logging in the urge
+moment: even opening the app can be a deterrent, and the Home Screen is often the
+very surface the user is trying to resist. This requires **no schema change** —
+the event written is identical to an in-app tap log, which the data model already
+supports. The only new infrastructure is an App Group so the widget extension and
+app share the store, plus a WidgetKit/AppIntents target.
+
+**UC-W1 — One-tap log from the Home Screen.**
+As someone in the urge moment, I want to log that I resisted a temptation for my
+habit straight from the Home Screen so that I capture it without opening the app.
+Acceptance criteria:
+- Tapping a configured widget writes exactly one `TemptationEvent` bound to the
+  widget's habit, with `outcome = "resisted"`, `intensity = nil`, and an empty
+  context-tag array.
+- The app is not launched by the tap.
+- The new event is identical in shape to a single in-app tap log and appears in
+  Insights and History for that habit like any other event.
+- After the tap, the widget's displayed today count for that habit increments on
+  the next timeline reload.
+
+**UC-W2 — Bind the widget to a habit.**
+As someone setting up the widget, I want to choose which habit it logs to so that
+each widget tracks the habit I intend.
+Acceptance criteria:
+- Long-press → Edit Widget presents a habit-selection parameter listing only the
+  user's non-archived habits, by name (and icon/color where the system allows).
+- Selecting a habit binds the widget to it; the at-rest widget then shows that
+  habit's icon, name, and today's count.
+- Multiple placed widgets can each be bound to a different habit independently.
+- Archived habits do not appear in the selection list.
+
+**UC-W3 — At-rest display.**
+As someone glancing at the Home Screen, I want the widget to show which habit it
+logs and how many times I've logged today so that the tap target is unambiguous.
+Acceptance criteria:
+- A configured widget shows the bound habit's name, icon, and today's logged
+  count for that habit.
+- The displayed count reflects events with `occurredAt` on the current day for
+  that habit (matching the in-app "Today: {n} logged" definition).
+- The count may lag the live store between refreshes; it reconciles on the next
+  timeline reload and is never used to decide whether to log.
+
+**UC-W4 — Unconfigured / unavailable widget does not log.**
+As someone who hasn't finished setting up the widget (or whose bound habit is
+gone), I want a tap to never create a stray or misattributed event so that my data
+stays trustworthy.
+Acceptance criteria:
+- A widget with no habit bound shows an unconfigured state; a tap does not write
+  an event (it opens configuration or the app instead).
+- If the bound habit was archived or deleted after configuration, the widget
+  shows a needs-reconfiguration state and a tap does not write an event.
+- When the user has zero non-archived habits, the configuration list is empty and
+  the widget cannot be bound; no habit can be created from the widget.
+
+**UC-W5 — One tap yields exactly one event.**
+As someone tapping quickly, I want a single physical tap to log exactly once so
+that I don't get phantom double-counts.
+Acceptance criteria:
+- A single tap creates exactly one event; an accidental double-fire of that one
+  tap is debounced so it does not create two events.
+- Two deliberate, separate taps create two events (two urges = two events),
+  consistent with the Log screen's rapid-tap behavior.
+- If the shared store is unreachable on a given refresh, a tap does not silently
+  drop the event nor write a duplicate; the widget surfaces a non-loggable state
+  for that refresh. An offline write persists locally and syncs later, as in-app
+  logging does.
+
+#### Quick-Log Widget (exact copy)
+
+All strings clinical, no motivational/emotional language, no emoji, honoring the
+Forbidden Language table. These are the **final strings** the implementer ships; the
+state-by-state placement is specified under "interaction and visual spec" below.
+
+| Element | Final string |
+|---------|--------------|
+| At-rest count (medium) | `Today: {n} logged` (the full Log-screen form; medium has the width for it) |
+| At-rest count (small) | `{n} today` (space-constrained equivalent; small cannot fit the long form at large Dynamic Type without truncating the habit name) |
+| Habit name | The habit's own name, verbatim; never decorated, never prefixed |
+| Unconfigured state — primary | `No habit selected` |
+| Unconfigured state — secondary | `Choose a habit in Edit Widget` |
+| Needs-reconfiguration — primary | `Habit unavailable` |
+| Needs-reconfiguration — secondary | `Edit widget to choose another` |
+| Store-unavailable — primary | `Count unavailable` |
+| Store-unavailable — secondary (medium only) | `Tap to log; count updates later` |
+| Tap affordance | No "tap to log" hint text in the at-rest configured state; the habit card is the affordance (consistent with the in-app no-hint convention) |
+| Forbidden | No "Great job", "Streak", "You resisted!", success/celebration copy, or emoji anywhere in the widget |
+
+Copy notes:
+- The small size drops every secondary line in the error/setup states — it has room
+  for one short line only. The primary string alone must be self-explanatory, which is
+  why each primary (`No habit selected`, `Habit unavailable`, `Count unavailable`)
+  stands on its own.
+- `Tap to log; count updates later` is the **one place** a "tap to log" phrase is
+  allowed, and only in the store-unavailable medium state: there, tapping still works
+  (the write enqueues), but the count cannot be shown, so the line explains why the
+  number is missing rather than hinting at the affordance. It is a status explanation,
+  not a motivational hint. It is omitted on small for space.
+
+#### Quick-Log Widget (interaction and visual spec)
+
+Build-ready spec for the W1 widget. New WidgetKit extension target + `AppIntents`;
+no new screen in the main app, no navigation push, no data-model or schema change.
+The widget reuses the existing habit color system (`Color(hex:)`) and semantic colors
+only. Everything below is sized for the two in-scope families: **systemSmall** and
+**systemMedium**.
+
+##### Rendering constraints the implementer must respect
+
+These are WidgetKit/iOS facts that shape the design — they are not negotiable and the
+layout above is built around them:
+
+- **No scrolling, no live state, no gestures.** A Home Screen widget is a static
+  timeline snapshot. The only interactivity available (iOS 17+) is
+  `Button(intent:)` / `Toggle(intent:)` with an `AppIntent`. There is **no** tap
+  hint animation, no press-state ripple beyond the system's built-in button dim, and
+  no hold/long-press logging (the in-app hold-to-log effect does **not** port to the
+  widget — a tap is the only gesture).
+- **The whole widget is the button.** Wrap the entire content in a single
+  `Button(intent: LogResistedIntent(habit: …))` so the full card is the tap target
+  (matches "the habit card is the affordance"). Use `.buttonStyle(.plain)` so the
+  system does not draw its own chrome over the custom layout; the system still applies
+  a subtle dim on touch-down, which is the only press feedback (acceptable, and the
+  only feedback a widget can give — see "tap affordance treatment" below).
+- **No haptics.** Widget-extension code cannot fire `UIImpactFeedbackGenerator` or
+  Core Haptics. The widget's log tap therefore has **no** haptic, unlike the in-app
+  tap. This is a platform limit, not a design choice; do not attempt a workaround.
+- **No confirmation, no undo, no banner.** A widget cannot present transient UI
+  (already fixed). The only post-tap feedback is the count changing on the next
+  timeline reload (see "after a tap").
+- **Configuration is a system sheet, not our UI.** The habit picker is the system's
+  Edit Widget sheet, driven by the `WidgetConfigurationIntent`'s habit parameter
+  (`@Parameter` over an `AppEntity` whose `suggestedEntities()` returns non-archived
+  habits, by name + symbol). We do not lay this out; we only supply the entity list
+  and display strings. Archived habits are excluded by filtering at
+  `suggestedEntities()`.
+- **`containerBackground` is required (iOS 17+).** Use
+  `.containerBackground(for: .widget) { … }` for the widget background; do not paint a
+  full-bleed color manually. The background is `Color(.systemBackground)` tinted with
+  the habit color at low opacity (see Colors).
+- **Margins.** Use the system default content margins (do not zero them out). Treat the
+  usable content inset as the system-provided `widgetContentMargins`; all spacing
+  values below are *inside* that inset.
+
+##### Tap affordance treatment (no hint text allowed)
+
+There is no "tap to log" label and no animated cue. The affordance is conveyed
+structurally, the same way the in-app habit card conveys it:
+
+- The configured widget reads as a single, solid, color-tinted card — a deliberate
+  filled surface, not flat text on the wallpaper. A filled tappable card is the
+  established Resistor affordance language (the Log-screen habit card).
+- The habit icon is rendered at full habit-color saturation inside a filled
+  circular/rounded token, which reads as a "button face."
+- The system's touch-down dim (from `Button`) is the only motion. No custom pulse,
+  glow, or scale — those would violate the clinical tone and cannot be driven in a
+  widget anyway.
+- In the **non-loggable** states (unconfigured, needs-reconfiguration), the card is
+  intentionally **de-emphasized** (muted/secondary treatment, no habit-color fill) so
+  it does *not* read as a primed log button — a user must not feel invited to tap a
+  surface that won't log. The visual difference between "filled habit-color card =
+  loggable" and "flat secondary card = not loggable" is the affordance signal.
+
+##### State (a): Configured / at-rest — small (systemSmall)
+
+A vertical stack, top-aligned content with the count pinned low, inside the content
+margin:
+
+```
+┌─────────────────────────┐
+│ ◉  (icon token)         │   ← icon token top-leading
+│                         │
+│ Sugar                   │   ← habit name
+│                         │
+│ 3 today                 │   ← count, bottom-leading
+└─────────────────────────┘
+```
+
+- Layout: `VStack(alignment: .leading, spacing: 0)` with a `Spacer()` between the
+  name block and the count so the count sits at the bottom-leading corner.
+- **Icon token (top-leading):** `Image(systemName: habit.iconName ?? "circle.fill")`
+  in a 28pt font, `.foregroundStyle(habitColor)`, inside a rounded square token
+  44×44pt, fill `habitColor.opacity(0.18)`, corner radius 12pt. The token is the
+  visual anchor and reads as the button face.
+- **Habit name:** `Text(habit.name)`, `.font(.headline)`, `.fontWeight(.semibold)`,
+  `.foregroundStyle(.primary)`, `.lineLimit(2)`, `.minimumScaleFactor(0.8)`. Two lines
+  max; long names wrap then scale slightly rather than truncate hard. 8pt top spacing
+  below the icon token.
+- **Count:** `Text("\(n) today")`, `.font(.title2)`, `.fontWeight(.bold)`,
+  `.foregroundStyle(.primary)` for the number; `.foregroundStyle(.secondary)` for the
+  word `today`. Build as `Text("\(n) ").fontWeight(.bold) + Text("today").font(.subheadline).foregroundStyle(.secondary)`
+  so the number dominates and the unit is quiet. Pinned bottom-leading.
+- Background: `.containerBackground(for: .widget)` = `Color(.systemBackground)` with an
+  `habitColor.opacity(0.12)` overlay fill (the 15%-ish habit tint, matching the
+  in-app card language; 12% reads correctly over both system backgrounds).
+- The entire card is one `Button(intent: LogResistedIntent(habitID:))`,
+  `.buttonStyle(.plain)`.
+
+##### State (a): Configured / at-rest — medium (systemMedium)
+
+A horizontal split: icon + name on the leading 60%, the count as a large numeral
+trailing, vertically centered.
+
+```
+┌──────────────────────────────────────────────┐
+│  ◉   Sugar                            3        │
+│       Today: 3 logged                          │
+└──────────────────────────────────────────────┘
+```
+
+- Layout: `HStack(spacing: 16)` → [leading `VStack`] · `Spacer()` · [trailing big
+  numeral].
+- **Icon token:** same rounded-square token as small, 48×48pt, icon at 30pt font,
+  `habitColor` on `habitColor.opacity(0.18)` fill, 14pt radius. Leading.
+- **Leading VStack** (`alignment: .leading, spacing: 4`), sits right of the icon token
+  inside the same HStack — i.e. the real structure is
+  `HStack { token; VStack { name; countLine } ; Spacer(); bigNumeral }`:
+  - `Text(habit.name)`, `.font(.title3)`, `.fontWeight(.semibold)`, `.lineLimit(1)`,
+    `.minimumScaleFactor(0.8)`.
+  - `Text("Today: \(n) logged")`, `.font(.subheadline)`,
+    `.foregroundStyle(.secondary)`, `.lineLimit(1)`. This is the full canonical
+    Log-screen string — medium has the width for it.
+- **Trailing big numeral:** `Text("\(n)")`, `.font(.system(size: 44, weight: .bold, design: .rounded))`,
+  `.foregroundStyle(habitColor)`, `.minimumScaleFactor(0.6)`, `.lineLimit(1)`. This is
+  the one place the habit color is used for text (a large glanceable count), and it
+  pairs with the secondary `Today: {n} logged` line so color is never the sole carrier
+  of meaning. At triple-digit counts the scale factor shrinks it to fit; it never
+  clips.
+- Background: same habit-tinted `containerBackground` as small.
+- The whole `HStack` is wrapped in one `Button(intent:)`, `.buttonStyle(.plain)`.
+
+> The medium count appears **twice** (the big trailing numeral and the `Today: {n}
+> logged` line). This is deliberate: the numeral is the glance value, the text line is
+> the unambiguous, VoiceOver-friendly, clinical-tone statement that matches in-app
+> copy. They always show the same `n`.
+
+##### State (b): Unconfigured / needs-setup (no habit bound)
+
+No habit is bound (fresh placement, before Edit Widget). A tap must **not** log.
+Because the widget content is a `Button(intent:)`, the unconfigured state must use a
+**different intent** that does nothing loggable — bind it to an `AppIntent` whose
+`perform()` is a no-op returning `.result()` (it cannot deep-link or open config from
+inside `perform`; the system's own long-press → Edit Widget is the real path). Simpler
+and preferred: in the unconfigured state, render the content **not** wrapped in a
+`Button` at all (plain `View`), so there is no log target and a tap falls through to
+the system (long-press still opens Edit Widget). Use the no-button approach.
+
+- **Small:** `VStack(alignment: .leading, spacing: 6)`:
+  - Icon: `Image(systemName: "square.dashed")`, 26pt, `.foregroundStyle(.secondary)`.
+    The dashed-square glyph signals "empty slot," not a habit.
+  - `Text("No habit selected")`, `.font(.subheadline)`, `.fontWeight(.medium)`,
+    `.foregroundStyle(.primary)`, `.lineLimit(2)`.
+  - (No secondary line on small — space.)
+- **Medium:** `HStack(spacing: 14)` icon token (dashed square, 40pt, secondary, in a
+  `Color(.secondarySystemFill)` rounded token) + `VStack(alignment: .leading, spacing: 4)`:
+  - `Text("No habit selected")`, `.font(.headline)`, `.foregroundStyle(.primary)`.
+  - `Text("Choose a habit in Edit Widget")`, `.font(.subheadline)`,
+    `.foregroundStyle(.secondary)`, `.lineLimit(2)`.
+- Background: `.containerBackground(for: .widget) { Color(.systemBackground) }` — **no
+  habit-color tint** (there is no habit, and the muted surface signals non-loggable).
+- No `Button`. The whole card is one combined accessibility element (see VoiceOver).
+
+##### State (c): Needs-reconfiguration (bound habit archived or deleted)
+
+The stored habit ID no longer resolves to a live, non-archived habit. Identical layout
+to state (b) but different glyph and copy, and still **no `Button`** (tap must not
+log):
+
+- Glyph: `Image(systemName: "exclamationmark.triangle")`, `.foregroundStyle(.secondary)`
+  (not `.red` — this is a setup condition, not a destructive error; `.secondary`
+  keeps it calm and clinical). Small 26pt; medium 40pt in a `Color(.secondarySystemFill)`
+  token.
+- **Small:** `Text("Habit unavailable")`, `.font(.subheadline)`, `.fontWeight(.medium)`,
+  `.primary`, `.lineLimit(2)`. No secondary line.
+- **Medium:** primary `Text("Habit unavailable")` `.font(.headline)` `.primary`;
+  secondary `Text("Edit widget to choose another")` `.font(.subheadline)`
+  `.secondary`, `.lineLimit(2)`.
+- Background: plain `Color(.systemBackground)` container, no habit tint.
+- Do **not** show the dead habit's name or color (the binding is stale; showing it
+  would imply it still logs there).
+
+##### State (d): Store-unavailable / non-loggable refresh
+
+The bound habit resolves fine, but on this timeline refresh the shared SwiftData +
+CloudKit store could not be read (App Group container unreachable / mid-migration), so
+the today count is unknown. Unlike (b)/(c), **tapping still works** — the
+`LogResistedIntent` enqueues the write, which persists locally and syncs later (offline
+is normal). So this state **keeps the `Button(intent:)`** but cannot show a real count.
+
+- Layout mirrors the **configured** state of the same size, so the user still sees the
+  habit identity and a loggable card — only the count is replaced:
+  - **Small:** icon token (habit color, as configured) + habit name (as configured) +
+    in the count slot, `Text("Count unavailable")`, `.font(.subheadline)`,
+    `.foregroundStyle(.secondary)` (no numeral). Single line, no secondary.
+  - **Medium:** icon token + name (as configured); the `Today: {n} logged` line is
+    replaced by `Text("Count unavailable")` `.font(.subheadline)` `.secondary`, and a
+    second line `Text("Tap to log; count updates later")` `.font(.caption)`
+    `.foregroundStyle(.tertiary)` (`Color(.tertiaryLabel)`); the trailing big numeral
+    is replaced by `Image(systemName: "ellipsis")` 28pt `.foregroundStyle(.secondary)`
+    (a neutral "pending" placeholder, never a `0` — `0` would be a false count).
+- Background: keep the **habit-color tint** (this is still a loggable card bound to the
+  habit), distinguishing it from the un-tinted (b)/(c) non-loggable states.
+- Rationale for keeping the tap: dropping the write here would violate UC-W5 (offline
+  writes must persist). The widget logs into the local store and the count reconciles
+  on the next successful read. The only thing "unavailable" is the *display* of the
+  count, not the ability to log.
+
+> If even the habit identity cannot be resolved because the store is unreachable
+> (cannot tell configured from unconfigured), fall back to the **needs-reconfiguration
+> (c)** appearance with no `Button`, because we cannot guarantee a tap routes to a real
+> habit. Prefer (d) whenever the bound habit ID and name are known from the
+> configuration intent (which is held by WidgetKit independently of the store) even if
+> the count read fails — the configuration carries the habit identity, so identity is
+> usually available even when the event count is not.
+
+##### After a tap (timeline reload)
+
+- `LogResistedIntent.perform()` writes one `TemptationEvent` (`outcome = "resisted"`,
+  `intensity = nil`, `contextTags = []`, `habit` = the bound habit) to the shared
+  container, `try? save()`, then calls
+  `WidgetCenter.shared.reloadTimelines(ofKind: "QuickLogWidget")` (or reload all) so
+  the widget re-renders with the incremented count.
+- **Debounce (UC-W5):** the intent records the last-fire timestamp per widget
+  configuration (e.g. in the App Group `UserDefaults` keyed by the habit ID) and
+  ignores a second fire within ~800ms of the same configuration, so an accidental
+  double-delivery of one physical tap yields one event. Two deliberate taps separated
+  by more than the window create two events. This is logic, not visual — there is no
+  on-widget indication of debounce.
+- There is no animation of the count change — a widget reload is a system-driven
+  snapshot replacement, not an animatable view transition. The number simply updates
+  on the next render. (Nothing to gate on Reduce Motion here; see below.)
+
+##### Colors and dark mode
+
+- `habitColor` = `Color(hex: habit.colorHex ?? "#007AFF") ?? .blue` — the exact
+  existing pattern. Never a hardcoded brand color, never the user *accent* color
+  (the widget is habit-scoped, not theme-scoped; accent lives at the app root tint and
+  does not apply in the widget extension).
+- Card background: `Color(.systemBackground)` + `habitColor.opacity(0.12)` overlay in
+  loggable states; plain `Color(.systemBackground)` in (b)/(c). All adaptive →
+  **dark mode is automatic**. Do not use a hardcoded translucent gray anywhere (it can
+  vanish on the pure-black dark wallpaper, the same failure the in-app context chips
+  hit); use `Color(.secondarySystemFill)` for the muted token and `Color(.separator)`
+  if any hairline is needed.
+- The big medium numeral and the icon glyph are the habit color; everything else is
+  `.primary` / `.secondary` / `.tertiary` semantic text. Because the count is also
+  stated as text (`Today: {n} logged`), color is never the only carrier of meaning.
+- Habit-color contrast on the tinted card: the 12% tint is a faint wash, so
+  `.primary` text and the full-saturation habit glyph both keep AA contrast in light
+  and dark. (A future ui-iterator pass should screenshot the widget on light and dark
+  wallpapers — flagged as follow-up; not done here.)
+
+##### Reduce Motion
+
+There is no widget-side animation to gate (timeline reloads are not animatable view
+transitions, and there is no tap-cue animation by design). Reduce Motion therefore has
+**no effect** on this widget — call it out so the implementer does not add motion that
+would then need gating. The system button touch-down dim is a platform behavior, not
+app motion.
+
+##### Dynamic Type
+
+- All text uses text styles (`.headline`, `.title2`, `.title3`, `.subheadline`,
+  `.caption`) plus `.minimumScaleFactor` on the constrained lines (habit name, big
+  numeral) so large accessibility sizes scale-to-fit instead of clipping. No fixed
+  font sizes except the medium big numeral, which is `.system(size: 44, …)` with
+  `.minimumScaleFactor(0.6)` so it shrinks rather than clips.
+- Widgets do **not** honor arbitrary Dynamic Type past a point (WidgetKit clamps), but
+  the layout must still survive the largest size it does honor: on small at AX sizes,
+  the long `Today: {n} logged` would overflow, which is exactly why small uses the
+  short `{n} today` form. Test small + medium at Default, Large, AX3, AX5 in the widget
+  gallery preview.
+- Long habit names wrap (small, 2 lines) or scale (medium, 1 line) — never hard
+  truncate with an ellipsis on the name itself.
+
 ---
 
 ## Visual Design System
@@ -809,6 +1274,8 @@ Dark mode is the default. Light mode must also work.
 | Tap | Confirmation banner "Gave in" (State 1 only) | Flip last-logged event outcome to `gave_in` (no re-prompt); banner → State 2; re-arm 5s timer | — |
 | Tap | Confirmation banner "Undo" (both states) | Delete last-logged event; dismiss banner | — |
 | Tap | History event-detail Outcome picker | Open menu, select outcome; persist to that event | — |
+| Tap | Quick-Log Widget card (configured / store-unavailable state) | Fire `LogResistedIntent`: write one resisted event for the bound habit, reload timeline | ~800ms per-config debounce against accidental double-fire |
+| Long press | Quick-Log Widget card (any state) | System Edit Widget sheet (habit binding) — system gesture, not app-drawn | System default |
 
 ### Drag Gesture (Habit Card)
 
@@ -1213,6 +1680,38 @@ explicit accessibility representation rather than relying on the visual `Chart`.
   change. The conditional absence of "Not recorded" is simply fewer rows in the menu;
   nothing special to announce.
 
+#### Quick-Log Widget (VoiceOver)
+
+Each state collapses to **one** combined accessibility element
+(`.accessibilityElement(children: .combine)` over the card content), because the whole
+card is the unit of meaning (and, in loggable states, the single tap target). The
+loggable states carry `.isButton`; the non-loggable states do not.
+
+| State | Label | Trait | Hint |
+|-------|-------|-------|------|
+| (a) Configured / at-rest | `"{Habit}, {n} logged today"` (use `"1 logged today"` / `"0 logged today"`) | `.isButton` | `"Logs a resisted temptation."` |
+| (b) Unconfigured | `"No habit selected. Choose a habit in Edit Widget."` | none | `"Long press to edit this widget."` |
+| (c) Needs-reconfiguration | `"Habit unavailable. Edit widget to choose another."` | none | `"Long press to edit this widget."` |
+| (d) Store-unavailable | `"{Habit}, count unavailable"` | `.isButton` | `"Logs a resisted temptation. Count updates later."` |
+
+Notes:
+- The label always speaks the full unambiguous form. On small, where the visual count
+  is the terse `{n} today`, VoiceOver still speaks `"{n} logged today"` (the medium
+  form), so assistive tech never loses clarity — same principle as the time-of-day
+  hourly labels.
+- States (b) and (c) carry **no `.isButton` trait** and **no "logs" hint**, because a
+  tap there does not log; labeling them as a log action would mislead a non-visual
+  user into thinking they had logged. Their hint points at the only available action:
+  the system long-press → Edit Widget.
+- State (d) keeps `.isButton` and the "logs" hint (the tap *does* log); its label says
+  the count is unavailable rather than reading a stale or false number. Do not speak a
+  `0` or `ellipsis` as the count.
+- The widget extension **cannot post `UIAccessibility` announcements** (no app-process
+  accessibility API from a widget). The only feedback after a log is the count change
+  on the next timeline reload, which VoiceOver re-reads when the user re-focuses the
+  widget. This is an accepted limitation, parallel to the no-haptic and no-banner
+  constraints — do not attempt an announcement workaround.
+
 ### Dynamic Type
 
 - All text uses SwiftUI text styles (no hardcoded sizes)
@@ -1380,7 +1879,16 @@ On success: "Thank you." text. On failure/cancel: no message. No nag screens.
 
 ### Tier 2: Enhancement (v1.2)
 
-**Home Screen Widget (WidgetKit)** — Today's count for default habit. Small/medium/large sizes. No logging from widget.
+**Quick-Log Widget (WidgetKit)** — Configurable, single-habit Home Screen widget
+that logs a resisted temptation in one tap without opening the app (interactive
+App Intent, iOS 17+). Shows the bound habit's icon, name, and today's count at
+rest. Each placed widget is bound to one habit via `WidgetConfigurationIntent`;
+multiple widgets, one per habit. No confirmation/undo in the widget — correction
+happens in History. Full brief: User Flows → Flow 5 and Screens → W1. **Scope this
+pass: small + medium configurable Home Screen widget only. Out/Later:** Lock
+Screen widgets, Control Center controls (iOS 18), multi-habit-in-one-widget, and
+showing today's count for a non-configured "default" habit are all deferred (the
+configurable single-habit model is the chosen design).
 
 **Apple Watch App (WatchKit)** — Logging only. Complication shows today's count. Outcome selection. Syncs via iCloud.
 
@@ -1444,3 +1952,15 @@ Summary of all design decisions made during the design phase.
 | Banner outcome word | "Logged" (State 1), "Gave In" (State 2) — not "Resisted" | Banner confirms the log action; surfacing "Resisted" would imply a choice the user didn't make |
 | History outcome picker style | Inline `.menu`-style `Picker` (icon+text rows), not segmented | Conditional option count (2 vs 3) makes a sometimes-3-segment control unstable; menu keeps the collapsed row identical to other read-only rows |
 | Banner control haptics | None | Haptic policy: only the log tap gets haptic; secondary actions get none |
+| Quick-log widget binding | Configurable, one habit per widget (`WidgetConfigurationIntent` + `AppEntity` over non-archived habits) | Avoids a tap-time picker; keeps one tap = one log; user places multiple widgets for multiple habits |
+| Quick-log widget action | One tap writes one `resisted` event (intensity nil, no tags) via interactive App Intent; no app launch | Mirrors the in-app single-tap default (UC-O1); removes the open-app friction in the urge moment |
+| Quick-log widget correction/undo | None in widget; correct outcome and delete in History (UC-O4) | A widget cannot show transient banner/undo UI; editing already lives in the app |
+| Quick-log widget vs notifications ban | No collision; a widget is passive Home Screen content, not a push/alert | The ban is on interruptive notifications; the widget never alerts, schedules, or pushes |
+| Quick-log widget scope | Small + medium configurable Home Screen widget only | Lock Screen, Control Center (iOS 18), multi-habit, and default-habit display deferred; configurable single-habit is the chosen model |
+| Quick-log widget data sharing | App Group–shared SwiftData + CloudKit store; additive only | Widget extension and app must share one container; no schema change — event shape already exists |
+| Quick-log widget at-rest count form | Medium `Today: {n} logged` (full canonical string); small `{n} today` | Small cannot fit the long form alongside the habit name at large Dynamic Type without truncating the name; the short form preserves the name |
+| Quick-log widget tap target | Whole card is one `Button(intent:)` in loggable states; no `Button` in (b)/(c) | The card is the affordance (matches in-app habit card); removing the button in non-loggable states guarantees a tap cannot write a stray event |
+| Quick-log widget tap affordance | Filled habit-color-tinted card + icon token; system touch-down dim only; no hint text, no custom motion | A widget cannot animate a cue and clinical tone forbids "tap to log"; a filled tinted card vs flat secondary card is the loggable/not-loggable signal |
+| Quick-log widget non-loggable visuals | (b)/(c) drop the habit-color tint and use a muted `square.dashed` / `exclamationmark.triangle` glyph in `.secondary`, no `Button` | The card must not *look* like a primed log button when a tap won't log; `.secondary` (not `.red`) keeps a setup condition calm and clinical |
+| Quick-log widget store-unavailable | Keeps the tap (write enqueues + syncs later), replaces the count with `Count unavailable` / `ellipsis`, keeps habit tint | UC-W5 requires offline writes to persist; only the count *display* is unavailable, so the card stays loggable and never shows a false `0` |
+| Quick-log widget haptics / motion / announcements | None — platform-limited in a widget extension | Widgets can't fire haptics, animate timeline reloads, or post `UIAccessibility` announcements; the count change on reload is the only feedback |
