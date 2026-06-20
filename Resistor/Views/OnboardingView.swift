@@ -23,6 +23,7 @@ struct OnboardingView: View {
                         .font(.body)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
                         .padding(.horizontal)
                 }
                 .padding(.top, 40)
@@ -74,6 +75,9 @@ struct OnboardingView: View {
                                     }
                                 }
                                 .padding(.horizontal)
+                                // Vertical room so the selection ring isn't
+                                // clipped by the scroll view's content bounds.
+                                .padding(.vertical, 4)
                             }
                         }
 
@@ -106,6 +110,9 @@ struct OnboardingView: View {
                                     }
                                 }
                                 .padding(.horizontal)
+                                // Vertical room so the selection border isn't
+                                // clipped by the scroll view's content bounds.
+                                .padding(.vertical, 4)
                             }
                         }
                     }

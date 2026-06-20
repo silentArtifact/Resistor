@@ -79,6 +79,19 @@ final class SnapshotTests: XCTestCase {
             app.tabBars.buttons["Habits"].tap()
             snapshot(app, name: "04-Habits\(sfx)")
 
+            // 5. New Habit sheet & 6. Edit Habit sheet — both use the same form,
+            // whose color/icon pickers carry the selection-ring rendering we want
+            // to verify isn't clipped. Captured before scrolling the list so the
+            // add button and the first habit row are both on screen.
+            captureHabitFormSheet(
+                app, open: { app.buttons["addHabitButton"].tap() },
+                title: "New Habit", namePrefix: "05-NewHabit", sfx: sfx
+            )
+            captureHabitFormSheet(
+                app, open: { app.staticTexts["Sugar"].tap() },
+                title: "Edit Habit", namePrefix: "06-EditHabit", sfx: sfx
+            )
+
             // Scrolled captures so the Settings / Context Tags sections below
             // the fold can be reviewed. An inset-grouped List surfaces as a
             // collectionView/table rather than a plain scrollView.
@@ -92,6 +105,27 @@ final class SnapshotTests: XCTestCase {
                 snapshot(app, name: "04-Habits-c\(sfx)")
             }
         }
+    }
+
+    /// Opens the add/edit habit form sheet, captures the top (name + Color
+    /// picker) and a scrolled view (Icon picker + Preview), then cancels back
+    /// out. `open` performs the gesture that presents the sheet; `title` is the
+    /// sheet's navigation-bar title used to confirm it appeared and to dismiss.
+    private func captureHabitFormSheet(
+        _ app: XCUIApplication,
+        open: () -> Void,
+        title: String,
+        namePrefix: String,
+        sfx: String
+    ) {
+        open()
+        guard app.navigationBars[title].waitForExistence(timeout: 3) else { return }
+        snapshot(app, name: "\(namePrefix)\(sfx)")
+        // A full-sheet Form scrolls with a window swipe; reveal the Icon picker.
+        app.swipeUp(velocity: .slow)
+        snapshot(app, name: "\(namePrefix)-b\(sfx)")
+        let cancel = app.navigationBars[title].buttons["Cancel"]
+        if cancel.exists { cancel.tap() }
     }
 
     /// Captures a full-screen screenshot and attaches it under `name`.

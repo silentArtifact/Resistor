@@ -109,8 +109,10 @@ struct HistoryView: View {
             // Event details
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
-                    if let habit = event.habit {
-                        Text(habit.name)
+                    // When the list is scoped to one habit, the screen title
+                    // already names it — showing it on every row is redundant.
+                    if habit == nil, let eventHabit = event.habit {
+                        Text(eventHabit.name)
                             .font(.subheadline)
                             .fontWeight(.medium)
                     }

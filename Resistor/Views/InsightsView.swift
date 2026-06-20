@@ -613,7 +613,9 @@ struct StatCard: View {
                 .fontWeight(.bold)
                 .foregroundStyle(valueColor)
                 .lineLimit(1)
-                .minimumScaleFactor(0.7)
+                // Floor low enough that the longest value ("Afternoon") still
+                // fits a half-width card at large Dynamic Type without clipping.
+                .minimumScaleFactor(0.5)
 
             Text(subtitle)
                 .font(.caption2)

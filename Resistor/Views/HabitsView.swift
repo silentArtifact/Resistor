@@ -51,6 +51,8 @@ struct HabitsView: View {
                     }) {
                         Image(systemName: "plus")
                     }
+                    .accessibilityLabel("Add Habit")
+                    .accessibilityIdentifier("addHabitButton")
                 }
             }
         }

@@ -173,11 +173,11 @@ struct LogView: View {
 
         ZStack {
             VStack(spacing: 0) {
-                // Smaller top spacer biases the hero cluster toward the optical
-                // center (slightly above geometric middle) rather than stranding
-                // it low with a large void under the title.
+                // Top spacer is bounded but smaller than the bottom flexible
+                // space, so the hero cluster sits just above optical center and
+                // the void under the navigation title is tightened.
                 Spacer(minLength: 0)
-                    .frame(maxHeight: 56)
+                    .frame(maxHeight: 28)
 
                 // Current habit card cluster — pager sits directly above the
                 // card it controls so the relationship reads as one unit.
@@ -185,35 +185,44 @@ struct LogView: View {
                     if vm.habits.count > 1 {
                         habitCarousel(vm)
                             .opacity(1.0 - dimAmount)
-                            .padding(.bottom, 20)
+                            .padding(.bottom, 16)
                     }
 
                     habitCard(habit, vm: vm)
 
-                    Text("Tap or hold to log")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                        .padding(.top, 12)
+                    Label("Tap or hold to log", systemImage: "hand.tap")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .padding(.top, 14)
                         .opacity(1.0 - dimAmount)
 
                     // Context tags (pre-select before logging)
                     if !contextTags.isEmpty {
-                        tagChips
-                            .padding(.top, 20)
-                            .opacity(1.0 - dimAmount)
+                        VStack(spacing: 10) {
+                            Text("Add context (optional)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, 24)
+
+                            tagChips
+                        }
+                        .padding(.top, 28)
+                        .opacity(1.0 - dimAmount)
                     }
-                }
-
-                Spacer(minLength: 0)
-
-                // Today's count
-                if let habit = vm.selectedHabit {
+                    // Today's count sits a fixed distance below the chips so it
+                    // reads as part of the hero cluster instead of stranding at
+                    // the very bottom of the screen.
                     Text("Today: \(habit.todayEventsCount) logged")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
-                        .padding(.bottom, 24)
+                        .padding(.top, 28)
                         .opacity(1.0 - dimAmount)
                 }
+
+                // Larger flexible space below the cluster than above it keeps the
+                // composed group centered slightly high, with no low void.
+                Spacer(minLength: 0)
             }
 
             // Dimming vignette behind the card during hold
@@ -279,6 +288,11 @@ struct LogView: View {
         let habitColor = Color(hex: habit.colorHex ?? "#007AFF") ?? .blue
         let cardScale = reduceMotion ? 1.0 : 1.0 + (holdProgress * 0.08)
         let glowPulseIntensity: CGFloat = glowPulsing ? 1.0 : 0.5
+        // Resting affordance: a steady habit-color border so the card reads as
+        // the primary tappable action (not a passive info panel), and gives the
+        // surface figure/ground separation on the pure-black dark canvas. The
+        // hold effect's progress/glow rings render on top of this.
+        let restBorderOpacity: CGFloat = isHolding ? 0 : 0.55
 
         VStack(spacing: 16) {
             // Icon — gets its own glow during hold
@@ -312,10 +326,18 @@ struct LogView: View {
             RoundedRectangle(cornerRadius: 20)
                 .fill(Color(.secondarySystemBackground))
                 .overlay(
-                    // Background tint intensifies during hold
+                    // Background tint intensifies during hold. Resting tint is a
+                    // touch stronger than before so the surface separates from
+                    // the canvas (notably the pure-black dark background).
                     RoundedRectangle(cornerRadius: 20)
-                        .fill(habitColor.opacity(0.1 + holdProgress * 0.2))
+                        .fill(habitColor.opacity(0.15 + holdProgress * 0.2))
                 )
+        )
+        .overlay(
+            // Resting affordance border — steady habit-color stroke that signals
+            // the card is the interactive log control and frames the surface.
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(habitColor.opacity(restBorderOpacity), lineWidth: 1.5)
         )
         .overlay(
             // Progress trim ring — shows exactly how far along the hold is
