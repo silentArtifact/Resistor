@@ -404,6 +404,43 @@ final class InsightsViewModelTests: XCTestCase {
         XCTAssertEqual(vm.resistedPercentage, 75)
     }
 
+    func testResistedPercentageExcludesUnknownFromDenominator() throws {
+        let habit = TestHelpers.makeHabit()
+        context.insert(habit)
+
+        let now = Date()
+
+        // 3 resisted + 1 unknown (legacy "Not recorded"). The unknown event must
+        // be excluded from the denominator: 3/3 recorded = 100%, not 3/4 = 75%.
+        for _ in 0..<3 {
+            context.insert(TestHelpers.makeEvent(habit: habit, occurredAt: now, outcome: "resisted"))
+        }
+        context.insert(TestHelpers.makeEvent(habit: habit, occurredAt: now, outcome: "unknown"))
+
+        try context.save()
+
+        let vm = InsightsViewModel(modelContext: context)
+        vm.selectedTimeRange = .week
+
+        XCTAssertEqual(vm.resistedCount, 3)
+        XCTAssertEqual(vm.resistedPercentage, 100)
+    }
+
+    func testResistedPercentageNilWhenOnlyUnknownEvents() throws {
+        let habit = TestHelpers.makeHabit()
+        context.insert(habit)
+
+        let now = Date()
+        context.insert(TestHelpers.makeEvent(habit: habit, occurredAt: now, outcome: "unknown"))
+        try context.save()
+
+        let vm = InsightsViewModel(modelContext: context)
+        vm.selectedTimeRange = .week
+
+        // No recorded outcomes → no meaningful rate.
+        XCTAssertNil(vm.resistedPercentage)
+    }
+
     func testResistedPercentageNilWhenNoEvents() throws {
         let habit = TestHelpers.makeHabit()
         context.insert(habit)

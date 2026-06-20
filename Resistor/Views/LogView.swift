@@ -39,7 +39,10 @@ struct LogView: View {
         let tagsToLog = selectedTagNames.intersection(validNames)
 
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        vm.logTemptation(contextTags: Array(tagsToLog))
+        // Only confirm if the event actually persisted; otherwise the banner
+        // would claim a log that didn't happen and its Undo could delete a
+        // previously logged event.
+        guard vm.logTemptation(contextTags: Array(tagsToLog)) else { return }
         vm.triggerConfirmation()
         // The confirmation banner is a transient visual; VoiceOver won't read it
         // on its own, so post an explicit announcement of the result.
@@ -462,7 +465,7 @@ struct LogView: View {
             HStack(spacing: 8) {
                 Image(systemName: didGiveIn ? "xmark.circle.fill" : "checkmark.circle.fill")
                     .foregroundStyle(didGiveIn ? .orange : .green)
-                    .contentTransition(.symbolEffect(.replace))
+                    .contentTransition(reduceMotion ? .identity : .symbolEffect(.replace))
                 Text(didGiveIn ? TemptationEvent.Outcome.gaveIn.displayName : "Logged")
                     .fontWeight(.medium)
                     .foregroundStyle(.primary)

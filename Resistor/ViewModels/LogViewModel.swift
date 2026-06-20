@@ -57,8 +57,15 @@ final class LogViewModel {
         }
     }
 
-    func logTemptation(contextTags: [String] = []) {
-        guard let habit = selectedHabit else { return }
+    /// Logs a new temptation event with the default "resisted" outcome.
+    /// - Returns: `true` if the event was inserted and saved, `false` if there
+    ///   was no selected habit or the save failed. Callers should only present
+    ///   the confirmation banner on `true` — otherwise the banner would claim a
+    ///   log that didn't happen and its Undo could delete a *prior* event still
+    ///   referenced by `lastLoggedEvent`.
+    @discardableResult
+    func logTemptation(contextTags: [String] = []) -> Bool {
+        guard let habit = selectedHabit else { return false }
 
         let event = TemptationEvent(
             habit: habit,
@@ -77,8 +84,13 @@ final class LogViewModel {
                     await captureLocation(for: event)
                 }
             }
+            return true
         } catch {
             print("Failed to save temptation event: \(error)")
+            // Leave the failed insert unsaved and discard it so a stale
+            // lastLoggedEvent isn't surfaced by a confirmation banner.
+            modelContext.delete(event)
+            return false
         }
     }
 
@@ -116,6 +128,9 @@ final class LogViewModel {
         confirmationWorkItem?.cancel()
         let workItem = DispatchWorkItem { [weak self] in
             self?.showConfirmation = false
+            // Clear the reference once the banner is gone so a later failed log
+            // can't fall back to this stale event (see logTemptation).
+            self?.lastLoggedEvent = nil
         }
         confirmationWorkItem = workItem
         DispatchQueue.main.asyncAfter(deadline: .now() + 5.0, execute: workItem)

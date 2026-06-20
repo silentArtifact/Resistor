@@ -236,9 +236,12 @@ final class InsightsViewModel {
     }
 
     var resistedPercentage: Int? {
-        let total = totalEventsInRange
-        guard total > 0 else { return nil }
-        return Int(Double(resistedCount) / Double(total) * 100)
+        // Denominator is only events with a recorded outcome — legacy "Not
+        // recorded" (unknown) events are excluded so they don't drag the rate
+        // down. This reads as "% of recorded outcomes that were resisted".
+        let recorded = eventsInRange().filter { $0.outcomeEnum != .unknown }.count
+        guard recorded > 0 else { return nil }
+        return Int(Double(resistedCount) / Double(recorded) * 100)
     }
 
     // MARK: - Peak Time
@@ -294,12 +297,14 @@ final class InsightsViewModel {
 
         return grouped.sorted { $0.key > $1.key }.prefix(8).map { weekStart, weekEvents in
             let resisted = weekEvents.filter { $0.outcomeEnum == .resisted }.count
+            let recorded = weekEvents.filter { $0.outcomeEnum != .unknown }.count
             let intensities = weekEvents.compactMap(\.intensity)
             let avgIntensity = intensities.isEmpty ? nil : Double(intensities.reduce(0, +)) / Double(intensities.count)
             return PeriodSummary(
                 startDate: weekStart,
                 totalEvents: weekEvents.count,
                 resistedCount: resisted,
+                recordedCount: recorded,
                 averageIntensity: avgIntensity
             )
         }
@@ -318,12 +323,14 @@ final class InsightsViewModel {
 
         return grouped.sorted { $0.key > $1.key }.prefix(6).map { monthStart, monthEvents in
             let resisted = monthEvents.filter { $0.outcomeEnum == .resisted }.count
+            let recorded = monthEvents.filter { $0.outcomeEnum != .unknown }.count
             let intensities = monthEvents.compactMap(\.intensity)
             let avgIntensity = intensities.isEmpty ? nil : Double(intensities.reduce(0, +)) / Double(intensities.count)
             return PeriodSummary(
                 startDate: monthStart,
                 totalEvents: monthEvents.count,
                 resistedCount: resisted,
+                recordedCount: recorded,
                 averageIntensity: avgIntensity
             )
         }
@@ -395,12 +402,15 @@ struct PeriodSummary: Identifiable {
     let startDate: Date
     let totalEvents: Int
     let resistedCount: Int
+    /// Events with a recorded outcome (resisted or gave-in) — excludes legacy
+    /// "Not recorded" events so they don't depress the resistance rate.
+    let recordedCount: Int
     let averageIntensity: Double?
 
     var id: Date { startDate }
 
     var resistedPercentage: Int? {
-        guard totalEvents > 0 else { return nil }
-        return Int(Double(resistedCount) / Double(totalEvents) * 100)
+        guard recordedCount > 0 else { return nil }
+        return Int(Double(resistedCount) / Double(recordedCount) * 100)
     }
 }
