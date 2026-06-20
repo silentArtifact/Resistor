@@ -224,6 +224,23 @@ xcodebuild -project Resistor.xcodeproj \
 **No CI/CD.** Local builds only.
 **Test target:** `ResistorTests` — unit tests for ViewModels, Models, and Services.
 
+### Xcode MCP bridge (preferred when connected)
+
+An `xcode` MCP server (Apple's `xcrun mcpbridge`) is registered with Claude Code
+for this project, giving agents structured access to the **open** Xcode project —
+builds, test runs, and diagnostics as data rather than scraped `xcodebuild` log
+text. **When the `xcode` MCP tools are available, prefer them** for building,
+testing, and reading errors; fall back to the `xcodebuild` command above only
+when the bridge isn't connected.
+
+Requires, on the developer's machine: Xcode Settings → **Intelligence** →
+**Model Context Protocol** → **"Allow external agents to use Xcode tools"** is on,
+the Resistor project is **open in Xcode**, and the session was restarted after the
+server was added (MCP servers load at session start). If the `xcode` tools aren't
+present, assume one of those isn't satisfied and use `xcodebuild`. The bridge does
+**not** manage Signing & Capabilities or Developer-portal provisioning (App
+Groups, CloudKit) — those remain manual Xcode steps.
+
 ## Development Team (Agent Roster & Routing)
 
 Resistor is built by a roster of role subagents that mirror a software
@@ -291,6 +308,9 @@ coexist on disk; each mode only cleans its own files.
 
 - #35 — App icon design
 - #37 — Accessibility pass (in progress — comprehensive VoiceOver/Dynamic Type sweep)
+- #47 — Quick-log widget: device verification + App Group / CloudKit capability setup
+- #48 — No haptics firing on device (tap impact + hold Core Haptics both silent)
+- #49 — watchOS app: wrist-fast resisted-temptation logging (post-v1, companion to widget)
 
 ## Remaining Work (v1.0)
 
