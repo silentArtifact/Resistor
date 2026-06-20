@@ -30,6 +30,7 @@
 		A1000015000000000000001A /* DataExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000015000000000000000A /* DataExporter.swift */; };
 		B2000001000000000000001A /* TestHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000001000000000000000A /* TestHelpers.swift */; };
 		B2000002000000000000001A /* InsightsViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000002000000000000000A /* InsightsViewModelTests.swift */; };
+		B2000099000000000000001A /* TimeOfDayDrillDownTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000099000000000000000A /* TimeOfDayDrillDownTests.swift */; };
 		B2000003000000000000001A /* TemptationEventTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000003000000000000000A /* TemptationEventTests.swift */; };
 		B2000004000000000000001A /* HabitsViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000004000000000000000A /* HabitsViewModelTests.swift */; };
 		B2000005000000000000001A /* LogViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000005000000000000000A /* LogViewModelTests.swift */; };
@@ -93,6 +94,7 @@
 		B2000000000000000000000A /* ResistorTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ResistorTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		B2000001000000000000000A /* TestHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestHelpers.swift; sourceTree = "<group>"; };
 		B2000002000000000000000A /* InsightsViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsViewModelTests.swift; sourceTree = "<group>"; };
+		B2000099000000000000000A /* TimeOfDayDrillDownTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimeOfDayDrillDownTests.swift; sourceTree = "<group>"; };
 		B2000003000000000000000A /* TemptationEventTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemptationEventTests.swift; sourceTree = "<group>"; };
 		B2000004000000000000000A /* HabitsViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HabitsViewModelTests.swift; sourceTree = "<group>"; };
 		B2000005000000000000000A /* LogViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogViewModelTests.swift; sourceTree = "<group>"; };
@@ -250,6 +252,7 @@
 			children = (
 				B2000001000000000000000A /* TestHelpers.swift */,
 				B2000002000000000000000A /* InsightsViewModelTests.swift */,
+				B2000099000000000000000A /* TimeOfDayDrillDownTests.swift */,
 				B2000003000000000000000A /* TemptationEventTests.swift */,
 				B2000004000000000000000A /* HabitsViewModelTests.swift */,
 				B2000005000000000000000A /* LogViewModelTests.swift */,
@@ -428,6 +431,7 @@
 			files = (
 				B2000001000000000000001A /* TestHelpers.swift in Sources */,
 				B2000002000000000000001A /* InsightsViewModelTests.swift in Sources */,
+				B2000099000000000000001A /* TimeOfDayDrillDownTests.swift in Sources */,
 				B2000003000000000000001A /* TemptationEventTests.swift in Sources */,
 				B2000004000000000000001A /* HabitsViewModelTests.swift in Sources */,
 				B2000005000000000000001A /* LogViewModelTests.swift in Sources */,

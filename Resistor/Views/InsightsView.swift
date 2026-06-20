@@ -8,6 +8,12 @@ struct InsightsView: View {
 
     @State private var viewModel: InsightsViewModel?
 
+    /// Non-nil = the "Time of Day" card is expanded into the hourly drill-down
+    /// for that period; nil = the 4-period overview. At most one at a time.
+    @State private var expandedPeriod: TimeOfDayPeriod?
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var body: some View {
         NavigationStack {
             Group {
@@ -353,18 +359,205 @@ struct InsightsView: View {
 
     @ViewBuilder
     private func timeOfDayChart(_ vm: InsightsViewModel) -> some View {
+        let barColor = Color(hex: vm.selectedHabit?.colorHex ?? "#007AFF") ?? .blue
+
+        SectionCard(
+            title: timeOfDayTitle,
+            accessory: expandedPeriod.map { _ in AnyView(collapseControl) }
+        ) {
+            if let period = expandedPeriod {
+                expandedTimeOfDayChart(vm, period: period, barColor: barColor)
+            } else {
+                overviewTimeOfDayChart(vm, barColor: barColor)
+            }
+        }
+    }
+
+    private var timeOfDayTitle: String {
+        if let period = expandedPeriod {
+            return "Time of Day · \(period.displayName)"
+        }
+        return "Time of Day"
+    }
+
+    private var collapseControl: some View {
+        Button {
+            setExpandedPeriod(nil)
+            UIAccessibility.post(notification: .announcement, argument: "Showing time-of-day overview")
+        } label: {
+            Image(systemName: "chevron.up.circle")
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Collapse hourly breakdown")
+        .accessibilityAddTraits(.isButton)
+    }
+
+    /// Applies an `expandedPeriod` change, animating only when Reduce Motion is off.
+    private func setExpandedPeriod(_ period: TimeOfDayPeriod?) {
+        if reduceMotion {
+            expandedPeriod = period
+        } else {
+            withAnimation(.easeInOut(duration: 0.25)) {
+                expandedPeriod = period
+            }
+        }
+    }
+
+    // MARK: Time of Day — Overview (4 periods)
+
+    @ViewBuilder
+    private func overviewTimeOfDayChart(_ vm: InsightsViewModel, barColor: Color) -> some View {
         let data = vm.timeOfDayDistribution()
 
-        SectionCard(title: "Time of Day") {
-            Chart(data, id: \.period) { item in
-                BarMark(
-                    x: .value("Period", item.period),
-                    y: .value("Count", item.count)
-                )
-                .foregroundStyle(Color(hex: vm.selectedHabit?.colorHex ?? "#007AFF") ?? .blue)
-            }
-            .frame(height: 150)
+        Chart(data, id: \.period) { item in
+            BarMark(
+                x: .value("Period", item.period),
+                y: .value("Count", item.count)
+            )
+            .foregroundStyle(barColor)
         }
+        .frame(height: 150)
+        .chartOverlay { proxy in
+            GeometryReader { geo in
+                Rectangle()
+                    .fill(Color.clear)
+                    .contentShape(Rectangle())
+                    .gesture(
+                        SpatialTapGesture()
+                            .onEnded { value in
+                                guard let plotFrame = proxy.plotFrame else { return }
+                                let origin = geo[plotFrame].origin
+                                let xPosition = value.location.x - origin.x
+                                if let periodString: String = proxy.value(atX: xPosition),
+                                   let period = TimeOfDayPeriod(periodString: periodString) {
+                                    setExpandedPeriod(period)
+                                    UIAccessibility.post(
+                                        notification: .announcement,
+                                        argument: "Showing hourly breakdown for \(period.displayName)"
+                                    )
+                                }
+                            }
+                    )
+            }
+        }
+        // The bars themselves aren't natively accessible; we hide the chart and
+        // expose explicit button elements below for VoiceOver.
+        .accessibilityHidden(true)
+        overviewAccessibilityElements(data)
+    }
+
+    /// Hidden-but-accessible buttons mirroring each overview bar, since Swift
+    /// Charts bars aren't VoiceOver elements on their own.
+    @ViewBuilder
+    private func overviewAccessibilityElements(_ data: [(period: String, count: Int)]) -> some View {
+        VStack(spacing: 0) {
+            ForEach(data, id: \.period) { item in
+                Color.clear
+                    .frame(height: 0)
+                    .accessibilityElement()
+                    .accessibilityLabel("\(item.period), \(eventCountPhrase(item.count))")
+                    .accessibilityAddTraits(.isButton)
+                    .accessibilityHint("Double tap to show hourly breakdown.")
+                    .accessibilityAction {
+                        if let period = TimeOfDayPeriod(periodString: item.period) {
+                            setExpandedPeriod(period)
+                            UIAccessibility.post(
+                                notification: .announcement,
+                                argument: "Showing hourly breakdown for \(period.displayName)"
+                            )
+                        }
+                    }
+            }
+        }
+        .frame(height: 0)
+        .accessibilityElement(children: .contain)
+    }
+
+    // MARK: Time of Day — Expanded (hourly drill-down)
+
+    @ViewBuilder
+    private func expandedTimeOfDayChart(_ vm: InsightsViewModel, period: TimeOfDayPeriod, barColor: Color) -> some View {
+        let data = vm.hourlyDistribution(for: period)
+        // Ordered category strings so Charts renders Night left-to-right
+        // (21,22,23,0,1,2,3,4) without re-sorting numerically.
+        let orderedLabels = data.map { String($0.hour) }
+        // Floor the y-domain at 0…1 so an all-zero window (e.g. Night with no
+        // events in range) still renders a baseline and a "0/1" y-axis rather
+        // than an empty void that reads as broken. The flat baseline is the
+        // intended "all zero" answer (per spec), but it needs a frame to read
+        // as a chart at all.
+        let yMax = max(data.map(\.count).max() ?? 0, 1)
+
+        Chart(data, id: \.hour) { item in
+            BarMark(
+                x: .value("Hour", String(item.hour)),
+                y: .value("Count", item.count)
+            )
+            .foregroundStyle(barColor)
+        }
+        .chartXScale(domain: orderedLabels)
+        .chartYScale(domain: 0...yMax)
+        .frame(height: 150)
+        .chartYAxis {
+            AxisMarks(values: .automatic(desiredCount: 3)) { value in
+                AxisGridLine()
+                AxisValueLabel {
+                    if let count = value.as(Int.self) {
+                        Text("\(count)")
+                            .font(.caption2)
+                    }
+                }
+            }
+        }
+        .chartXAxis {
+            AxisMarks { value in
+                AxisValueLabel {
+                    if let label = value.as(String.self) {
+                        Text(label)
+                            .font(.caption2)
+                    }
+                }
+            }
+        }
+        // Tapping hourly bars does nothing; expose each hour for VoiceOver only.
+        .accessibilityHidden(true)
+        expandedAccessibilityElements(data)
+    }
+
+    @ViewBuilder
+    private func expandedAccessibilityElements(_ data: [(hour: Int, count: Int)]) -> some View {
+        VStack(spacing: 0) {
+            ForEach(data, id: \.hour) { item in
+                Color.clear
+                    .frame(height: 0)
+                    .accessibilityElement()
+                    .accessibilityLabel("\(Self.twelveHourClock(item.hour)), \(eventCountPhrase(item.count))")
+            }
+        }
+        .frame(height: 0)
+        .accessibilityElement(children: .contain)
+    }
+
+    /// "4 events" / "1 event" / "0 events" with correct pluralization.
+    private func eventCountPhrase(_ count: Int) -> String {
+        count == 1 ? "1 event" : "\(count) events"
+    }
+
+    /// 24-hour value → full 12-hour clock form for VoiceOver: 0→"12 AM",
+    /// 13→"1 PM", 12→"12 PM", 18→"6 PM".
+    private static func twelveHourClock(_ hour: Int) -> String {
+        let period = hour < 12 ? "AM" : "PM"
+        let twelve: Int
+        if hour % 12 == 0 {
+            twelve = 12
+        } else {
+            twelve = hour % 12
+        }
+        return "\(twelve) \(period)"
     }
 
     @ViewBuilder

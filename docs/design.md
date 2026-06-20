@@ -82,6 +82,56 @@ Edge cases:
 - No events: empty state prompting to log from Log tab
 - High event counts: charts stay legible
 
+### Flow 3a: Time-of-Day Drill-Down
+
+The Time of Day chart presents four coarse periods (Morning, Afternoon, Evening,
+Night) as the legible overview. The user may expand one period in place to inspect
+its hour-by-hour breakdown. Expansion is in-place on the Insights screen; it does
+**not** push a new screen (honors the max-one-level-deep navigation rule).
+
+1. On the Insights screen, the Time of Day chart shows the four-period bar chart.
+2. User selects a period (e.g. Evening).
+3. The chart expands in place to show hourly bars for only that period's hours
+   (Evening = 17:00, 18:00, 19:00, 20:00).
+4. User selects the same period again, or selects a collapse affordance, to return
+   to the four-period overview.
+5. Selecting a different period replaces the current expansion with that period's
+   hours.
+
+Period-to-hour mapping (derived from `occurredAt`, matching
+`TemptationEvent.timeOfDayPeriod`):
+
+| Period | Hours (24h) |
+|--------|-------------|
+| Morning | 05, 06, 07, 08, 09, 10, 11 |
+| Afternoon | 12, 13, 14, 15, 16 |
+| Evening | 17, 18, 19, 20 |
+| Night | 21, 22, 23, 00, 01, 02, 03, 04 |
+
+Edge cases:
+- Night wraps midnight (21:00–04:00). Hourly bars for Night are ordered 21→04, not
+  numerically, so the window reads as a continuous block.
+- A period with zero events still expands; its hourly bars all read zero. No empty
+  state is shown for an expanded period — the zero bars are the answer.
+- The expansion respects the active habit and time range (7/30 days); changing
+  either while expanded **recomputes** the hourly bars for the still-selected period
+  and keeps it expanded (it does **not** collapse). Rationale below in
+  "Filter changes while expanded."
+- Hour count is keyed to the device's selected habit and range filter only — no
+  cross-habit aggregation.
+
+**Filter changes while expanded (decided).** When the user changes the habit
+selector or the 7/30-day range while a period is expanded, the chart **stays
+expanded on the same period and recomputes its hourly bars** — it does not collapse
+to the overview. Rationale: a user inspecting "Evening" is mid-question
+("when in the evening?"); switching habit or range is almost always a follow-up of
+that same question ("…and for my other habit?"). Collapsing would force a re-tap to
+resume the comparison and lose the user's place. The expansion is a view state keyed
+to a period identity (Morning/Afternoon/Evening/Night), not to a specific dataset,
+so it survives a data refresh cleanly. The bars animate their height to the new
+counts (see Motion); no stale data is ever shown because the hourly query reads the
+same `cachedEventsInRange` the overview does.
+
 ### Flow 4: Context Logging
 
 Context tags are user-defined and managed via the `ContextTag` SwiftData model. Tags are displayed as selectable chips directly on the Log screen (pre-selected before logging), rather than in a post-log sheet.
@@ -124,9 +174,197 @@ Context tags are user-defined and managed via the `ContextTag` SwiftData model. 
 - Summary stats: this period vs previous, peak time, peak day
 - Outcome breakdown (stacked bar + resisted %)
 - Daily trend chart (bar chart)
-- Time of day chart (bar chart)
+- Time of day chart (bar chart) — four periods; a selected period expands in place
+  to hourly bars (see Time-of-Day Drill-Down below)
 - Day of week chart (bar chart)
 - "View History" navigation link
+
+#### Time-of-Day Drill-Down (use cases)
+
+The four-period Time of Day chart is the default, legible overview. Event data is
+sparse (typically tens of events per user), so 24 hourly bars up front would read
+as noise. A user who notices a spike in one period can expand that period to hourly
+detail on demand — fine resolution appears only where the user signaled interest.
+
+This requires **no data-model or schema change**. Hourly granularity is derived
+from the existing `TemptationEvent.occurredAt` timestamp (`hourOfDay` /
+`timeOfDayPeriod` already exist; `InsightsViewModel.hourlyDistribution()` already
+returns per-hour counts). No new field, no CloudKit migration.
+
+**UC-1 — Expand a period to hourly detail.**
+As someone reviewing patterns, I want to expand a time period into its hours so
+that I can see which hour within a spike is driving it.
+Acceptance criteria:
+- The four-period chart is the default state on entering Insights.
+- Selecting a period replaces that period's single bar with one bar per hour in
+  that period's window (per the mapping in Flow 3a).
+- The hourly bars are labeled by hour and cover exactly the selected period's hours
+  — no more, no fewer.
+- Counts in the hourly bars sum to the count shown for that period in the overview
+  (for the same habit and time range).
+
+**UC-2 — Collapse back to the overview.**
+As someone reviewing patterns, I want to return to the four-period overview so that
+I can compare periods again after inspecting one.
+Acceptance criteria:
+- A collapse affordance returns the chart to the four-period overview.
+- The same chart remains on the Insights screen throughout; no navigation push
+  occurs, and the back/tab state is unchanged.
+
+**UC-3 — Switch the inspected period.**
+As someone reviewing patterns, I want to expand a different period without first
+collapsing so that comparison is quick.
+Acceptance criteria:
+- Selecting a different period while one is expanded replaces the hourly bars with
+  the newly selected period's hours.
+- At most one period is expanded at a time.
+
+**UC-4 — Drill-down reflects active filters.**
+As someone reviewing patterns, I want the hourly view to honor my selected habit
+and time range so that the detail matches the overview it came from.
+Acceptance criteria:
+- Hourly bars reflect only the currently selected habit and the active 7/30-day
+  range.
+- Changing the habit selector or time range while a period is expanded recomputes
+  the hourly bars for the still-selected period (or collapses to overview — a
+  ux-designer decision; either is acceptable so long as no stale data is shown).
+
+**UC-5 — Sparse / empty data.**
+As someone with few logged events, I want the drill-down to behave predictably so
+that an empty hour isn't mistaken for a bug.
+Acceptance criteria:
+- A period with zero events still expands; all its hourly bars read zero.
+- The Night period's hourly bars are ordered 21:00 → 04:00 (wrapping midnight), not
+  numerically, so the window reads as one continuous block.
+- No separate empty state is shown for an expanded period; zero bars are the
+  result.
+
+#### Time-of-Day Drill-Down (interaction and visual spec)
+
+This is the build-ready spec for the drill-down. It refines the `timeOfDayChart`
+function inside the existing `SectionCard(title: "Time of Day")` in
+`Views/InsightsView.swift`. No new screen, no navigation push, no new data model.
+
+##### Placement and layout
+
+Everything lives inside the existing `SectionCard`. The card grows/shrinks in height
+as the chart swaps; the surrounding Insights `ScrollView` reflows naturally.
+
+The card has two stacked regions inside its existing 16pt-spaced `VStack`:
+
+1. **Header row** (replaces the plain `SectionCard` title for this one card). The
+   card is built with `SectionCard(title:)` as today, but uses the card's
+   `accessory` slot for a trailing collapse control when expanded:
+   - Title text: `"Time of Day"` in the overview state. When a period is expanded,
+     the title becomes `"Time of Day · Evening"` (middot-joined,
+     `Text("Time of Day") + Text(" · ") + Text(period)`), where the period segment
+     is `.foregroundStyle(.secondary)`. This anchors the user without a separate
+     breadcrumb row. The title uses the existing `.headline` style and is allowed to
+     wrap to two lines at large Dynamic Type (no `lineLimit(1)`).
+   - Accessory (expanded state only): a **collapse control** — an SF Symbol
+     `chevron.up.circle` button, `.font(.body)`, `.foregroundStyle(.secondary)`,
+     min 44×44pt tap target (pad to reach it). In the overview state the accessory
+     slot is empty.
+2. **Chart region** — the `Chart` itself, 150pt tall in both states (unchanged from
+   today, so the card does not jump in height between states; only the title and
+   x-axis change).
+
+##### States
+
+| State | Chart content | Header | Notes |
+|-------|---------------|--------|-------|
+| **Overview** (default) | 4 `BarMark`s: Morning, Afternoon, Evening, Night, habit color | Title `"Time of Day"`, no accessory | Identical to today's chart plus tap affordance |
+| **Expanded** (one period) | N `BarMark`s, one per hour in the period's window (4 Evening / 5 Afternoon / 7 Morning / 8 Night), habit color | Title `"Time of Day · {Period}"` + collapse chevron | Replaces the 4-bar overview entirely |
+| **Expanded, zero-data** | Same N hourly bars, all at height 0 (flat baseline, axis labels visible) | Same as Expanded | No separate empty copy. The flat axis is the answer. The card is **not** rendered at all when the whole habit/range `!vm.hasData` — that case is already handled upstream by `noDataView`, so the drill-down never shows for a habit with zero total events. |
+| **Range/habit change while expanded** | Bars animate height to recomputed counts for the same period | Unchanged (same period title) | Stays expanded; see Flow 3a "Filter changes while expanded" |
+| **Loading** | No dedicated spinner | — | Insights recompute is synchronous and instant from `cachedEventsInRange`; there is no async loading state for this card. The whole Insights screen already gates on `viewModel == nil` with a `ProgressView` upstream. |
+
+There is intentionally **no disabled state** and **no per-bar selected state** in the
+overview — every period bar is always tappable, including zero-count ones (a
+zero-count period expands to all-zero hourly bars, consistent with UC-5).
+
+##### Interaction model (gestures)
+
+- **Tap target = the whole period bar (and its full-height column), not a chevron.**
+  Implement with Swift Charts `.chartOverlay` + a `chartProxy` hit test that maps the
+  tap x-location to the nearest period via `proxy.value(atX:)`. The tappable region
+  is the full chart-plot height for that period's x-band, so a zero-count bar (which
+  has near-zero drawn height) is still easily tappable. No visible chevron on
+  individual bars — keeps the overview clean and legible per the "4-bar overview is
+  the legible default" goal.
+- **Tap a period (overview → expanded):** sets `expandedPeriod = .evening`. Chart
+  swaps to that period's hourly bars.
+- **Tap the same period again is NOT the collapse path.** Once expanded, the
+  individual hourly bars are not themselves a collapse target (tapping an hourly bar
+  does nothing — hourly is the resolution floor this pass). Collapse is an **explicit
+  control**: the `chevron.up.circle` accessory in the header. This avoids the
+  ambiguity of "did I tap the same period or a different one" when the overview bars
+  are no longer on screen.
+- **Tap a different period to swap:** only reachable from the overview. Because the
+  overview bars are replaced when expanded, swapping is a two-step gesture: collapse
+  (chevron) → tap the other period. This is deliberate: at most one period is
+  expanded, and the overview is the comparison surface. (A future pass may add a
+  compact period segmented control above the hourly chart to allow direct swap
+  without collapsing — explicitly out of scope here.)
+- State model: a single `@State private var expandedPeriod: TimeOfDayPeriod?` on
+  `InsightsView` (nil = overview). The implementer defines a small
+  `enum TimeOfDayPeriod: String { case morning, afternoon, evening, night }` with a
+  `displayName` and an ordered `hours: [Int]` array (Night = `[21,22,23,0,1,2,3,4]`,
+  NOT numeric sort).
+
+##### Hourly data source
+
+The implementer adds a windowed variant to `InsightsViewModel`, e.g.
+`hourlyDistribution(for period: TimeOfDayPeriod) -> [(hour: Int, count: Int)]`,
+returning one entry per hour in `period.hours`, **in that array's order** (so Night
+preserves 21→04). It reads the same `cachedEventsInRange` the overview uses, so it
+automatically honors the active habit and 7/30-day range. The per-hour counts must
+sum to that period's overview count (UC-1 acceptance criterion).
+
+##### Hour-axis labeling
+
+The x value for each `BarMark` is the **hour label string** (a plottable category),
+ordered by the `period.hours` array, so Night renders left-to-right 21,22,23,0,…,4
+without Charts re-sorting numerically. Use a `.value("Hour", label)` nominal axis.
+
+Label format — compact, no AM/PM clutter, fits 8 bars on phone width:
+
+- Visible axis labels use a **24-hour two-digit-free short form**: the bare hour
+  number, e.g. `5, 6, 7, …` for Morning and `21, 22, 23, 0, 1, 2, 3, 4` for Night.
+  No colons, no ":00", no "h". This is the most compact unambiguous label and matches
+  the clinical tone.
+- To prevent crowding at 8 bars (Night) on a narrow phone or at large Dynamic Type,
+  use `.chartXAxis { AxisMarks { ... AxisValueLabel().font(.caption2) } }` and allow
+  Charts to thin labels if needed. Do **not** rotate labels. If thinning still
+  crowds, label every other bar — but all 8 bars always render; only their text
+  labels may thin.
+- The accessibility (VoiceOver) label is the **full, unambiguous** form (12-hour with
+  AM/PM) — see Accessibility below — so the terse visual labels never cost clarity
+  for assistive tech.
+
+##### Color and highlight
+
+- Hourly bars use the **selected habit color**, identical to the overview bars:
+  `Color(hex: vm.selectedHabit?.colorHex ?? "#007AFF") ?? .blue`. Never a hardcoded
+  brand color. Dark mode is automatic because the surface is
+  `secondarySystemBackground` and the bar is the user's hex.
+- No separate "selected bar" highlight is needed because the overview bars are
+  replaced, not annotated. The only persistent indicator that you are drilled in is
+  the title suffix (`· Evening`) plus the collapse chevron.
+
+##### Exact copy
+
+| Element | String |
+|---------|--------|
+| Card title (overview) | `Time of Day` |
+| Card title (expanded) | `Time of Day · Morning` / `· Afternoon` / `· Evening` / `· Night` |
+| Period display names | `Morning`, `Afternoon`, `Evening`, `Night` (match existing) |
+| Hourly axis labels | bare hour numbers: `5`, `6` … `21`, `22`, `23`, `0`, `1` … `4` |
+| Collapse control | no text label; SF Symbol `chevron.up.circle` only |
+
+No empty-state copy, no "tap to expand" hint text (the bars are the affordance; a hint
+line would clutter the clinical layout). No motivational or emotional strings. No
+emoji.
 
 ### S3: Habits and Settings Screen
 
@@ -252,6 +490,8 @@ Dark mode is the default. Light mode must also work.
 | Horizontal drag | Habit card | Swipe between habits | 50pt commit, 30pt min start |
 | Swipe trailing | Habit row | Archive/Delete | System default |
 | Swipe trailing | Event row | Delete | System default |
+| Tap | Time of Day period bar (overview) | Expand that period to hourly bars | Full plot-height x-band hit test via `chartOverlay` + `chartProxy` |
+| Tap | Time of Day collapse chevron (expanded) | Collapse to four-period overview | 44×44pt min target |
 
 ### Drag Gesture (Habit Card)
 
@@ -303,7 +543,25 @@ Rules:
 | Banner appear/dismiss | Slide from top + fade | 0.3s easeInOut |
 | Habit card drag | Interactive spring | — |
 | Card snap-back | Spring | 0.3s |
+| Time of Day expand/collapse | Bars cross-fade + height change | 0.25s easeInOut |
+| Time of Day filter-change while expanded | Bar heights interpolate to new counts | 0.25s easeInOut |
 | Sheets, tabs, navigation | System default | System |
+
+#### Time-of-Day Drill-Down motion
+
+- **Expand/collapse:** wrap the `expandedPeriod` mutation in
+  `withAnimation(.easeInOut(duration: 0.25))`. The chart swaps its data; Swift Charts
+  animates bar height and the new/removed bars cross-fade. The `SectionCard` title
+  suffix and collapse chevron appear/disappear within the same animation. Because the
+  chart frame height is fixed at 150pt in both states, the card does not jolt — only
+  the bars and labels change.
+- **Filter change while expanded:** the recompute is animated identically (bars glide
+  to their new heights), reinforcing that it is the same period viewed with new data.
+- **Reduce Motion (required):** gate every animation above on `!reduceMotion`
+  (`@Environment(\.accessibilityReduceMotion)`). When Reduce Motion is on, mutate
+  `expandedPeriod` and the filter-driven data with **no** `withAnimation` wrapper —
+  the chart swaps instantly, no cross-fade, no height interpolation. This matches the
+  established Reduce Motion pattern (instant state change, no spring/slide).
 
 ### Confirmation Banner
 
@@ -559,6 +817,36 @@ Guidelines, not gates. No CI to enforce.
 - Habit cards, stat cards, chart containers grouped as single accessible elements
 - Custom labels for: log button ("Log temptation for [habit name]"), carousel arrows, intensity circles, outcome buttons
 
+#### Time-of-Day Drill-Down (VoiceOver)
+
+The chart bars are not natively accessible as individual elements, so provide an
+explicit accessibility representation rather than relying on the visual `Chart`.
+
+- **Overview bars.** Each period bar is one accessible element.
+  - Label: `"{Period}, {n} events"` — e.g. `"Evening, 12 events"`. Use `"1 event"`
+    singular, `"0 events"` for zero (not "no events").
+  - Trait: `.isButton`.
+  - Hint: `"Double tap to show hourly breakdown."`
+  - On activate: expands that period (same effect as the visual tap).
+- **Collapse control (expanded only).**
+  - Label: `"Collapse hourly breakdown"`.
+  - Trait: `.isButton`.
+  - On activate: returns to the four-period overview.
+- **Hourly bars (expanded).** Each hour is one accessible element, ordered the same
+  as the visual bars (Night = 9 PM → 4 AM).
+  - Label: full unambiguous 12-hour form + count:
+    `"{hour 12h with AM/PM}, {n} events"` — e.g. `"6 PM, 4 events"`, `"9 PM, 0 events"`,
+    `"12 AM, 1 event"`, `"5 AM, 0 events"`. The visual axis uses terse 24-hour numbers,
+    but VoiceOver always speaks the full form so there is no ambiguity for assistive
+    tech. Format with a fixed `DateFormatter` (`"h a"`) or a hand-rolled 12-hour map;
+    use `"event"` / `"events"` singular/plural correctly.
+  - Trait: none beyond static text — hourly bars are read-only (no drill below hour).
+- **State-change announcement.** On expand and on collapse, post a
+  `UIAccessibility.post(notification: .screenChanged, argument:)` (or
+  `.announcement`) with the text `"Showing hourly breakdown for {Period}"` on expand
+  and `"Showing time-of-day overview"` on collapse, so a VoiceOver user knows the
+  chart content swapped under them.
+
 ### Dynamic Type
 
 - All text uses SwiftUI text styles (no hardcoded sizes)
@@ -566,6 +854,11 @@ Guidelines, not gates. No CI to enforce.
 - Stat cards stack vertically at accessibility sizes
 - Context tag grid reflows
 - Intensity circles remain 44pt minimum
+- Time of Day card title (`"Time of Day · Evening"`) wraps to a second line at large
+  Dynamic Type — no `lineLimit(1)`, no fixed card height that would clip it
+- Hourly x-axis labels use `.caption2` and may thin (every other bar) at large sizes;
+  bars themselves never clip — the 150pt chart frame is fixed but the bars scale
+  within it
 - Test at: Default, Large, AX3, AX5
 
 ### Reduce Motion
@@ -574,6 +867,8 @@ When enabled:
 - Confirmation banner: crossfade instead of slide
 - Habit card drag: snap immediately instead of spring
 - Sheet presentation: system automatic
+- Time of Day expand/collapse and filter-driven recompute: instant chart swap, no
+  cross-fade or bar-height interpolation (no `withAnimation`)
 
 ### Color and Contrast
 
@@ -755,3 +1050,10 @@ Summary of all design decisions made during the design phase.
 | Banner timing | After all sheets dismiss, 4s with undo | Was hidden behind sheets; undo prevents accidental logs |
 | Default habit | User-settable via context menu | Core for fast logging |
 | Time zones | Store UTC, display local | Standard practice |
+| Time-of-day drill-down | Tap a period to expand to hourly bars in place | Sparse data makes 24 bars up front noise; detail on demand only |
+| Drill-down granularity floor | Hourly for first pass; half-hour deferred | Hourly is enough to locate a spike; finer resolution is "later" |
+| Drill-down navigation | In-place expansion, not a pushed screen | Honors max-one-level-deep rule |
+| Drill-down filter change while expanded | Recompute hourly bars, stay expanded (don't collapse) | Filter change is a follow-up to the same question; collapsing loses the user's place |
+| Drill-down collapse affordance | Explicit `chevron.up.circle` in card header; tapping hourly bars does nothing | Overview bars are gone when expanded, so "tap same to collapse" is ambiguous |
+| Drill-down tap target | Whole period bar's full-height x-band (chartOverlay hit test), not a chevron | Keeps the overview clean; zero-count bars stay tappable |
+| Hourly axis label format | Bare hour number (24h: `5`…`21,22,23,0`…`4`); VoiceOver speaks full 12h AM/PM | Most compact unambiguous visual label; assistive tech keeps full clarity |

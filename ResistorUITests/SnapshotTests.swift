@@ -61,6 +61,14 @@ final class SnapshotTests: XCTestCase {
                 scroll.swipeDown(velocity: .fast)
             }
 
+            // Time-of-Day drill-down: expand a period into its hourly bars and
+            // capture both a typical window (Evening, 4 bars) and the densest
+            // window (Night, 8 bars across midnight) so the label-thinning and
+            // across-midnight order can be reviewed visually. The whole period
+            // bar's x-band is the tap target (chartOverlay hit test), so we tap
+            // the chart plot at the period's horizontal position.
+            captureTimeOfDayDrilldown(app, scroll: scroll, sfx: sfx)
+
             // 3. History — pushed from Insights via "View History".
             let history = app.buttons["View History"]
             if history.waitForExistence(timeout: 3) {
@@ -104,6 +112,55 @@ final class SnapshotTests: XCTestCase {
                 scroll.swipeUp(velocity: .slow)
                 snapshot(app, name: "04-Habits-c\(sfx)")
             }
+        }
+    }
+
+    /// Scrolls the Time of Day card into view and drives the drill-down by
+    /// tapping the chart plot at a given period's horizontal band, capturing the
+    /// resulting expanded (hourly) state. Captures Evening (4 bars) and Night
+    /// (8 bars wrapping midnight) so the dense-label case can be judged, then
+    /// collapses via the chevron control.
+    private func captureTimeOfDayDrilldown(_ app: XCUIApplication, scroll: XCUIElement, sfx: String) {
+        // Bring the Time of Day card into the middle of the screen. It sits
+        // below the Daily Trend chart; one slow swipe from the top reveals it
+        // without pushing it off the top edge, so the expanded chart stays
+        // fully visible in the capture.
+        scroll.swipeUp(velocity: .slow)
+
+        // The real expand interaction is a `chartOverlay` spatial-tap hit test
+        // on the chart plot. The mirrored accessibility buttons are zero-height
+        // proxies whose frames don't track the chart, so we tap the chart plot
+        // directly by normalized position within the scroll view. The four
+        // period bands run left→right (Morning, Afternoon, Evening, Night); dy
+        // sits on the bars, above the x-axis labels.
+        func tapPeriod(dx: CGFloat) {
+            scroll.coordinate(withNormalizedOffset: CGVector(dx: dx, dy: 0.63)).tap()
+        }
+
+        // Evening — the simple 4-bar case (3rd of 4 bands).
+        tapPeriod(dx: 0.60)
+        if app.buttons["Collapse hourly breakdown"].waitForExistence(timeout: 2) {
+            snapshot(app, name: "02-Insights-tod-evening\(sfx)")
+            collapseTimeOfDay(app)
+        }
+
+        // Night — the dense 8-bar across-midnight case (21,22,23,0,1,2,3,4),
+        // 4th of 4 bands.
+        tapPeriod(dx: 0.82)
+        if app.buttons["Collapse hourly breakdown"].waitForExistence(timeout: 2) {
+            snapshot(app, name: "02-Insights-tod-night\(sfx)")
+            collapseTimeOfDay(app)
+        }
+
+        // Restore scroll position for any later legs.
+        scroll.swipeDown(velocity: .fast)
+        scroll.swipeDown(velocity: .fast)
+    }
+
+    private func collapseTimeOfDay(_ app: XCUIApplication) {
+        let chevron = app.buttons["Collapse hourly breakdown"]
+        if chevron.waitForExistence(timeout: 2) {
+            chevron.tap()
         }
     }
 

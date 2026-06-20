@@ -194,6 +194,28 @@ final class InsightsViewModel {
         return (0..<24).map { ($0, distribution[$0] ?? 0) }
     }
 
+    /// Hourly counts restricted to a single time-of-day window, returned in the
+    /// period's defined hour order (Night wraps midnight: 21…23, 0…4). Reads
+    /// `cachedEventsInRange` so habit + range filtering is honored, and the
+    /// per-hour counts sum to that period's overview bar.
+    func hourlyDistribution(for period: TimeOfDayPeriod) -> [(hour: Int, count: Int)] {
+        let events = cachedEventsInRange
+        var distribution: [Int: Int] = [:]
+        for hour in period.hours {
+            distribution[hour] = 0
+        }
+
+        let periodHours = Set(period.hours)
+        for event in events {
+            let hour = event.hourOfDay
+            if periodHours.contains(hour) {
+                distribution[hour, default: 0] += 1
+            }
+        }
+
+        return period.hours.map { ($0, distribution[$0] ?? 0) }
+    }
+
     // MARK: - Outcome Breakdown
 
     func outcomeBreakdown() -> [(outcome: TemptationEvent.Outcome, count: Int)] {
@@ -325,6 +347,47 @@ final class InsightsViewModel {
 
     var topLocation: String? {
         locationDistribution().first?.location
+    }
+}
+
+/// A time-of-day window on the Insights "Time of Day" chart. Mirrors
+/// `TemptationEvent.timeOfDayPeriod` (Morning 05–11, Afternoon 12–16,
+/// Evening 17–20, Night 21–04). `hours` is intentionally ordered for display:
+/// Night wraps midnight (21…23, 0…4), so it is NOT numerically sorted.
+enum TimeOfDayPeriod: String, CaseIterable {
+    case morning
+    case afternoon
+    case evening
+    case night
+
+    var displayName: String {
+        switch self {
+        case .morning: return "Morning"
+        case .afternoon: return "Afternoon"
+        case .evening: return "Evening"
+        case .night: return "Night"
+        }
+    }
+
+    /// Hours belonging to this window, in display order.
+    var hours: [Int] {
+        switch self {
+        case .morning: return [5, 6, 7, 8, 9, 10, 11]
+        case .afternoon: return [12, 13, 14, 15, 16]
+        case .evening: return [17, 18, 19, 20]
+        case .night: return [21, 22, 23, 0, 1, 2, 3, 4]
+        }
+    }
+
+    /// Maps a `timeOfDayDistribution` period string (e.g. "Evening") back to a case.
+    init?(periodString: String) {
+        switch periodString {
+        case "Morning": self = .morning
+        case "Afternoon": self = .afternoon
+        case "Evening": self = .evening
+        case "Night": self = .night
+        default: return nil
+        }
     }
 }
 
