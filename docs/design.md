@@ -35,6 +35,7 @@ Comprehensive design document for Resistor, an iOS habit-tracking app that logs 
 3. Show simple trends over time: frequency changes, time-of-day spikes, day-of-week patterns.
 4. Capture the outcome (resisted / gave in) of each logged temptation without adding any step to the single-tap log, so the Insights outcome breakdown reflects real behavior instead of "Not recorded".
 5. Let a user log a resisted temptation for a chosen habit from the Home Screen in one tap, without opening the app, via a configurable WidgetKit widget (post-v1; see Quick-Log Widget under User Flows).
+6. Let a user log a resisted temptation from an Apple Watch in one tap, without their phone present, with the event syncing to the phone via CloudKit (post-v1; see Watch Quick-Log under User Flows). The wrist is the lowest-friction surface for the core action — raise wrist, one tap, done.
 
 ### Non-Goals for v1.0
 
@@ -231,6 +232,80 @@ Edge cases:
   on the next timeline reload (after a widget tap, or WidgetKit's normal refresh
   cadence). The count is never used to make a logging decision, so staleness is
   cosmetic, never a correctness risk.
+
+### Flow 6: Watch Quick-Log (Apple Watch, wrist-native one-tap log)
+
+A watchOS companion app whose single job is the fastest possible log of a
+resisted temptation from the wrist. The watch is the ideal surface for the core
+action: temptation hits → raise wrist → one tap → done, no phone needed. It is
+the wrist-native twin of the Home Screen quick-log widget (Flow 5) — a third
+entry point to the core loop (Flow 1), not a new feature surface. The event
+written is identical in shape to a tap-logged event and to a widget-logged event:
+`occurredAt = now`, `intensity = nil`, `outcome = "resisted"`, no context tags,
+produced by the shared `TemptationLogger.logResisted(...)` that the app and widget
+already use.
+
+Fixed product decisions for v1 (the watch ships deliberately small):
+- **One tap = one resisted log.** The primary watch screen is a single large
+  log control for one habit. A tap writes exactly one `TemptationEvent` with the
+  resisted default. No outcome choice, no intensity, no context tags, no
+  confirmation banner, no undo — those live in the phone app (correction via
+  History event detail, UC-O4; deletion via swipe-to-delete in History).
+- **Success is confirmed by the Taptic Engine.** The watch's haptic is the
+  in-the-moment confirmation channel (the watch is a separate haptic stack from
+  the phone; this is unaffected by the phone-side haptics bug, issue #48). A
+  brief on-screen acknowledgment of the log accompanies the haptic; it carries no
+  motivational or celebratory copy.
+- **Today's resisted count for the logged habit** is shown at rest, matching the
+  phone's "Today: {n} logged" definition (events with `occurredAt` on the current
+  day for that habit).
+
+1. User raises wrist and opens the Resistor watch app (or it is already
+   foregrounded).
+2. The watch shows the habit it logs to (name/icon) and today's resisted count
+   for that habit.
+3. User taps the log control once. One `TemptationEvent` is created for that
+   habit with the resisted default.
+4. The watch fires a success haptic and shows a brief, neutral acknowledgment;
+   the today count increments.
+5. The event syncs to the phone (and any other device on the account) via
+   CloudKit. Once synced, it appears in the phone's Insights and History like any
+   other event.
+
+**Which habit does the watch log to?** v1 logs to the user's **default habit**
+(`UserSettings.defaultHabitId`), falling back to the single habit if only one
+exists. On-watch habit *switching* (a carousel/picker on the wrist) is **Later**
+(see Scope). This keeps v1 to one screen and one tap. If the user has multiple
+habits and no default set, the watch logs to a deterministic first habit and
+names it on screen so the target is never ambiguous (it never logs to an
+unnamed/"current" habit silently).
+
+Edge cases:
+- **Phone not present / not reachable.** The watch logs independently into its
+  own local store; the event syncs to the phone later via CloudKit. v1 does **not**
+  depend on a live phone connection (WatchConnectivity) for logging — see the
+  CloudKit-sync constraint flag below. "Log on watch → appears on phone after
+  CloudKit sync" is the v1 acceptance frame, not "log on watch → instantly on
+  phone."
+- **No habits configured.** The watch cannot create a habit (habit creation stays
+  on the phone). It shows a neutral non-loggable state directing the user to add a
+  habit on the phone; a tap does not write a stray event.
+- **Default habit archived or deleted.** The watch's target no longer resolves to
+  a live, non-archived habit; it shows a non-loggable "habit unavailable" state
+  (parallel to the widget's needs-reconfiguration state) and a tap does not log.
+  If another non-archived habit exists, v1 may fall back to the deterministic
+  first habit (named on screen); choosing fall-back vs. blocking is a ux-designer
+  call so long as the watch never logs to an unnamed target.
+- **Local store unreadable on watch.** If the watch's local SwiftData store
+  cannot be opened (e.g. first launch mid-sync), the count is unknown; the watch
+  shows a count-unavailable state. As with the widget, a tap must not silently
+  drop the event nor write a duplicate.
+- **Rapid repeated taps.** Each deliberate tap is a real event (two urges = two
+  events), consistent with the Log screen and widget. An accidental double-fire of
+  one physical tap is debounced so one tap yields one event.
+- **Offline.** Offline is normal. A write made offline persists locally on the
+  watch and syncs when connectivity returns, exactly as in-app and widget logging
+  do.
 
 ---
 
@@ -1153,6 +1228,496 @@ app motion.
 - Long habit names wrap (small, 2 lines) or scale (medium, 1 line) — never hard
   truncate with an ellipsis on the name itself.
 
+### WATCH: Watch Quick-Log (Apple Watch app)
+
+A standalone watchOS app (`WatchKit`/SwiftUI for watchOS, system frameworks only)
+whose single screen logs a resisted temptation for one habit in one tap. It is a
+third entry point to the core loop (Flow 1 / Flow 6), the wrist-native twin of the
+W1 widget. The watch reuses the shared `TemptationLogger.logResisted(...)` and
+writes to a watch-side SwiftData + CloudKit container that mirrors the same
+CloudKit container the phone uses (`iCloud.com.resistor.app`); parity comes from
+**CloudKit sync between devices, not the App Group** (see constraint flag).
+
+Fixed product decisions (not open for design re-litigation):
+- **Single-screen, single-tap.** One large log control for one habit. A tap fires
+  the shared logger; no outcome/intensity/context capture on the watch.
+- **Logs to the default habit.** The watch targets `UserSettings.defaultHabitId`
+  (falling back to the sole habit, then a deterministic first habit, always named
+  on screen). On-watch habit switching is out of v1 (Later).
+- **Taptic confirmation + brief neutral acknowledgment.** The success haptic is
+  the primary confirmation; any on-screen acknowledgment is clinical (e.g.
+  "Logged"), never celebratory.
+- **No notifications, no complication, no undo, no correction on the watch.**
+  Correction (Gave in) and deletion (undo) happen in the phone app. Complication
+  is Later.
+
+#### Watch Quick-Log (use cases)
+
+The watch exists to make the core action reachable when the phone is not — a run,
+the gym, a pocket-free moment — and to make logging require nothing more than a
+glance and a tap. This requires **no schema change**: the event written is
+identical to an in-app or widget tap log. The new infrastructure is a watchOS app
+target plus a watch-side SwiftData + CloudKit store on the same CloudKit
+container; data parity with the phone is achieved by CloudKit sync, since App
+Groups do not bridge separate devices.
+
+**UC-WATCH-1 — One-tap resisted log from the wrist.**
+As someone in the urge moment without my phone, I want to log that I resisted
+straight from my watch so that I capture the moment regardless of where my phone
+is.
+Acceptance criteria:
+- Tapping the watch log control creates exactly one `TemptationEvent` bound to the
+  watch's target habit, with `outcome = "resisted"`, `intensity = nil`, and an
+  empty context-tag array (the shared `TemptationLogger.logResisted` default).
+- The phone app is not required to be present, awake, or reachable for the log to
+  succeed.
+- The event is identical in shape to a single in-app tap log and to a widget log.
+- After the tap, the watch's displayed today count for that habit increments.
+
+**UC-WATCH-2 — Log on watch appears on phone after CloudKit sync.**
+As someone who logs on my watch, I want the event to show up on my phone so that my
+Insights and History stay complete across devices.
+Acceptance criteria:
+- An event logged on the watch is persisted to the watch's local store
+  immediately (offline-safe).
+- Once both devices have network and CloudKit has synced, the watch-logged event
+  appears in the phone's Insights outcome breakdown (as "Resisted") and in History
+  for that habit, indistinguishable from a phone-logged event.
+- The acceptance frame is "appears on phone **after CloudKit sync**," not instant
+  cross-device appearance; no live phone connection is required.
+- No duplicate event is created on the phone when the watch event syncs in (the
+  event has its own stable `id`; CloudKit reconciles it as one record).
+
+**UC-WATCH-3 — At-rest display names the target and shows today's count.**
+As someone glancing at the watch, I want it to show which habit it logs and how
+many times I've logged today so that the tap target is unambiguous.
+Acceptance criteria:
+- The watch shows the target habit's name (and icon where space allows) and today's
+  resisted count for that habit.
+- The count reflects events with `occurredAt` on the current day for that habit,
+  matching the phone's "Today: {n} logged" definition.
+- The count may lag the live store between syncs; it reconciles on the next
+  successful read and is never used to decide whether to log.
+
+**UC-WATCH-4 — Success haptic confirms the log.**
+As someone who just tapped, I want a wrist haptic so that I know the log
+registered without having to read the screen.
+Acceptance criteria:
+- A successful log fires a watch Taptic Engine haptic (a single neutral success
+  feedback, e.g. a `WKHapticType.success`-class signal — the exact type is a
+  ux/implementer detail).
+- The haptic fires only on a successful write; a tap in a non-loggable state (no
+  habit, habit unavailable) does not fire the success haptic.
+- The haptic is not motivational or celebratory in character; it is a confirmation
+  signal. No sound. No notification is posted (see constraint flag).
+
+**UC-WATCH-5 — Non-loggable state does not log.**
+As someone whose watch has no valid target habit, I want a tap to never create a
+stray or misattributed event so that my data stays trustworthy.
+Acceptance criteria:
+- With zero non-archived habits, the watch shows a non-loggable state directing the
+  user to add a habit on the phone; a tap does not write an event and no habit can
+  be created from the watch.
+- If the target (default) habit was archived or deleted, the watch shows a
+  "habit unavailable" state; a tap does not write to the dead habit. If the watch
+  falls back to another non-archived habit, it names that habit on screen before a
+  tap can log to it.
+- If the watch's local store cannot be read on launch, the count shows a
+  count-unavailable state; the watch never displays a false `0`.
+
+**UC-WATCH-6 — One tap yields exactly one event.**
+As someone tapping quickly, I want a single physical tap to log exactly once so
+that I don't get phantom double-counts.
+Acceptance criteria:
+- A single tap creates exactly one event; an accidental double-fire of that one tap
+  is debounced so it does not create two events.
+- Two deliberate, separate taps create two events (two urges = two events),
+  consistent with the Log screen and widget rapid-tap behavior.
+- An offline write persists locally on the watch and syncs later; it is never
+  silently dropped and never duplicated on sync.
+
+#### Watch Quick-Log (exact copy)
+
+All strings clinical, no motivational/emotional language, no emoji, honoring the
+Forbidden Language table. Final strings for the implementer; exact placement and
+sizing are a ux-designer/implementer detail for the small watch canvas.
+
+| Element | Final string |
+|---------|--------------|
+| Habit name | The habit's own name, verbatim; never decorated, never prefixed |
+| At-rest count | `Today: {n} logged` (or the space-constrained `{n} today` on the smallest watch widths — ux-designer call, same trade-off as the widget) |
+| Log control | No "tap to log" hint in the configured state; the log control is the affordance (consistent with the in-app and widget no-hint convention) |
+| Post-log acknowledgment | `Logged` (matches the phone banner's State-1 status word; neutral, not celebratory) |
+| No-habit state — primary | `No habit to log` |
+| No-habit state — secondary | `Add a habit on your phone` |
+| Habit-unavailable state — primary | `Habit unavailable` |
+| Habit-unavailable state — secondary | `Set a default habit on your phone` |
+| Count-unavailable state | `Count unavailable` |
+| Forbidden | No "Great job", "Streak", "You resisted!", success/celebration copy, or emoji anywhere on the watch |
+
+#### Watch Quick-Log (interaction and visual spec)
+
+Build-ready spec for the watchOS app. New watchOS app target (SwiftUI for
+watchOS, system frameworks only — `SwiftUI`, `SwiftData`, `WatchKit` for the
+Taptic call); no new screen in the phone app, no navigation push, no data-model
+or schema change. The watch reuses the existing habit color system
+(`Color(hex:)`) and semantic colors only, and the shared
+`TemptationLogger.logResisted(...)`. Everything below is sized for the watch
+canvas (designed against the 41/45/49mm range; the layout is fluid, not
+pixel-pinned — final spacing nudges are a ui-iterator follow-up, called out at
+the end).
+
+##### Single screen, no navigation
+
+The watch app is exactly one screen — no `NavigationStack`, no tabs, no Digital
+Crown scroll target in v1 (there is nothing to scroll; the whole control fits one
+watch face). The screen is the log control plus its surrounding identity text.
+This honors the "single-screen, single-tap" fixed product decision and keeps the
+wrist interaction to: raise wrist → one tap → done.
+
+- **No `ScrollView`.** All content fits within the safe area at Default Dynamic
+  Type. At the largest watch Dynamic Type sizes the content may exceed one screen;
+  wrap the whole layout in a `ScrollView` *only as an overflow safety net* (it
+  does not scroll at normal sizes), so large-text users can still reach the count
+  line below the button. This mirrors the watch HIG pattern of a non-scrolling
+  primary control that becomes scrollable only when text forces it.
+- **Digital Crown:** unused in v1 — no rotation target, no focus value. (A future
+  on-watch habit switcher, "Later", is the natural Crown owner; do not wire it
+  now.)
+- **Safe area:** use the system default; do not fight the watch's curved-corner
+  inset. Let SwiftUI's default `.scenePadding()`-equivalent margins apply. The
+  log button is centered, so the curved corners never clip it.
+
+##### Layout — the primary tap target
+
+The screen is a vertical stack, the **log button dominating the center**, with the
+habit identity above it and today's count below it:
+
+```
+┌───────────────────────┐
+│       Sugar           │   ← habit name (identity, top)
+│                       │
+│    ╭───────────────╮  │
+│    │      ◉        │  │   ← LOG BUTTON: large filled
+│    │    (icon)     │  │     habit-color circle, centered,
+│    │               │  │     the dominant tap target
+│    ╰───────────────╯  │
+│                       │
+│   Today: 3 logged     │   ← today's count (below)
+└───────────────────────┘
+```
+
+- **Container:** `VStack(spacing: 8)` centered in the screen. Order top→bottom:
+  habit name, log button, count line.
+- **Habit name (top, identity):** `Text(habit.name)`, `.font(.headline)`,
+  `.fontWeight(.semibold)`, `.foregroundStyle(.primary)`,
+  `.multilineTextAlignment(.center)`, `.lineLimit(2)`,
+  `.minimumScaleFactor(0.8)`. Names wrap to two centered lines, then scale
+  slightly, rather than truncating. It sits above the button so the user reads
+  *what they are about to log* before tapping — the target is never ambiguous
+  (UC-WATCH-3, UC-WATCH-5 fall-back requirement that the target is always named).
+- **Log button (center, the tap target):** a single large filled circle — the
+  wrist-native equivalent of the phone's "Log Temptation" primary button and the
+  widget's filled habit-color card. The whole circle is one
+  `Button(action: log)`:
+  - Shape: `Circle()` fill = `habitColor` (full saturation), sized to roughly
+    **60–66% of the screen width** (the largest comfortably-centered circle that
+    leaves room for the name above and count below). On a 45mm watch this is
+    ~120pt diameter; let it be `.frame(maxWidth: .infinity)`-driven with an
+    `.aspectRatio(1, contentMode: .fit)` inside a width-capped container rather
+    than a hardcoded diameter, so it scales across watch sizes. It is far larger
+    than the 44pt minimum — this is a deliberately oversized, gloved/eyes-off
+    target.
+  - Glyph: `Image(systemName: habit.iconName ?? "circle.fill")`, centered,
+    `.font(.system(size: 36, weight: .semibold))`, `.foregroundStyle(.white)`
+    (white-on-habit-color, matching the phone primary button's white-on-accent
+    treatment). The icon names the habit a second way (with the text above), so
+    color is never the only identity carrier.
+  - `.buttonStyle(.plain)` so watchOS does not draw its own bezel over the custom
+    circle; the system still applies its built-in touch-down dim, which is the
+    press feedback (see Motion).
+  - There is **no text inside the button** ("Log Temptation" would crowd the small
+    circle and the action is self-evident from the filled habit-color target). The
+    "log control is the affordance, no hint text" rule from the widget carries
+    over verbatim.
+- **Count (below, glanceable status):** `Text("Today: \(n) logged")`,
+  `.font(.footnote)`, `.foregroundStyle(.secondary)`, `.lineLimit(1)`,
+  `.minimumScaleFactor(0.7)`. On the narrowest widths / largest Dynamic Type
+  where the full form will not fit one line even scaled, fall back to the terse
+  `Text("\(n) today")` (same trade-off the widget makes between its medium
+  `Today: {n} logged` and small `{n} today`). Decide at build time with a
+  `ViewThatFits` between the two strings: prefer `Today: {n} logged`, fall back to
+  `{n} today`. The count is below the button so it never competes with the tap
+  target; it is status, not the action.
+
+##### How habit color is used on the small canvas
+
+- The **button fill is the one bold use of `habitColor`** — full saturation,
+  white glyph on top. This is the single anchor of habit identity and the primary
+  affordance ("this filled colored circle logs").
+- The screen **background stays the system default** (`Color(.black)` on the
+  always-OLED watch; do not paint a habit-tinted full-bleed background — the watch
+  canvas is black for power and contrast, and a tint would fight the OLED black
+  and reduce the button's pop). Unlike the widget's faint 12% card wash, the watch
+  leans on a pure-black field with one saturated control, which is the higher-
+  contrast, more glanceable choice on the small screen.
+- Text (name, count) uses `.primary` / `.secondary` semantic colors, never the
+  habit color, so they stay legible against black regardless of hue.
+- `habitColor = Color(hex: habit.colorHex ?? "#007AFF") ?? .blue` — the exact
+  existing pattern. Never the user *accent* color (the watch is habit-scoped, and
+  the app-root `.tint()` does not apply in a separate watch target), never a
+  hardcoded brand color.
+
+##### States
+
+The watch has six states. Loggable states show the filled habit-color button;
+non-loggable states **replace the button with a de-emphasized, un-fillable glyph**
+so the user is never invited to tap a surface that will not log (the same
+loggable-vs-not affordance signal the widget uses: filled habit-color = loggable,
+flat secondary = not).
+
+###### State (a): At-rest / loggable (default)
+
+The default, described in Layout above: name (top), filled habit-color log button
+(center), `Today: {n} logged` (below). The button is enabled; a tap logs (UC-WATCH-1).
+
+###### State (b): Logging / in-flight
+
+The write is synchronous and effectively instant (`TemptationLogger.logResisted`
++ `try? save()` to the local store), so there is **no spinner and no separate
+visible "in-flight" screen**. Tapping moves directly from at-rest to the success
+acknowledgment. To guarantee one-tap-one-event under a fast double-fire
+(UC-WATCH-6), the button is **disabled for the debounce window** the instant it is
+tapped:
+
+- On tap: set `isLogging = true`, perform the write, fire the success haptic,
+  show the acknowledgment, then re-enable after the debounce window (~800ms,
+  matching the widget's debounce) via a cancellable task. A second physical
+  contact inside that window hits a disabled button and does nothing → one tap =
+  one event. Two deliberate taps spaced beyond the window = two events.
+- During `isLogging` the button's fill drops to `habitColor.opacity(0.5)` (a brief
+  pressed-looking dim) so a too-fast second tap visibly lands on a non-primed
+  target. This is the only "in-flight" visual and it lasts only the debounce
+  window.
+
+###### State (c): Success acknowledgment ("Logged")
+
+Mirrors the phone banner's transient-confirmation philosophy (a brief, neutral,
+self-dismissing acknowledgment) but watch-appropriate — the Taptic haptic is the
+*primary* confirmation (UC-WATCH-4); the on-screen text is secondary and exists
+for the eyes-on case.
+
+- **How "Logged" appears:** an overlay centered over (or just below) the button
+  region — `Text("Logged")`, `.font(.headline)`, `.fontWeight(.semibold)`,
+  `.foregroundStyle(.primary)`, paired with `Image(systemName: "checkmark.circle.fill")`
+  `.foregroundStyle(.green)` (the resisted/logged semantic green, identical to the
+  phone banner State-1 glyph). Lay them out as an `HStack(spacing: 6)` or stack the
+  check above the word — implementer's call on the small canvas, but the green check
+  + "Logged" word must read as one unit.
+- **The count updates underneath simultaneously:** `Today: {n} logged` increments
+  to the new `n` as the acknowledgment shows, so when the acknowledgment clears the
+  user is back at at-rest with the new count already in place.
+- **Duration / auto-resolve:** the acknowledgment is transient — it auto-dismisses
+  after **1.2s**, then the screen returns to state (a). 1.2s is shorter than the
+  phone banner's 5s because the watch acknowledgment carries **no actionable
+  controls** (no Gave-in, no Undo — those live on the phone), so it only needs to
+  register "it worked," not hold a correction window. A wrist glance is brief by
+  nature; a long-lived banner would overstay. Implement with a cancellable
+  `DispatchWorkItem` / `Task.sleep`, not a layout that blocks re-tapping — the
+  button re-enables on the debounce window (~800ms), so a user with a genuine second
+  urge can tap again *before* the acknowledgment text finishes fading (the second
+  tap simply restarts the acknowledgment and re-increments). The acknowledgment is a
+  display layer over a still-live button, not a modal.
+- **Transition:** the check + "Logged" fade/scale in (see Motion); the count number
+  changes in place. No celebratory motion, no confetti, no checkmark "draw"
+  flourish — a plain fade is the clinical choice.
+
+###### State (d): No habit (zero non-archived habits)
+
+The watch cannot create a habit; it directs the user to the phone (UC-WATCH-5). A
+tap does nothing (no button, no log, no haptic).
+
+- **Replace the button** with `Image(systemName: "square.dashed")`,
+  `.font(.system(size: 36))`, `.foregroundStyle(.secondary)` — the same
+  "empty slot" glyph language as the widget's unconfigured state, **not** wrapped
+  in a `Button`.
+- Primary text (where the habit name would be): `Text("No habit to log")`,
+  `.font(.headline)`, `.foregroundStyle(.primary)`, `.multilineTextAlignment(.center)`,
+  `.lineLimit(2)`.
+- Secondary text (where the count would be): `Text("Add a habit on your phone")`,
+  `.font(.footnote)`, `.foregroundStyle(.secondary)`,
+  `.multilineTextAlignment(.center)`, `.lineLimit(2)`.
+- No habit-color anywhere (there is no habit). The de-emphasized secondary glyph
+  signals non-loggable.
+
+###### State (e): Habit unavailable (default/target habit archived or deleted)
+
+The stored target no longer resolves to a live, non-archived habit, **and** the
+watch has no other non-archived habit to fall back to (if one *does* exist, v1
+falls back to the deterministic first habit and renders state (a) with that
+habit's name — it never silently blocks when a valid target exists; it also never
+logs to an unnamed target). When there is genuinely no valid target:
+
+- **Replace the button** with `Image(systemName: "exclamationmark.triangle")`,
+  `.font(.system(size: 36))`, `.foregroundStyle(.secondary)` (**not** `.red` — this
+  is a setup condition, not a destructive error; `.secondary` keeps it calm and
+  clinical, matching the widget's needs-reconfiguration glyph). Not a `Button`.
+- Primary text: `Text("Habit unavailable")`, `.font(.headline)`,
+  `.foregroundStyle(.primary)`, centered, `.lineLimit(2)`.
+- Secondary text: `Text("Set a default habit on your phone")`, `.font(.footnote)`,
+  `.foregroundStyle(.secondary)`, centered, `.lineLimit(2)`.
+- Do **not** show the dead habit's name or color — the binding is stale; showing
+  it would imply it still logs there.
+
+###### State (f): Count unavailable (local store unreadable)
+
+The watch's local SwiftData store could not be read on launch (e.g. first launch
+mid-sync), so today's count is unknown. The watch **must never show a false `0`**
+(UC-WATCH-5). Two sub-cases:
+
+- **Habit identity known, count unknown** (the common case — the target habit
+  resolves from settings/relationship even though the event count query failed):
+  render state (a)'s layout — name on top, **the filled habit-color log button
+  stays** (logging still works; the write persists locally and syncs later, exactly
+  like offline) — but replace the count line with `Text("Count unavailable")`,
+  `.font(.footnote)`, `.foregroundStyle(.secondary)`. The button remains loggable
+  because dropping the write would violate UC-WATCH-6's offline-persist guarantee;
+  only the *display* of the count is unavailable, not the ability to log.
+- **Nothing resolves** (store so unreadable the target habit cannot be determined):
+  fall back to state (e) "Habit unavailable" appearance with no button, because a
+  tap cannot be guaranteed to route to a real habit. Prefer the loggable sub-case
+  whenever the target habit identity is known.
+
+##### Interaction and motion
+
+- **Tap-only — the elaborate phone hold-to-log ramp is dropped on the watch.**
+  **Recommendation (decided here): tap-only.** The phone's multi-layer hold effect
+  (3s ramp, glow, radiating ring, Core Haptics intensity escalation) is explicitly
+  **not** ported to the watch. Rationale: (1) the hold ramp exists to add a moment
+  of deliberation/weight to the phone log — the watch's entire reason for being is
+  *speed* ("raise wrist, one tap, done"), so a 3-second hold would directly
+  undermine its purpose; (2) the watch's small screen has no room for the layered
+  glow/ring visual system; (3) Core Haptics continuous patterns are a phone stack —
+  the watch uses discrete `WKHapticType` signals, not a ramped continuous engine.
+  A watch tap is a single discrete log. There is **no hold gesture on the watch.**
+- **Tap behavior:** one tap on the filled circle → `TemptationLogger.logResisted`
+  for the target habit → success haptic → "Logged" acknowledgment (state c) →
+  auto-return to at-rest after 1.2s with the incremented count.
+- **Debounce feel:** instantaneous to the user — the button dims (state b) and is
+  disabled for ~800ms, so an accidental double-contact is swallowed silently. There
+  is no error, no shake, no "too fast" message; the second contact simply has no
+  effect. A deliberate second tap after the window logs again normally.
+- **Success animation:** the green check + "Logged" **fade and gently scale in**
+  (from `0.9 → 1.0` scale, opacity `0 → 1`) over ~0.15s, hold, then fade out over
+  ~0.2s as the screen returns to at-rest. The button itself does a brief settle
+  (the touch-down dim releasing). Keep it minimal and non-celebratory — a plain
+  fade, no bounce, no particle effect, no checkmark stroke-draw.
+- **Reduce Motion (required) —** `@Environment(\.accessibilityReduceMotion)`:
+  - Success acknowledgment: **no scale, no fade.** The check + "Logged" appear and
+    disappear **instantly** (mutate state outside `withAnimation`); the count number
+    swaps instantly. The acknowledgment still shows for its 1.2s dwell — Reduce
+    Motion removes the *animation*, not the acknowledgment itself.
+  - Button in-flight dim: with Reduce Motion on, snap the opacity change rather than
+    animating it (it is already a near-instant ~800ms state, so this is mostly a
+    no-op, but do not wrap it in `withAnimation` when Reduce Motion is on).
+  - This matches the established Reduce Motion pattern app-wide: instant state
+    change, no spring/slide/cross-fade.
+
+##### Haptic spec
+
+- **Success haptic (UC-WATCH-4):** `WKInterfaceDevice.current().play(.success)` —
+  the standard watchOS success Taptic. Chosen over `.click` because the log is a
+  meaningful completion (an event was written), and `.success` is the system's
+  conventional "the thing you did worked" signal — neutral and confirmatory, not
+  celebratory (it is a standard system haptic, carries no copy, no sound). It is
+  **not** `.notification` (that connotes an alert/nudge, which this is not) and not
+  `.click` (too slight for a completion the user may not be looking at).
+- **Fire only on a successful write.** Gate the haptic on
+  `TemptationLogger.logResisted` returning success (the same `guard` the phone uses
+  before `triggerConfirmation()`). If the write fails, no haptic and no "Logged"
+  acknowledgment.
+- **No haptic in non-loggable states.** A tap in state (d) "no habit" or state (e)
+  "habit unavailable" produces **no haptic at all** — there is no button to tap, so
+  there is nothing to acknowledge. Do not play `.failure` or `.click` on a
+  non-loggable tap; silence is the correct, clinical response (a haptic there would
+  imply something happened).
+- **No sound, ever.** `WKHapticType` is Taptic-only; do not add `WKAudioFilePlayer`
+  or any audio. No notification is posted (the watch never posts a local
+  notification — consistent with the app-wide no-notifications rule).
+- The watch Taptic Engine is a **separate haptic stack from the phone**; this spec
+  is unaffected by the open phone-side haptics bug (#48).
+
+##### Accessibility (watch)
+
+- **VoiceOver — log button (states a, f-loggable):**
+  - Label: `"{Habit}, {n} logged today"` (use `"1 logged today"` / `"0 logged
+    today"`; in the count-unavailable sub-case the label is `"{Habit}, count
+    unavailable"`). Always speak the full unambiguous form even when the visual
+    count is the terse `{n} today` — same principle as the widget and the
+    time-of-day hourly labels.
+  - Trait: `.isButton`.
+  - Hint: `"Logs a resisted temptation."`
+  - On activate (VoiceOver double-tap): logs, exactly as a touch tap, including the
+    success haptic. After the write, post
+    `WKInterfaceDevice`-independent VoiceOver feedback by re-reading the updated
+    label on re-focus; additionally, because the acknowledgment is transient, post
+    `UIAccessibility.post(notification: .announcement, argument: "Logged")` so a
+    VoiceOver user hears confirmation without seeing the fade. (watchOS supports
+    `UIAccessibility.post`; unlike the widget extension, the watch app *can* post
+    announcements.)
+- **VoiceOver — non-loggable states (d, e):** the whole screen is **one combined
+  element** (`.accessibilityElement(children: .combine)`), **no `.isButton`
+  trait**, so a non-visual user is never told they can log when they cannot.
+  - State (d) label: `"No habit to log. Add a habit on your phone."`
+  - State (e) label: `"Habit unavailable. Set a default habit on your phone."`
+  - No "logs" hint (a tap does nothing). No on-activate log.
+- **VoiceOver — count line** when read separately (state a): the count is folded
+  into the button's combined label (above), so it is **not** a second focus stop —
+  the button label already speaks `"{n} logged today"`. Do not duplicate it as an
+  independent element.
+- **Dynamic Type on the watch:** all text uses watch text styles (`.headline`,
+  `.footnote`) — no hardcoded font sizes except the button glyph, which uses
+  `.system(size: 36, …)` and is an SF Symbol (it scales acceptably and is not text).
+  The habit name uses `.minimumScaleFactor(0.8)` + `.lineLimit(2)`; the count uses
+  `ViewThatFits` (`Today: {n} logged` → `{n} today`) + `.minimumScaleFactor(0.7)`
+  so it never clips. At the largest watch Dynamic Type sizes, the overflow
+  `ScrollView` safety net (see "Single screen") lets the count remain reachable
+  below the button. **No fixed heights** on any text container — the button is the
+  only fixed-aspect element, and it is sized by width fraction, not a clipping
+  height. Test at the watch's smallest and largest Dynamic Type sizes plus the
+  largest watch (49mm) and smallest (41mm).
+- **Reduce Motion:** as specified under Motion — instant acknowledgment, no scale/
+  fade, no animated dim.
+- **Contrast:** white glyph on full-saturation habit color, and `.primary` /
+  `.secondary` text on the OLED-black field, both clear WCAG AA. The habit color is
+  user-chosen from a vetted preset list; the white-on-color button glyph is the
+  same white-on-saturated-color treatment the phone primary button uses and passes
+  in both. (A ui-iterator screenshot pass on-device is the right place to verify
+  each of the 10 preset hues against white — flagged as follow-up below.)
+
+##### Complication (forward-compat note, out of v1 scope)
+
+A complication is **Later** (out of v1 per scope) — do not build it now. One
+structural note so the data layer does not have to be reworked when it lands:
+have the watch app read today's count and the target-habit identity through a
+small, reusable provider (e.g. a `WatchLogStore` / view-model that exposes
+`targetHabit` and `todayResistedCount(for:)` off the shared SwiftData container),
+rather than computing those inline in the view. A future
+`CLKComplicationDataSource` / WidgetKit-on-watch `TimelineProvider` would consume
+the **same** provider to render "today's count" on a complication face. Keeping the
+count/identity computation out of the View now means the complication is a new
+*presentation* over an existing data path, not a data rewrite. No complication UI,
+entitlement, or `ClockKit` code in v1.
+
+##### Follow-ups for ui-iterator (not done here)
+
+- On-device screenshots of states (a), (c)-success, (d), (e), (f) at 41mm / 45mm /
+  49mm, light is N/A (watch is always dark), to verify the button diameter fraction,
+  vertical balance of name/button/count, and the "Logged" acknowledgment placement
+  by eye.
+- Verify white button glyph contrast against each of the 10 preset habit hues
+  on-device.
+
 ---
 
 ## Visual Design System
@@ -1233,6 +1798,15 @@ All interactive elements meet 44x44pt minimum tap target.
 
 **Stat Card:** Caption + large value + subtitle. Surface background, 12pt corner radius.
 
+**Watch Log Button:** A large filled `Circle()` (habit color, full saturation),
+~60–66% of screen width, centered, with a white SF Symbol habit glyph (36pt). The
+single wrist tap target — the watch-native twin of the phone primary "Log
+Temptation" button and the widget's filled habit-color card. `.buttonStyle(.plain)`;
+system touch-down dim is the only press feedback; no text inside, no hint label. In
+non-loggable watch states it is replaced by a de-emphasized `.secondary` glyph
+(`square.dashed` / `exclamationmark.triangle`), not a button, so the surface never
+reads as primed to log.
+
 **Confirmation Banner:** A status glyph + status word on the left; a correction
 control and a destructive control on the right. Full-width with horizontal padding.
 System background, 12pt corner radius, subtle shadow. Slides from top, auto-hides 5s.
@@ -1276,6 +1850,8 @@ Dark mode is the default. Light mode must also work.
 | Tap | History event-detail Outcome picker | Open menu, select outcome; persist to that event | — |
 | Tap | Quick-Log Widget card (configured / store-unavailable state) | Fire `LogResistedIntent`: write one resisted event for the bound habit, reload timeline | ~800ms per-config debounce against accidental double-fire |
 | Long press | Quick-Log Widget card (any state) | System Edit Widget sheet (habit binding) — system gesture, not app-drawn | System default |
+| Tap | Watch log button (loggable states a / f-loggable) | Fire `TemptationLogger.logResisted` for the target habit; play `.success` Taptic; show "Logged" acknowledgment; increment count | ~800ms debounce (button disabled during window) against accidental double-fire |
+| Tap | Watch screen (non-loggable states d / e) | No-op — no log, no haptic (no button rendered) | — |
 
 ### Drag Gesture (Habit Card)
 
@@ -1290,6 +1866,14 @@ Dark mode is the default. Light mode must also work.
 Single haptic: log temptation only. `UIImpactFeedbackGenerator`, `.medium` style, on button tap before sheet.
 
 No haptics on navigation, sheets, or secondary actions.
+
+**Watch (separate Taptic stack, unaffected by phone haptics bug #48):** success
+log only — `WKInterfaceDevice.current().play(.success)`, fired solely on a
+successful write (gated on `TemptationLogger.logResisted` returning success).
+**No** haptic on a tap in a non-loggable watch state (no habit / habit
+unavailable), no `.failure`/`.click` fallback, no sound, no notification. The
+phone's Core Haptics continuous hold pattern does **not** exist on the watch
+(tap-only, no hold-to-log).
 
 ### Sheet Presentation
 
@@ -1330,6 +1914,8 @@ Rules:
 | Card snap-back | Spring | 0.3s |
 | Time of Day expand/collapse | Bars cross-fade + height change | 0.25s easeInOut |
 | Time of Day filter-change while expanded | Bar heights interpolate to new counts | 0.25s easeInOut |
+| Watch success acknowledgment ("Logged") | Green check + word fade + gentle scale (0.9→1.0) in, then fade out | 0.15s in / 1.2s dwell / 0.2s out |
+| Watch log button in-flight dim | Fill opacity 1.0→0.5 during ~800ms debounce window | ~800ms |
 | Sheets, tabs, navigation | System default | System |
 
 #### Time-of-Day Drill-Down motion
@@ -1744,6 +2330,10 @@ When enabled:
 - Sheet presentation: system automatic
 - Time of Day expand/collapse and filter-driven recompute: instant chart swap, no
   cross-fade or bar-height interpolation (no `withAnimation`)
+- Watch success acknowledgment: instant appear/disappear — no scale, no fade; the
+  count number swaps instantly. The 1.2s acknowledgment dwell still applies (Reduce
+  Motion removes the animation, not the acknowledgment). The button in-flight dim is
+  snapped, not animated.
 
 ### Color and Contrast
 
@@ -1890,7 +2480,19 @@ Screen widgets, Control Center controls (iOS 18), multi-habit-in-one-widget, and
 showing today's count for a non-configured "default" habit are all deferred (the
 configurable single-habit model is the chosen design).
 
-**Apple Watch App (WatchKit)** — Logging only. Complication shows today's count. Outcome selection. Syncs via iCloud.
+**Watch Quick-Log (watchOS App)** — A standalone watchOS app whose single job is
+the fastest possible one-tap log of a resisted temptation from the wrist, no phone
+needed. Logs to the user's default habit, shows today's resisted count at rest,
+confirms with a Taptic Engine haptic. Reuses the shared
+`TemptationLogger.logResisted(...)`; data parity with the phone comes from
+**CloudKit sync of the same container, not the App Group** (App Groups do not
+bridge separate devices). Full brief: User Flows → Flow 6 and Screens → WATCH.
+**Scope this pass: single-screen, single-tap log to the default habit + today's
+count + success haptic + CloudKit-synced store.** **Out/Later:** a complication,
+on-watch habit switching, outcome/intensity capture on the watch, undo/correction
+on the watch, and a fully phone-less independent install (App Store watch-only
+install) are all deferred. **Constraint-clean:** no notifications/reminders/streaks
+on the watch (the permanent notifications ban holds).
 
 ### Tier 3: Future Consideration
 
@@ -1964,3 +2566,11 @@ Summary of all design decisions made during the design phase.
 | Quick-log widget non-loggable visuals | (b)/(c) drop the habit-color tint and use a muted `square.dashed` / `exclamationmark.triangle` glyph in `.secondary`, no `Button` | The card must not *look* like a primed log button when a tap won't log; `.secondary` (not `.red`) keeps a setup condition calm and clinical |
 | Quick-log widget store-unavailable | Keeps the tap (write enqueues + syncs later), replaces the count with `Count unavailable` / `ellipsis`, keeps habit tint | UC-W5 requires offline writes to persist; only the count *display* is unavailable, so the card stays loggable and never shows a false `0` |
 | Quick-log widget haptics / motion / announcements | None — platform-limited in a widget extension | Widgets can't fire haptics, animate timeline reloads, or post `UIAccessibility` announcements; the count change on reload is the only feedback |
+| Watch app purpose | Single-screen, single-tap resisted log from the wrist (the wrist-native twin of the widget) | The wrist is the lowest-friction surface for the core action; no phone needed in the urge moment |
+| Watch logged habit | Logs to the default habit (`UserSettings.defaultHabitId`), fallback to sole/first habit, always named on screen | Keeps v1 to one screen and one tap; on-watch switching is deferred to Later |
+| Watch action | One tap writes one `resisted` event (intensity nil, no tags) via shared `TemptationLogger.logResisted` | Mirrors the in-app and widget single-tap default (UC-O1 / UC-W1); identical event shape, no schema change |
+| Watch confirmation | Taptic Engine success haptic + neutral on-screen "Logged"; no notification, no banner/undo | The watch is a separate haptic stack (unaffected by phone haptics bug #48); correction/undo live on the phone |
+| Watch data parity | CloudKit sync of the same container (`iCloud.com.resistor.app`), **not** App Group | App Groups do not bridge iPhone↔Watch (separate devices); cross-device parity must come from CloudKit. Primary feasibility dependency for v1 |
+| Watch v1 acceptance frame | "Log on watch → appears on phone **after CloudKit sync**" (not instant, no live phone link required) | Logging must not depend on WatchConnectivity reachability; the watch logs independently and syncs later |
+| Watch vs notifications ban | No collision; the watch is a passive log surface with no push/alert/reminder/streak | The ban is on interruptive notifications; the watch never alerts, schedules, or nudges |
+| Watch scope (out/later) | Complication, on-watch habit switching, outcome/intensity capture, undo/correction, fully phone-less independent install — all deferred | v1 ships the smallest useful wrist surface: one tap, one habit, one haptic, synced |
