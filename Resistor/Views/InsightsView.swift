@@ -123,6 +123,10 @@ struct InsightsView: View {
                 }
                 .frame(height: 12)
                 .clipShape(Capsule())
+                // Purely decorative: the legend directly below conveys the same
+                // counts as readable text, so the bar would only add a confusing
+                // empty element for VoiceOver.
+                .accessibilityHidden(true)
 
                 // Legend
                 HStack(alignment: .top, spacing: 12) {
@@ -182,6 +186,7 @@ struct InsightsView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     ForEach(Array(vm.habits.enumerated()), id: \.element.id) { index, habit in
+                        let isSelected = vm.selectedHabitIndex == index
                         Button(action: {
                             vm.selectedHabitIndex = index
                         }) {
@@ -195,12 +200,14 @@ struct InsightsView: View {
                             .padding(.vertical, 9)
                             .background(
                                 Capsule()
-                                    .fill(vm.selectedHabitIndex == index
+                                    .fill(isSelected
                                           ? (Color(hex: habit.colorHex ?? "#007AFF") ?? .blue)
                                           : Color(.secondarySystemBackground))
                             )
-                            .foregroundStyle(vm.selectedHabitIndex == index ? .white : .primary)
+                            .foregroundStyle(isSelected ? .white : .primary)
                         }
+                        .accessibilityLabel(habit.name)
+                        .accessibilityAddTraits(isSelected ? .isSelected : [])
                     }
                 }
             }

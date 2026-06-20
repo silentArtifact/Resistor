@@ -41,6 +41,9 @@ struct LogView: View {
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         vm.logTemptation(contextTags: Array(tagsToLog))
         vm.triggerConfirmation()
+        // The confirmation banner is a transient visual; VoiceOver won't read it
+        // on its own, so post an explicit announcement of the result.
+        UIAccessibility.post(notification: .announcement, argument: "Temptation logged")
     }
 
     private func startHold(_ vm: LogViewModel) {
@@ -218,6 +221,7 @@ struct LogView: View {
                         .foregroundStyle(.secondary)
                         .padding(.top, 28)
                         .opacity(1.0 - dimAmount)
+                        .accessibilityLabel("\(habit.todayEventsCount) logged today for \(habit.name)")
                 }
 
                 // Larger flexible space below the cluster than above it keeps the
@@ -377,8 +381,18 @@ struct LogView: View {
         .zIndex(isHolding ? 1 : 0)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Log temptation for \(habit.name)")
+        .accessibilityValue("\(habit.todayEventsCount) logged today")
         .accessibilityHint("Tap or hold to log a temptation")
         .accessibilityAddTraits(.isButton)
+        // VoiceOver users can't perform the swipe-to-switch-habit drag, so expose
+        // the carousel's next/previous as named actions on the card itself (the
+        // visible arrows are also labelled, but only render with >1 habit).
+        .accessibilityActions {
+            if vm.habits.count > 1 {
+                Button("Next habit") { vm.selectNextHabit() }
+                Button("Previous habit") { vm.selectPreviousHabit() }
+            }
+        }
         .padding(.horizontal, 24)
         .offset(x: cardDragOffset)
         .contentShape(RoundedRectangle(cornerRadius: 20))

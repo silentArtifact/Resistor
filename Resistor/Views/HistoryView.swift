@@ -164,6 +164,8 @@ struct HistoryView: View {
             }
         }
         .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityHint("Opens event details")
         .contentShape(Rectangle())
         .onTapGesture {
             selectedEvent = event

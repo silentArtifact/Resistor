@@ -290,8 +290,7 @@ coexist on disk; each mode only cleans its own files.
 ## Open GitHub Issues
 
 - #35 — App icon design
-- #36 — Dark mode audit
-- #37 — Accessibility pass
+- #37 — Accessibility pass (in progress — comprehensive VoiceOver/Dynamic Type sweep)
 
 ## Remaining Work (v1.0)
 
