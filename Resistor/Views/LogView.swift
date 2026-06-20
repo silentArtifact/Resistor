@@ -116,6 +116,30 @@ struct LogView: View {
                 }
             }
             .navigationTitle("Log")
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        showAddHabitSheet = true
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                    .accessibilityLabel("Add Habit")
+                    .accessibilityIdentifier("addHabitButtonLog")
+                }
+            }
+        }
+        .sheet(isPresented: $showAddHabitSheet, onDismiss: {
+            if viewModel == nil {
+                viewModel = LogViewModel(
+                    modelContext: modelContext,
+                    defaultHabitId: userSettings.first?.defaultHabitId,
+                    locationManager: locationManager
+                )
+            } else {
+                viewModel?.fetchHabits()
+            }
+        }) {
+            AddHabitFromLogSheet(modelContext: modelContext)
         }
         .onAppear {
             if locationManager.authorizationStatus == .notDetermined {
@@ -157,19 +181,6 @@ struct LogView: View {
                     .font(.headline)
             }
             .buttonStyle(.borderedProminent)
-            .sheet(isPresented: $showAddHabitSheet, onDismiss: {
-                if viewModel == nil {
-                    viewModel = LogViewModel(
-                        modelContext: modelContext,
-                        defaultHabitId: userSettings.first?.defaultHabitId,
-                        locationManager: locationManager
-                    )
-                } else {
-                    viewModel?.fetchHabits()
-                }
-            }) {
-                AddHabitFromLogSheet(modelContext: modelContext)
-            }
         }
     }
 
