@@ -301,7 +301,6 @@ struct LogView: View {
         }
     }
 
-    @ViewBuilder
     private func habitCard(_ habit: Habit, vm: LogViewModel) -> some View {
         let habitColor = Color(hex: habit.colorHex ?? "#007AFF") ?? .blue
         let cardScale = reduceMotion ? 1.0 : 1.0 + (holdProgress * 0.08)
@@ -312,7 +311,16 @@ struct LogView: View {
         // hold effect's progress/glow rings render on top of this.
         let restBorderOpacity: CGFloat = isHolding ? 0 : 0.55
 
-        VStack(spacing: 16) {
+        // The card is one heavily-decorated view (surface fill, resting border,
+        // two hold rings, a radiating ring, layered shadows, scale, accessibility,
+        // and gestures). Built as a single fluent chain it overwhelms the Swift
+        // type-checker — Xcode 16's solver times out ("unable to type-check this
+        // expression in reasonable time"). Splitting it across typed `let`
+        // bindings type-checks each sub-expression independently; the resulting
+        // view tree is identical.
+
+        // Inner content — icon, name, optional description.
+        let content = VStack(spacing: 16) {
             // Icon — gets its own glow during hold
             Image(systemName: habit.iconName ?? "circle.fill")
                 .font(.system(size: 48))
@@ -340,130 +348,142 @@ struct LogView: View {
         }
         .padding(32)
         .frame(maxWidth: .infinity)
-        .background(
-            RoundedRectangle(cornerRadius: 20)
-                .fill(Color(.secondarySystemBackground))
-                .overlay(
-                    // Background tint intensifies during hold. Resting tint is a
-                    // touch stronger than before so the surface separates from
-                    // the canvas (notably the pure-black dark background).
-                    RoundedRectangle(cornerRadius: 20)
-                        .fill(habitColor.opacity(0.15 + holdProgress * 0.2))
-                )
-        )
-        .overlay(
-            // Resting affordance border — steady habit-color stroke that signals
-            // the card is the interactive log control and frames the surface.
-            RoundedRectangle(cornerRadius: 20)
-                .stroke(habitColor.opacity(restBorderOpacity), lineWidth: 1.5)
-        )
-        .overlay(
-            // Progress trim ring — shows exactly how far along the hold is
-            RoundedRectangle(cornerRadius: 20)
-                .trim(from: 0, to: holdProgress)
-                .stroke(habitColor, style: StrokeStyle(lineWidth: 3, lineCap: .round))
-                .opacity(isHolding ? 1 : 0)
-        )
-        .overlay(
-            // Pulsing glow border — breathes via repeating animation
-            RoundedRectangle(cornerRadius: 20)
-                .stroke(
-                    habitColor.opacity(holdProgress * glowPulseIntensity * 0.8),
-                    lineWidth: 2 + holdProgress * 3
-                )
-                .blur(radius: 4)
-                .opacity(isHolding ? 1 : 0)
-        )
-        // Radiating pulse ring — expands outward and fades (Hacking with Swift pattern)
-        .background(
-            RoundedRectangle(cornerRadius: 20)
-                .stroke(habitColor.opacity(0.4), lineWidth: 2)
-                .scaleEffect(isHolding && !reduceMotion ? 1.0 + holdProgress * 0.15 : 1.0)
-                .opacity(isHolding ? Double(1.0 - holdProgress) * 0.6 : 0)
-        )
-        // Layered shadow glow — tight inner + wide outer, pulse-modulated
-        .shadow(
-            color: habitColor.opacity(isHolding ? holdProgress * glowPulseIntensity * 0.5 : 0),
-            radius: isHolding ? 12 + holdProgress * 16 : 0
-        )
-        .shadow(
-            color: habitColor.opacity(isHolding ? holdProgress * glowPulseIntensity * 0.25 : 0),
-            radius: isHolding ? 30 + holdProgress * 30 : 0
-        )
-        .scaleEffect(cardScale)
-        .animation(reduceMotion ? .none : .easeOut(duration: 0.15), value: cardScale)
-        .zIndex(isHolding ? 1 : 0)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Log temptation for \(habit.name)")
-        .accessibilityValue("\(habit.todayEventsCount) logged today")
-        .accessibilityHint("Tap or hold to log a temptation")
-        .accessibilityAddTraits(.isButton)
-        // VoiceOver users can't perform the swipe-to-switch-habit drag, so expose
-        // the carousel's next/previous as named actions on the card itself (the
-        // visible arrows are also labelled, but only render with >1 habit).
-        .accessibilityActions {
-            if vm.habits.count > 1 {
-                Button("Next habit") { vm.selectNextHabit() }
-                Button("Previous habit") { vm.selectPreviousHabit() }
-            }
-        }
-        .padding(.horizontal, 24)
-        .offset(x: cardDragOffset)
-        .contentShape(RoundedRectangle(cornerRadius: 20))
-        .onTapGesture {
-            // Only handle tap if the drag gesture didn't trigger a hold
-            if !didHold {
-                logTemptationAction(vm)
-            }
-            didHold = false
-        }
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { value in
-                    let distance = sqrt(value.translation.width * value.translation.width + value.translation.height * value.translation.height)
 
-                    if distance > 30 {
-                        // User is swiping, cancel hold and handle carousel
-                        if isHolding {
-                            cancelHold(vm)
-                        }
-                        cardDragOffset = value.translation.width * 0.4
-                    } else if !isHolding && distance < 10 {
-                        // Finger staying still — start hold
-                        startHold(vm)
-                    }
+        // Surface fill + resting affordance border.
+        let filled = content
+            .background(
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(Color(.secondarySystemBackground))
+                    .overlay(
+                        // Background tint intensifies during hold. Resting tint is a
+                        // touch stronger than before so the surface separates from
+                        // the canvas (notably the pure-black dark background).
+                        RoundedRectangle(cornerRadius: 20)
+                            .fill(habitColor.opacity(0.15 + holdProgress * 0.2))
+                    )
+            )
+            .overlay(
+                // Resting affordance border — steady habit-color stroke that signals
+                // the card is the interactive log control and frames the surface.
+                RoundedRectangle(cornerRadius: 20)
+                    .stroke(habitColor.opacity(restBorderOpacity), lineWidth: 1.5)
+            )
+
+        // Hold-progress rings layered on top of the surface.
+        let ringed = filled
+            .overlay(
+                // Progress trim ring — shows exactly how far along the hold is
+                RoundedRectangle(cornerRadius: 20)
+                    .trim(from: 0, to: holdProgress)
+                    .stroke(habitColor, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                    .opacity(isHolding ? 1 : 0)
+            )
+            .overlay(
+                // Pulsing glow border — breathes via repeating animation
+                RoundedRectangle(cornerRadius: 20)
+                    .stroke(
+                        habitColor.opacity(holdProgress * glowPulseIntensity * 0.8),
+                        lineWidth: 2 + holdProgress * 3
+                    )
+                    .blur(radius: 4)
+                    .opacity(isHolding ? 1 : 0)
+            )
+
+        // Radiating ring behind the card + layered shadow glow + scale.
+        let glowing = ringed
+            // Radiating pulse ring — expands outward and fades (Hacking with Swift pattern)
+            .background(
+                RoundedRectangle(cornerRadius: 20)
+                    .stroke(habitColor.opacity(0.4), lineWidth: 2)
+                    .scaleEffect(isHolding && !reduceMotion ? 1.0 + holdProgress * 0.15 : 1.0)
+                    .opacity(isHolding ? Double(1.0 - holdProgress) * 0.6 : 0)
+            )
+            // Layered shadow glow — tight inner + wide outer, pulse-modulated
+            .shadow(
+                color: habitColor.opacity(isHolding ? holdProgress * glowPulseIntensity * 0.5 : 0),
+                radius: isHolding ? 12 + holdProgress * 16 : 0
+            )
+            .shadow(
+                color: habitColor.opacity(isHolding ? holdProgress * glowPulseIntensity * 0.25 : 0),
+                radius: isHolding ? 30 + holdProgress * 30 : 0
+            )
+            .scaleEffect(cardScale)
+            .animation(reduceMotion ? .none : .easeOut(duration: 0.15), value: cardScale)
+            .zIndex(isHolding ? 1 : 0)
+
+        // Accessibility + gesture wiring as the final, lighter chain.
+        return glowing
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Log temptation for \(habit.name)")
+            .accessibilityValue("\(habit.todayEventsCount) logged today")
+            .accessibilityHint("Tap or hold to log a temptation")
+            .accessibilityAddTraits(.isButton)
+            // VoiceOver users can't perform the swipe-to-switch-habit drag, so expose
+            // the carousel's next/previous as named actions on the card itself (the
+            // visible arrows are also labelled, but only render with >1 habit).
+            .accessibilityActions {
+                if vm.habits.count > 1 {
+                    Button("Next habit") { vm.selectNextHabit() }
+                    Button("Previous habit") { vm.selectPreviousHabit() }
                 }
-                .onEnded { value in
-                    let distance = sqrt(value.translation.width * value.translation.width + value.translation.height * value.translation.height)
+            }
+            .padding(.horizontal, 24)
+            .offset(x: cardDragOffset)
+            .contentShape(RoundedRectangle(cornerRadius: 20))
+            .onTapGesture {
+                // Only handle tap if the drag gesture didn't trigger a hold
+                if !didHold {
+                    logTemptationAction(vm)
+                }
+                didHold = false
+            }
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        let distance = sqrt(value.translation.width * value.translation.width + value.translation.height * value.translation.height)
 
-                    if distance > 30 {
-                        // Swipe gesture ended — cancel any hold state
-                        didHold = false
-                        if value.translation.width > 50 {
-                            vm.selectPreviousHabit()
-                        } else if value.translation.width < -50 {
-                            vm.selectNextHabit()
-                        }
-                        if reduceMotion {
-                            cardDragOffset = 0
-                        } else {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                cardDragOffset = 0
+                        if distance > 30 {
+                            // User is swiping, cancel hold and handle carousel
+                            if isHolding {
+                                cancelHold(vm)
                             }
+                            cardDragOffset = value.translation.width * 0.4
+                        } else if !isHolding && distance < 10 {
+                            // Finger staying still — start hold
+                            startHold(vm)
                         }
-                    } else if isHolding {
-                        // Hold released — log temptation
-                        endHold(vm)
                     }
-                }
-        )
-        .onDisappear {
-            // Clean up timer if view disappears mid-hold
-            holdTimer?.invalidate()
-            holdTimer = nil
-            holdStartTime = nil
-        }
-        .animation(reduceMotion ? .none : .interactiveSpring, value: cardDragOffset)
+                    .onEnded { value in
+                        let distance = sqrt(value.translation.width * value.translation.width + value.translation.height * value.translation.height)
+
+                        if distance > 30 {
+                            // Swipe gesture ended — cancel any hold state
+                            didHold = false
+                            if value.translation.width > 50 {
+                                vm.selectPreviousHabit()
+                            } else if value.translation.width < -50 {
+                                vm.selectNextHabit()
+                            }
+                            if reduceMotion {
+                                cardDragOffset = 0
+                            } else {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                    cardDragOffset = 0
+                                }
+                            }
+                        } else if isHolding {
+                            // Hold released — log temptation
+                            endHold(vm)
+                        }
+                    }
+            )
+            .onDisappear {
+                // Clean up timer if view disappears mid-hold
+                holdTimer?.invalidate()
+                holdTimer = nil
+                holdStartTime = nil
+            }
+            .animation(reduceMotion ? .none : .interactiveSpring, value: cardDragOffset)
     }
 
     @ViewBuilder
