@@ -33,6 +33,7 @@ Comprehensive design document for Resistor, an iOS habit-tracking app that logs 
 1. Let a user register at least one compulsion/habit they are actively trying to change.
 2. Allow the user to log an episode of temptation in under a few seconds from opening the app.
 3. Show simple trends over time: frequency changes, time-of-day spikes, day-of-week patterns.
+4. Capture the outcome (resisted / gave in) of each logged temptation without adding any step to the single-tap log, so the Insights outcome breakdown reflects real behavior instead of "Not recorded".
 
 ### Non-Goals for v1.0
 
@@ -50,16 +51,39 @@ Comprehensive design document for Resistor, an iOS habit-tracking app that logs 
 1. User opens app, lands on Log screen.
 2. Currently selected habit visible as a card.
 3. Swipe left/right to switch habits if needed.
-4. Tap "Log Temptation" button.
-5. Event created with timestamp and habit reference.
-6. Outcome sheet presents: intensity selector (1-5) + "I Resisted" / "I Gave In" / "Skip".
-7. If context prompt enabled, context sheet presents: tag grid + note field.
-8. Confirmation banner slides down with "Undo" option, auto-hides after 4s.
+4. Tap (or hold) "Log Temptation".
+5. Event created with timestamp, habit reference, and **outcome defaulting to `resisted`** (the common case: the user logs the moment they were tempted and overcame the urge). Logging stays a single tap — there is **no** up-front outcome decision.
+6. Optional outcome/intensity/context sheets present per existing sheet-sequencing rules (these remain "Skip"-able and never block the log).
+7. Confirmation banner slides down offering **"Gave in"** and **"Undo"**, auto-hides after 5s (the dwell window for an in-the-moment correction; see Flow 1a).
 
 Edge cases:
 - No habits configured: redirect to Add Habit flow
-- Rapid repeated taps: each tap creates a separate event
+- Rapid repeated taps: each tap creates a separate event, each defaulting to `resisted`
 - App from cold start vs background: always lands on Log screen
+
+> **Default-outcome note.** The `resisted` default applies to **new** events only. Pre-existing events stored with `outcome = "unknown"` are left untouched — this is an additive behavior change, not a data migration. No field is renamed or removed; the `Outcome` enum already defines all three raw values. CloudKit-safe.
+
+### Flow 1a: Outcome Correction (post-log)
+
+Outcome is captured by defaulting, then **corrected** if the temptation was not resisted. Correction is never a fork in the logging path. There are two surfaces, no third.
+
+**Surface A — in the moment (confirmation banner).**
+
+1. User logs a temptation (Flow 1). Event saved with `outcome = "resisted"`.
+2. Confirmation banner appears with "Gave in" and "Undo", auto-hiding after 5s.
+3. User taps "Gave in" -> the just-logged event's `outcome` flips to `gave_in`. This is a **pure one-tap flip**: it does not re-open intensity, context, or note prompts.
+4. Banner dismisses (or updates to reflect the correction) and the 5s timer is cancelled on interaction.
+
+**Surface C — after the fact (History event detail).**
+
+1. User opens an event from History (pushed from Insights).
+2. The Outcome row in the event detail sheet is **editable** via a picker.
+3. User changes the outcome; the change is saved to that event. No other fields are re-prompted.
+
+Edge cases:
+- Banner auto-dismisses before the user taps "Gave in": the event stays `resisted`; the user can still correct it later via Surface C.
+- Undo (banner) deletes the event entirely, as today — distinct from "Gave in", which only edits the outcome.
+- "Unknown" / "Not recorded" is **never newly settable from the banner.** Surface A offers only "Gave in" (the correction) and "Undo".
 
 ### Flow 2: Add/Edit Habit
 
@@ -166,7 +190,186 @@ Context tags are user-defined and managed via the `ContextTag` SwiftData model. 
 - Today's count for selected habit
 - Outcome sheet (half-sheet): intensity 1-5, "I Resisted" / "I Gave In" / "Skip"
 - Context sheet (half-sheet): tag grid + note field, "Skip" / "Save"
-- Confirmation banner overlay
+- Confirmation banner overlay — offers "Gave in" and "Undo" (see Outcome Capture use cases below)
+
+#### Outcome Capture (use cases)
+
+Logging defaults every new event to `outcome = "resisted"`, so the single-tap log
+records a usable outcome with zero extra steps. The only departure from `resisted`
+is an explicit, optional correction. This requires **no schema change**: the
+`Outcome` enum already defines `resisted` / `gaveIn` / `unknown`, and both Insights
+and History already display outcome. Today nothing ever writes anything but
+`unknown`; these use cases make the write happen.
+
+**UC-O1 — Single-tap log records "resisted" by default.**
+As someone who just resisted an urge, I want logging to be one tap so that I capture
+the moment without friction, and have its outcome recorded as resisted.
+Acceptance criteria:
+- Tapping (or holding) "Log Temptation" creates exactly one `TemptationEvent` whose
+  `outcome` is `"resisted"`.
+- No outcome decision is presented before or during the log; the log completes in a
+  single tap.
+- The event appears in Insights' outcome breakdown under "Resisted", not "Not
+  recorded".
+- Pre-existing events with `outcome = "unknown"` are unchanged after this behavior
+  ships.
+
+**UC-O2 — Correct to "gave in" from the confirmation banner.**
+As someone who logged but actually gave in, I want a one-tap correction in the moment
+so that the record is accurate without redoing the log.
+Acceptance criteria:
+- The confirmation banner shows a "Gave in" control alongside "Undo".
+- Tapping "Gave in" sets the just-logged event's `outcome` to `"gave_in"` and persists
+  it.
+- The correction does **not** open or re-open the intensity, context, or note prompts.
+- The banner remains visible long enough to act: it auto-dismisses after **5 seconds**
+  (up from 4s). Any banner interaction cancels the auto-dismiss timer.
+- "Gave in" edits the existing event; it never creates a second event and never deletes
+  the event.
+- The banner offers no path to set "Not recorded" / "unknown".
+
+**UC-O3 — Undo remains distinct from "Gave in".**
+As someone who logged by mistake, I want Undo to remove the event entirely, separate
+from correcting its outcome.
+Acceptance criteria:
+- "Undo" deletes the just-logged event (existing behavior, unchanged).
+- "Undo" and "Gave in" are visually and behaviorally distinct; one deletes, the other
+  edits.
+
+See "Outcome Correction (use cases)" under History for the after-the-fact surface
+(UC-O4).
+
+#### Outcome Capture (interaction and visual spec)
+
+This is the build-ready spec for **Surface A** (the confirmation banner). It refines
+the `confirmationBanner(vm:)` function in `Views/LogView.swift:455` and the
+`triggerConfirmation()` / new flip method on `LogViewModel`. No new screen, no
+navigation push, no new data model. The banner is still an `.overlay(alignment: .top)`
+with the existing slide+fade transition; only its right-side content and the dwell
+logic change.
+
+##### Layout (both states)
+
+The banner is a single `HStack` inside the existing rounded card (12pt radius,
+`Color(.systemBackground)` fill, `Color(.separator)` 0.5pt stroke, shadow,
+24pt outer horizontal padding, 16pt inner horizontal / 12pt vertical padding). The
+HStack has three regions, left to right:
+
+1. **Status group (leading).** `Image(systemName:)` + `Text` in an `HStack(spacing: 8)`,
+   treated as one accessibility element (`.accessibilityElement(children: .combine)`).
+   Icon and label are **state-driven** (see the two states below). This group never
+   moves; only its glyph, tint, and word change when the outcome flips.
+2. **`Spacer()`** — pushes the controls to the trailing edge.
+3. **Controls group (trailing).** An `HStack(spacing: 0)` holding the correction
+   control, a hairline divider, and the destructive control. The two controls are
+   deliberately separated so "edit" and "delete" are never mistaken for each other:
+
+   | Slot | Control | Type | Treatment |
+   |------|---------|------|-----------|
+   | First (inner) | **Gave in** | `Button` with text `"Gave in"` | `.font(.subheadline.weight(.semibold))`, `.foregroundStyle(.orange)` (the `gaveIn` semantic color — signals what tapping produces, and the only color cue distinguishing it from Undo). |
+   | Divider | — | `Divider()` in a fixed `.frame(height: 20)` | A vertical hairline (`Color(.separator)`) between the two controls so they read as two distinct targets, not one run of text. Hidden in the post-flip state (see below). |
+   | Second (outer) | **Undo** | `Button` with text `"Undo"` | `.font(.subheadline)` (regular weight, no color = `.secondary`). Lighter weight + neutral color makes it visually subordinate to the colored, semibold correction control. |
+
+   Each `Button` gets `.padding(.horizontal, 12).padding(.vertical, 11)` and
+   `.contentShape(Rectangle())` so its tappable area is ≥44pt tall and comfortably
+   wide; the visible text is smaller but the hit target is full-height. Do **not** put
+   `.padding` on the labels alone — pad the button so the hit target, not just the
+   glyph, is large. The two buttons sit flush against the divider; the 12pt inner
+   padding on each gives ~24pt of clear space straddling the divider, well above the
+   8pt minimum inter-target gap.
+
+Ordering rationale: **Gave in is inner (closer to the status word), Undo is outer
+(trailing edge).** "Gave in" is the expected, frequent correction and reads as a
+continuation of the status ("Logged → actually, Gave in"); Undo is the rare,
+destructive escape hatch and conventionally lives at the far trailing edge. This also
+keeps the destructive action furthest from the thumb's resting sweep after a log,
+reducing accidental deletes.
+
+##### State 1 — Just logged (default, outcome = `resisted`)
+
+- Status icon: `checkmark.circle.fill`, `.foregroundStyle(.green)`.
+- Status label: `"Logged"`, `.fontWeight(.medium)`, `.foregroundStyle(.primary)`.
+- Controls: **Gave in** (orange, semibold) · divider · **Undo** (secondary). Both
+  visible and enabled.
+- Dwell: auto-dismiss after **5s** (see Timer below).
+
+Note the status word is `"Logged"`, not `"Resisted"` — the banner confirms the *log
+action*, and `resisted` is the implicit default. Surfacing "Resisted" here would
+imply the user made an outcome choice they did not make, and would make the "Gave in"
+control read as contradicting an explicit selection. "Logged" stays neutral; "Gave
+in" reads as supplying the outcome, not overriding one.
+
+##### State 2 — After "Gave in" tapped (outcome flipped to `gave_in`)
+
+A single tap on **Gave in** transitions the banner in place (it does **not** dismiss
+immediately — the user needs to see the correction registered, and may still want
+Undo):
+
+- Status icon swaps to `xmark.circle.fill`, `.foregroundStyle(.orange)`.
+- Status label swaps to `"Gave In"` (the canonical outcome display name, title-cased —
+  distinct from the lowercase **"Gave in"** button label, which is an action). Use
+  `.fontWeight(.medium)`, `.foregroundStyle(.primary)`.
+- The **Gave in button is removed**, and the **divider is removed** with it. Tapping
+  it again is meaningless (already `gave_in`; the banner offers no path back to
+  `resisted` or to `unknown`), so leaving it would be a dead control. Only **Undo**
+  remains on the right.
+- Undo stays in its same trailing position and behavior (deletes the event). It does
+  not move when Gave in is removed — the Spacer absorbs the freed width, so Undo's hit
+  target stays anchored at the trailing edge and the user's thumb target is stable.
+- Dwell: the 5s auto-dismiss timer **restarts** on the flip (call
+  `triggerConfirmation()`'s timer-arming logic again, or a shared `armDismissTimer()`),
+  giving the user a fresh 5s to read the corrected state and optionally Undo. This is
+  the one case where interaction re-arms rather than only cancels — because the banner
+  now shows new information the user must have time to verify.
+
+This is a one-way transition within a single banner presentation: there is no "flip
+back to Resisted" control. If the user got it wrong, Undo (delete) is available, or
+they can re-log; after dismissal, History (Surface C) is the correction path.
+
+##### Timer behavior (consolidated)
+
+- On log: arm a cancellable 5s `DispatchWorkItem` (replace the literal `4.0` in
+  `LogViewModel.triggerConfirmation()` with `5.0`).
+- On **Undo** tap: cancel the timer, dismiss the banner immediately, delete the event
+  (existing `undoLastLog()` behavior, unchanged except it already cancels the work
+  item).
+- On **Gave in** tap: cancel the existing timer, perform the outcome flip + save, then
+  re-arm a fresh 5s timer (banner stays visible in State 2).
+- Any tap on the banner card that is not on a control does nothing (the banner is not
+  a button); only the two explicit controls and the auto-dismiss act.
+
+##### Colors and dark mode
+
+- Card fill `Color(.systemBackground)`, stroke `Color(.separator)` — unchanged;
+  adaptive, so dark mode is automatic.
+- Status and control tints use the **outcome semantic colors** (`.green` for the
+  logged/resisted check, `.orange` for gave-in), never the user accent color — outcome
+  color is semantic to outcome, not to theme. These system colors are vivid in both
+  appearances.
+- The vertical `Divider()` uses `Color(.separator)` (do **not** use a hardcoded
+  translucent gray — on the pure-black dark canvas a low-opacity gray can vanish, the
+  same failure the context chips hit; `.separator` is the adaptive, always-visible
+  choice).
+- Undo's `.secondary` foreground is adaptive and legible on the system-background card
+  in both modes.
+
+##### Motion (reduceMotion-gated)
+
+- Banner appear/dismiss: unchanged — `.move(edge: .top).combined(with: .opacity)`,
+  0.3s easeInOut, already gated via `.animation(reduceMotion ? .none : .easeInOut(...))`.
+- State 1 → State 2 flip: wrap the status/control mutation in
+  `withAnimation(reduceMotion ? .none : .easeInOut(duration: 0.2))`. The icon and
+  label cross-fade (apply `.contentTransition(.symbolEffect(.replace))` to the status
+  `Image` so the checkmark→xmark swap is a glyph morph, and `.transition(.opacity)`/
+  `.id(outcome)` on the label so the word cross-fades). The Gave in button + divider
+  removal animates as `.opacity` (and may collapse width via the layout). With Reduce
+  Motion on, the swap is instant: no symbol effect, no cross-fade, no width-collapse
+  animation — mutate state outside `withAnimation`.
+- No haptic on the flip. Per the haptic policy, the only haptic is the log tap itself;
+  secondary actions (Undo, Gave in) get **no** haptic.
+
+See "Outcome Correction (use cases)" under History for the after-the-fact surface
+(UC-O4).
 
 ### S2: Insights Screen
 
@@ -380,7 +583,110 @@ emoji.
 
 - Events grouped by date
 - Swipe to delete
-- Tap for detail sheet (read-only)
+- Tap for detail sheet — outcome is **editable**; all other fields read-only
+
+#### Outcome Correction (use cases)
+
+**UC-O4 — Edit outcome after the fact in History.**
+As someone reviewing past events, I want to change an event's outcome so that a record
+I logged earlier (or mis-recorded) can be made accurate later.
+Acceptance criteria:
+- The Outcome row in the event detail sheet is editable (a picker), replacing today's
+  read-only row.
+- Changing the outcome persists to that specific event and is reflected in Insights.
+- Editing outcome does **not** re-prompt or alter intensity, context tags, note, time,
+  or location.
+- Selectable values: "Resisted" and "Gave In" are always available. **"Not recorded"
+  appears as a selectable option only when the event's current outcome is already
+  `unknown`** (a legacy event); once the user moves such an event to Resisted or Gave
+  In, "Not recorded" is no longer offered for that event. For events that already have
+  a recorded outcome, only "Resisted" and "Gave In" are offered.
+- Rationale for the conditional "Not recorded": `unknown` is a legacy state for data
+  created before outcome capture existed. We let users keep an old event as "Not
+  recorded" or resolve it, but we never invite a user to *downgrade* a recorded outcome
+  back to "Not recorded" — that would manufacture ambiguity rather than record reality.
+
+#### Outcome Correction (interaction and visual spec)
+
+This is the build-ready spec for **Surface C** (the History event-detail picker). It
+refines the read-only Outcome `Section` in `EventDetailSheet`
+(`Views/HistoryView.swift:247`). The sheet stays a `.medium`-detent `List`; only the
+Outcome section becomes editable. No other field changes — intensity, context, time,
+location, note rows are untouched.
+
+##### Picker style
+
+Use an **inline `Picker` rendered as menu-style** inside the existing
+`Section("Outcome")` — i.e. a single `List` row showing the current outcome with a
+trailing chevron/checkmark menu, consistent with iOS Settings-style editable rows and
+with the plain-`List` structure of this sheet. Concretely:
+
+```
+Section("Outcome") {
+    Picker(selection: $outcome) {
+        // one row per selectable option (see conditional rule)
+    } label: {
+        Label(currentDisplayName, systemImage: currentIconName)   // leading icon tinted to outcome color
+    }
+    .pickerStyle(.menu)
+}
+```
+
+Rationale for `.menu` over `.segmented` inline: the option set is **conditional**
+(2 or 3 options), and a segmented control with a sometimes-present third segment reads
+as unstable. A menu also keeps the collapsed row visually identical to the other
+read-only rows in the sheet (icon + value), so the screen does not gain visual weight;
+the editability is revealed on tap. The selected value shows the **outcome's semantic
+icon and color** in the collapsed row (`event.outcomeEnum.iconName` /
+`event.outcomeEnum.color`), preserving the existing row's appearance.
+
+##### Options and the conditional "Not recorded" rule
+
+The picker's option rows are built from a computed list, each row a
+`Label(outcome.displayName, systemImage: outcome.iconName)` tagged with the `Outcome`
+value, icon tinted to `outcome.color`:
+
+- **"Resisted"** (`checkmark.circle.fill`, green) — always present.
+- **"Gave In"** (`xmark.circle.fill`, orange) — always present.
+- **"Not recorded"** (`questionmark.circle.fill`, gray) — present **only when
+  `event.outcomeEnum == .unknown`** at the time the sheet is shown. Once the user picks
+  Resisted or Gave In, persisting removes `unknown` from the option set; reopening the
+  picker (or sheet) shows only the two recorded options. A recorded outcome can never
+  be downgraded to `unknown`.
+
+Implementation note: compute the options once per render from the event's current
+persisted outcome, e.g. `var options: [Outcome] { event.outcomeEnum == .unknown ? [.resisted, .gaveIn, .unknown] : [.resisted, .gaveIn] }`. The currently-selected value is
+always in the list (an `unknown` event includes `unknown`; a recorded event's value is
+`resisted`/`gaveIn`, both always present), so the menu always has a valid current
+selection — no SwiftUI "selection not in options" warning.
+
+##### Selected / unselected appearance
+
+- **Collapsed row (menu closed):** leading `Label` with the current outcome's icon
+  (tinted to its semantic color) + display name in `.primary`; trailing menu indicator
+  is the system default (up/down chevrons). Matches the other detail rows' icon+text
+  rhythm.
+- **Open menu rows:** each option shows its icon + name; the system places a checkmark
+  on the current selection (standard `.menu` behavior). Icons are tinted to their
+  outcome colors so the three options are distinguishable by icon+color, not text
+  alone (satisfies the "outcome colors paired with icons, never color alone" rule).
+- There is **no separate disabled state**: an option that is not offered is simply
+  absent from the list (not shown greyed). The only conditional is presence/absence of
+  "Not recorded".
+
+##### Persistence
+
+On selection change, write `event.outcome = newValue.rawValue` and
+`try? modelContext.save()` (matching the file's existing
+`try? modelContext.save()` + print error policy). The change is immediate, no confirm
+step, and is reflected in Insights on next recompute. Editing outcome does not touch
+`intensity`, `contextTags`, `note`, `occurredAt`, or location.
+
+##### Dark mode
+
+All colors here are semantic (outcome system colors + `.primary`) and the sheet is a
+standard `List`, so dark mode is automatic. No translucent fills that could disappear
+on the black canvas.
 
 ---
 
@@ -462,7 +768,15 @@ All interactive elements meet 44x44pt minimum tap target.
 
 **Stat Card:** Caption + large value + subtitle. Surface background, 12pt corner radius.
 
-**Confirmation Banner:** Green checkmark + "Logged" on left, subtle "Undo" text button on right. Full-width with horizontal padding. System background, 12pt corner radius, subtle shadow. Slides from top, auto-hides 4s. Undo deletes the last logged event and immediately dismisses the banner.
+**Confirmation Banner:** A status glyph + status word on the left; a correction
+control and a destructive control on the right. Full-width with horizontal padding.
+System background, 12pt corner radius, subtle shadow. Slides from top, auto-hides 5s.
+The banner has two visual states (just-logged and post-gave-in-flip). "Gave in"
+flips the just-logged event's outcome to `gave_in` (a pure one-tap edit — no
+re-prompts). "Undo" deletes the last logged event. Either interaction cancels the
+auto-dismiss timer. The full build-ready layout, both states, and the
+Undo-vs-Gave-in disambiguation are specified under **S1 → Outcome Capture
+(interaction and visual spec)** below.
 
 ### App Icon
 
@@ -492,6 +806,9 @@ Dark mode is the default. Light mode must also work.
 | Swipe trailing | Event row | Delete | System default |
 | Tap | Time of Day period bar (overview) | Expand that period to hourly bars | Full plot-height x-band hit test via `chartOverlay` + `chartProxy` |
 | Tap | Time of Day collapse chevron (expanded) | Collapse to four-period overview | 44×44pt min target |
+| Tap | Confirmation banner "Gave in" (State 1 only) | Flip last-logged event outcome to `gave_in` (no re-prompt); banner → State 2; re-arm 5s timer | — |
+| Tap | Confirmation banner "Undo" (both states) | Delete last-logged event; dismiss banner | — |
+| Tap | History event-detail Outcome picker | Open menu, select outcome; persist to that event | — |
 
 ### Drag Gesture (Habit Card)
 
@@ -541,6 +858,7 @@ Rules:
 | Element | Animation | Duration |
 |---------|-----------|----------|
 | Banner appear/dismiss | Slide from top + fade | 0.3s easeInOut |
+| Banner outcome flip (State 1 → 2) | Status glyph morph (`.symbolEffect(.replace)`) + label cross-fade + Gave-in/divider opacity-out | 0.2s easeInOut |
 | Habit card drag | Interactive spring | — |
 | Card snap-back | Spring | 0.3s |
 | Time of Day expand/collapse | Bars cross-fade + height change | 0.25s easeInOut |
@@ -566,12 +884,25 @@ Rules:
 ### Confirmation Banner
 
 - Triggers after all sheets dismiss
-- Left side: green checkmark + "Logged". Right side: subtle "Undo" text button (secondary color)
-- Full-width layout with 24pt horizontal padding
+- **State 1 (just logged):** left = green `checkmark.circle.fill` + "Logged"; right =
+  **Gave in** (orange, semibold) · vertical hairline divider · **Undo** (secondary).
+  Gave in is the inner control, Undo is at the trailing edge.
+- **State 2 (after Gave in tapped):** left = orange `xmark.circle.fill` + "Gave In";
+  right = **Undo** only (Gave in button and divider removed).
+- Full-width layout with 24pt outer horizontal padding; each control padded to a
+  ≥44pt-tall, ~24pt-straddling hit target with `.contentShape(Rectangle())`.
 - `.overlay(alignment: .top)` with `.transition(.move(edge: .top).combined(with: .opacity))`
-- Auto-hides after 4s via cancellable `DispatchWorkItem`
-- Undo deletes `lastLoggedEvent` from the model context and immediately dismisses the banner
-- Does not block interaction or push content
+- Auto-hides after **5s** via cancellable `DispatchWorkItem` (extended from 4s to give a
+  real in-the-moment correction window). Tapping **Gave in** re-arms a fresh 5s timer
+  (banner stays visible in State 2); tapping **Undo** cancels the timer and dismisses.
+- "Gave in" sets `lastLoggedEvent.outcome` to `gave_in` and persists; a pure outcome
+  edit (no intensity/context/note re-prompt), then transitions the banner to State 2.
+- Undo deletes `lastLoggedEvent` from the model context and immediately dismisses the
+  banner.
+- No haptic on either control (haptic policy: log tap only).
+- Does not block interaction or push content.
+- Full build-ready layout, both states, colors, and motion: see **S1 → Outcome
+  Capture (interaction and visual spec)**.
 
 ---
 
@@ -608,7 +939,9 @@ Rules:
 - "Log Temptation" button
 - "Today: {n} logged"
 - "{n} of {total}" carousel counter
-- "Logged" confirmation with "Undo" option
+- Banner State 1: status word "Logged"; controls "Gave in" (action, lowercase) and "Undo"
+- Banner State 2 (after Gave in): status word "Gave In" (outcome name, title-case); control "Undo"
+- Distinction is deliberate: "Gave in" = the button you tap (an action); "Gave In" = the recorded outcome it produces. Both are correct per the canonical strings.
 - Empty: "No habits to track" / "Create a habit to start logging temptations." / "Add Habit"
 
 **Outcome Sheet:**
@@ -847,9 +1180,49 @@ explicit accessibility representation rather than relying on the visual `Chart`.
   and `"Showing time-of-day overview"` on collapse, so a VoiceOver user knows the
   chart content swapped under them.
 
+#### Outcome Capture (VoiceOver)
+
+**Confirmation banner (Surface A).**
+
+- **Status group** is one combined element. In State 1 its label is `"Logged"`; in
+  State 2 it is `"Gave In"`. No `.isButton` trait (it is not interactive). Because the
+  banner is a transient overlay VoiceOver may not focus on its own, the result is also
+  posted as an announcement (see below).
+- **Gave in control:** `.accessibilityLabel("Gave in")`, trait `.isButton`, hint
+  `"Changes this log's outcome to gave in."` On activate: performs the flip. Present
+  only in State 1.
+- **Undo control:** `.accessibilityLabel("Undo last log")` (unchanged), trait
+  `.isButton`, hint `"Deletes this log."` (added to make it unmistakably distinct from
+  the Gave-in edit for non-visual users — one deletes, the other edits). Present in
+  both states.
+- **Announcements.**
+  - On log (existing): `UIAccessibility.post(.announcement, "Temptation logged")`.
+  - On **Gave in** flip: post `UIAccessibility.post(.announcement, "Outcome changed to
+    gave in")` so a VoiceOver user hears the correction registered (the banner content
+    changed under them). Do not re-announce on Undo — the event is gone; the natural
+    focus change after dismissal suffices.
+
+**History event-detail picker (Surface C).**
+
+- The Outcome `Picker` is natively accessible as a menu control. Provide
+  `.accessibilityLabel("Outcome")`; its value is the current outcome display name
+  (`"Resisted"` / `"Gave In"` / `"Not recorded"`), spoken automatically by the menu
+  picker. Each option row is a `Label` (icon + text), so VoiceOver reads the full
+  outcome name — no icon-only ambiguity.
+- No custom announcement is needed: the picker's own selection feedback covers the
+  change. The conditional absence of "Not recorded" is simply fewer rows in the menu;
+  nothing special to announce.
+
 ### Dynamic Type
 
 - All text uses SwiftUI text styles (no hardcoded sizes)
+- Confirmation banner controls use text styles (`.subheadline`); the banner row has no
+  fixed height, so at large Dynamic Type the controls grow and the row grows with them.
+  At very large sizes "Gave in" · "Undo" may crowd the status word — allow the status
+  label to truncate before the controls (controls are the actionable content); do not
+  set a fixed banner height that would clip either. The vertical divider uses a
+  text-relative `.frame(height: 20)`; acceptable to let it scale or stay fixed, but
+  never let it force-clip the buttons.
 - Long habit names wrap, never truncate
 - Stat cards stack vertically at accessibility sizes
 - Context tag grid reflows
@@ -865,6 +1238,9 @@ explicit accessibility representation rather than relying on the visual `Chart`.
 
 When enabled:
 - Confirmation banner: crossfade instead of slide
+- Confirmation banner outcome flip (State 1 → 2): instant swap — no symbol-replace
+  effect, no label cross-fade, no Gave-in/divider opacity or width animation (mutate
+  state outside `withAnimation`)
 - Habit card drag: snap immediately instead of spring
 - Sheet presentation: system automatic
 - Time of Day expand/collapse and filter-driven recompute: instant chart swap, no
@@ -1057,3 +1433,14 @@ Summary of all design decisions made during the design phase.
 | Drill-down collapse affordance | Explicit `chevron.up.circle` in card header; tapping hourly bars does nothing | Overview bars are gone when expanded, so "tap same to collapse" is ambiguous |
 | Drill-down tap target | Whole period bar's full-height x-band (chartOverlay hit test), not a chevron | Keeps the overview clean; zero-count bars stay tappable |
 | Hourly axis label format | Bare hour number (24h: `5`…`21,22,23,0`…`4`); VoiceOver speaks full 12h AM/PM | Most compact unambiguous visual label; assistive tech keeps full clarity |
+| New-event default outcome | `resisted` (was `unknown`) | "Resisted" is the common case; recording it by default removes the need for an up-front outcome step and keeps logging one tap |
+| Outcome capture model | Default to resisted, correct to gave-in after the fact; never a fork before/while logging | Preserves single-tap speed; correction is the rare path and belongs after the log |
+| "Gave in" correction depth | Pure one-tap outcome flip; no intensity/context/note re-prompt | The correction is about accuracy, not re-entering the whole event |
+| Banner dwell | 5s (was 4s) | A 4s window is too tight to read "Logged", recognize the outcome was wrong, and tap "Gave in"; 5s is the minimum credible correction window without leaving the banner lingering |
+| "Unknown" / "Not recorded" settability | Not newly settable from the Log banner; in History, offered only when the event is already `unknown` | `unknown` is a legacy state for pre-capture data; never invite users to downgrade a real outcome to "Not recorded" |
+| Outcome correction surfaces | Banner (in the moment) + History detail picker (after the fact); no third surface | Two surfaces cover both timing windows without adding navigation depth |
+| Banner Gave-in vs Undo disambiguation | Gave in = inner, orange, semibold; vertical divider; Undo = outer/trailing, secondary, regular weight | Color + weight + position separate the edit from the destructive delete; destructive action sits furthest from thumb's post-log sweep |
+| Banner after Gave-in tap | Recolors to orange `xmark.circle.fill` + "Gave In", removes Gave-in button + divider, re-arms 5s timer, keeps Undo | Confirms the correction registered, gives time to verify/Undo, removes the now-meaningless re-tap of Gave in |
+| Banner outcome word | "Logged" (State 1), "Gave In" (State 2) — not "Resisted" | Banner confirms the log action; surfacing "Resisted" would imply a choice the user didn't make |
+| History outcome picker style | Inline `.menu`-style `Picker` (icon+text rows), not segmented | Conditional option count (2 vs 3) makes a sometimes-3-segment control unstable; menu keeps the collapsed row identical to other read-only rows |
+| Banner control haptics | None | Haptic policy: only the log tap gets haptic; secondary actions get none |

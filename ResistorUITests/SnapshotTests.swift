@@ -41,6 +41,11 @@ final class SnapshotTests: XCTestCase {
         // 1. Log (launch screen)
         snapshot(app, name: "01-Log\(sfx)")
 
+        // 1a. Confirmation banner (transient, ~5s after a log). Tap the habit
+        // card to log, which slides the banner down in State 1 (Logged · Gave in
+        // · Undo). Then tap "Gave in" to capture State 2 (Gave In · Undo).
+        captureConfirmationBanner(app, sfx: sfx)
+
         // 2. Insights
         if app.tabBars.buttons["Insights"].waitForExistence(timeout: 5) {
             app.tabBars.buttons["Insights"].tap()
@@ -75,6 +80,12 @@ final class SnapshotTests: XCTestCase {
                 history.tap()
                 _ = app.navigationBars.firstMatch.waitForExistence(timeout: 3)
                 snapshot(app, name: "03-History\(sfx)")
+
+                // Event detail sheet — open the first event's .medium-detent
+                // detail sheet (whose Outcome row is now an inline menu Picker)
+                // and capture it.
+                captureEventDetailSheet(app, sfx: sfx)
+
                 // Back to Insights for the next leg.
                 if app.navigationBars.buttons.firstMatch.exists {
                     app.navigationBars.buttons.firstMatch.tap()
@@ -113,6 +124,36 @@ final class SnapshotTests: XCTestCase {
                 snapshot(app, name: "04-Habits-c\(sfx)")
             }
         }
+    }
+
+    /// Logs a temptation by tapping the habit card, captures the confirmation
+    /// banner in State 1 (Logged · Gave in · Undo), then taps "Gave in" to
+    /// capture State 2 (Gave In · Undo). The banner auto-dismisses after 5s, so
+    /// each capture happens immediately after the triggering tap. Finally taps
+    /// Undo to clear the just-logged event so it doesn't pollute later screens.
+    private func captureConfirmationBanner(_ app: XCUIApplication, sfx: String) {
+        // The Log habit card is a combined accessibility button labelled
+        // "Log temptation for <habit>". Sugar is the seeded default habit.
+        let card = app.buttons["Log temptation for Sugar"]
+        guard card.waitForExistence(timeout: 5) else { return }
+        card.tap()
+
+        // State 1 — the banner shows "Logged", a "Gave in" control and "Undo".
+        let gaveIn = app.buttons["Gave in"]
+        guard gaveIn.waitForExistence(timeout: 3) else { return }
+        snapshot(app, name: "01-Log-banner1\(sfx)")
+
+        // State 2 — tapping "Gave in" flips the outcome in place; the banner
+        // morphs to "Gave In" with only "Undo" remaining.
+        gaveIn.tap()
+        let undo = app.buttons["Undo last log"]
+        if undo.waitForExistence(timeout: 3) {
+            snapshot(app, name: "01-Log-banner2\(sfx)")
+            // Remove the just-logged event so it doesn't alter later captures.
+            undo.tap()
+        }
+        // Let the banner fully dismiss before moving on.
+        _ = app.buttons["Log temptation for Sugar"].waitForExistence(timeout: 2)
     }
 
     /// Scrolls the Time of Day card into view and drives the drill-down by
@@ -155,6 +196,31 @@ final class SnapshotTests: XCTestCase {
         // Restore scroll position for any later legs.
         scroll.swipeDown(velocity: .fast)
         scroll.swipeDown(velocity: .fast)
+    }
+
+    /// Opens the first History event's detail sheet and captures it so the
+    /// inline Outcome menu Picker row can be reviewed (icon tint, display name,
+    /// menu chevron affordance). Dismisses via the Done button afterward.
+    ///
+    /// NOTE: History event rows use `.accessibilityElement(children: .combine)`
+    /// with a custom `.onTapGesture` (not a real `Button`), so XCUITest cannot
+    /// `.tap()` the reported row element (it is non-hittable). Tapping the
+    /// enclosing List *cell* does dispatch the gesture, and `HistoryView` uses
+    /// `.sheet(item:)` so the sheet always presents with its content bound.
+    private func captureEventDetailSheet(_ app: XCUIApplication, sfx: String) {
+        // The first List cell (index 0) is the date-section header; the first
+        // event row is cell index 1. Cells are hittable even though the inner
+        // combined element is not.
+        let eventCell = app.cells.element(boundBy: 1)
+        guard eventCell.waitForExistence(timeout: 3) else { return }
+        if eventCell.isHittable { eventCell.tap() }
+
+        // Wait for the sheet's content to render (its Done button), then capture.
+        let done = app.buttons["Done"]
+        guard done.waitForExistence(timeout: 5) else { return }
+        snapshot(app, name: "03-History-detail\(sfx)")
+        done.tap()
+        _ = app.navigationBars["Sugar History"].waitForExistence(timeout: 5)
     }
 
     private func collapseTimeOfDay(_ app: XCUIApplication) {

@@ -60,7 +60,11 @@ final class LogViewModel {
     func logTemptation(contextTags: [String] = []) {
         guard let habit = selectedHabit else { return }
 
-        let event = TemptationEvent(habit: habit, contextTags: contextTags)
+        let event = TemptationEvent(
+            habit: habit,
+            outcome: TemptationEvent.Outcome.resisted.rawValue,
+            contextTags: contextTags
+        )
         modelContext.insert(event)
 
         do {
@@ -101,13 +105,31 @@ final class LogViewModel {
     }
 
     func triggerConfirmation() {
-        confirmationWorkItem?.cancel()
         showConfirmation = true
+        armDismissTimer()
+    }
+
+    /// Cancels any pending dismissal and schedules a fresh 5s auto-dismiss of the
+    /// confirmation banner. Called on initial log and again whenever the banner
+    /// is interacted with (e.g. marking gave-in) so the dwell window resets.
+    private func armDismissTimer() {
+        confirmationWorkItem?.cancel()
         let workItem = DispatchWorkItem { [weak self] in
             self?.showConfirmation = false
         }
         confirmationWorkItem = workItem
-        DispatchQueue.main.asyncAfter(deadline: .now() + 4.0, execute: workItem)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0, execute: workItem)
+    }
+
+    func markLastLogGaveIn() {
+        guard let event = lastLoggedEvent else { return }
+        event.outcome = TemptationEvent.Outcome.gaveIn.rawValue
+        do {
+            try modelContext.save()
+        } catch {
+            print("Failed to mark last log as gave in: \(error)")
+        }
+        armDismissTimer()
     }
 
     func undoLastLog() {

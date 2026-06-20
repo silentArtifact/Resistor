@@ -454,22 +454,66 @@ struct LogView: View {
 
     @ViewBuilder
     private func confirmationBanner(vm: LogViewModel) -> some View {
+        let outcome = vm.lastLoggedEvent?.outcomeEnum ?? .resisted
+        let didGiveIn = outcome == .gaveIn
+
         HStack(spacing: 12) {
-            Image(systemName: "checkmark.circle.fill")
-                .foregroundStyle(.green)
-            Text("Logged")
-                .fontWeight(.medium)
+            // Status group (combined accessibility element, no button trait)
+            HStack(spacing: 8) {
+                Image(systemName: didGiveIn ? "xmark.circle.fill" : "checkmark.circle.fill")
+                    .foregroundStyle(didGiveIn ? .orange : .green)
+                    .contentTransition(.symbolEffect(.replace))
+                Text(didGiveIn ? TemptationEvent.Outcome.gaveIn.displayName : "Logged")
+                    .fontWeight(.medium)
+                    .foregroundStyle(.primary)
+                    .id(outcome)
+                    .transition(.opacity)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(didGiveIn ? TemptationEvent.Outcome.gaveIn.displayName : "Logged")
 
             Spacer()
 
-            Button {
-                vm.undoLastLog()
-            } label: {
-                Text("Undo")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+            // Controls group (trailing)
+            HStack(spacing: 0) {
+                if !didGiveIn {
+                    Button {
+                        withAnimation(reduceMotion ? .none : .easeInOut(duration: 0.2)) {
+                            vm.markLastLogGaveIn()
+                        }
+                        UIAccessibility.post(notification: .announcement, argument: "Outcome changed to gave in")
+                    } label: {
+                        Text("Gave in")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.orange)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 11)
+                            .contentShape(Rectangle())
+                    }
+                    .accessibilityLabel("Gave in")
+                    .accessibilityAddTraits(.isButton)
+                    .accessibilityHint("Changes this log's outcome to gave in.")
+                    .transition(.opacity)
+
+                    Divider()
+                        .frame(height: 20)
+                        .transition(.opacity)
+                }
+
+                Button {
+                    vm.undoLastLog()
+                } label: {
+                    Text("Undo")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 11)
+                        .contentShape(Rectangle())
+                }
+                .accessibilityLabel("Undo last log")
+                .accessibilityAddTraits(.isButton)
+                .accessibilityHint("Deletes this log.")
             }
-            .accessibilityLabel("Undo last log")
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)

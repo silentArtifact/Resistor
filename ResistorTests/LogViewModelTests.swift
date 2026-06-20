@@ -193,7 +193,8 @@ final class LogViewModelTests: XCTestCase {
         vm.logTemptation()
 
         XCTAssertNotNil(vm.lastLoggedEvent)
-        XCTAssertEqual(vm.lastLoggedEvent?.outcome, "unknown")
+        // UC-O1: a single-tap log now defaults to "resisted" (was "unknown").
+        XCTAssertEqual(vm.lastLoggedEvent?.outcome, TemptationEvent.Outcome.resisted.rawValue)
         XCTAssertNil(vm.lastLoggedEvent?.intensity)
 
         let events = try context.fetch(FetchDescriptor<TemptationEvent>())
@@ -285,12 +286,22 @@ final class LogViewModelTests: XCTestCase {
         vm.triggerConfirmation()
         XCTAssertTrue(vm.showConfirmation)
 
-        // The banner auto-hides after 4s (extended from 1.5s to give time to Undo).
-        let expectation = expectation(description: "Confirmation dismissed")
+        // The banner auto-hides after 5s (the dwell window for an in-the-moment
+        // correction; raised from 4s per the Outcome Capture spec).
+        // Still showing just before the 5s deadline.
+        let stillShowing = expectation(description: "Still showing at 4.5s")
         DispatchQueue.main.asyncAfter(deadline: .now() + 4.5) {
-            expectation.fulfill()
+            stillShowing.fulfill()
         }
-        wait(for: [expectation], timeout: 5.5)
+        wait(for: [stillShowing], timeout: 5.0)
+        XCTAssertTrue(vm.showConfirmation, "Banner should still be visible at 4.5s (5s dwell)")
+
+        // Dismissed after the 5s deadline.
+        let dismissed = expectation(description: "Confirmation dismissed")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            dismissed.fulfill()
+        }
+        wait(for: [dismissed], timeout: 2.0)
         XCTAssertFalse(vm.showConfirmation)
     }
 
@@ -312,25 +323,256 @@ final class LogViewModelTests: XCTestCase {
         vm.triggerConfirmation()
         XCTAssertTrue(vm.showConfirmation)
 
-        // Wait past when the first timer would have fired (4s from the first
-        // call ≈ 3.5s from here) but before the second timer fires.
+        // Wait past when the first timer would have fired (5s from the first
+        // call ≈ 4.5s from here) but before the second timer fires.
         let firstTimerExpectation = expectation(description: "Past first timer")
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3.7) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4.7) {
             firstTimerExpectation.fulfill()
         }
-        wait(for: [firstTimerExpectation], timeout: 4.5)
+        wait(for: [firstTimerExpectation], timeout: 5.5)
 
         // Should still be showing because the second timer hasn't fired yet
-        // (~4.2s from the first call; the second timer fires at ~4.5s).
+        // (~5.2s from the first call; the second timer fires at ~5.5s).
         XCTAssertTrue(vm.showConfirmation)
 
-        // Wait for the second timer (4s from the second call) to fire.
+        // Wait for the second timer (5s from the second call) to fire.
         let finalExpectation = expectation(description: "Second timer fired")
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
             finalExpectation.fulfill()
         }
         wait(for: [finalExpectation], timeout: 2.0)
         XCTAssertFalse(vm.showConfirmation)
+    }
+
+    // MARK: - Outcome Capture: UC-O1 (default resisted)
+
+    func testLogTemptationDefaultsToResisted() throws {
+        let habit = TestHelpers.makeHabit()
+        context.insert(habit)
+        try context.save()
+
+        let vm = LogViewModel(modelContext: context)
+        vm.logTemptation()
+
+        XCTAssertEqual(vm.lastLoggedEvent?.outcomeEnum, .resisted)
+        XCTAssertEqual(vm.lastLoggedEvent?.outcome, "resisted")
+    }
+
+    func testModelDefaultOutcomeStaysUnknownForUnsetEvents() throws {
+        // UC-O1: pre-existing events that don't set outcome stay "unknown".
+        // The stored-property default on the model must remain "unknown" even
+        // though the Log flow now writes "resisted".
+        let habit = TestHelpers.makeHabit()
+        let legacy = TemptationEvent(habit: habit)
+        context.insert(habit)
+        context.insert(legacy)
+        try context.save()
+
+        XCTAssertEqual(legacy.outcome, "unknown")
+        XCTAssertEqual(legacy.outcomeEnum, .unknown)
+    }
+
+    // MARK: - Outcome Capture: UC-O2 (gave-in is a pure flip)
+
+    func testMarkLastLogGaveInFlipsOutcome() throws {
+        let habit = TestHelpers.makeHabit()
+        context.insert(habit)
+        try context.save()
+
+        let vm = LogViewModel(modelContext: context)
+        vm.logTemptation()
+        XCTAssertEqual(vm.lastLoggedEvent?.outcomeEnum, .resisted)
+
+        vm.markLastLogGaveIn()
+
+        XCTAssertEqual(vm.lastLoggedEvent?.outcomeEnum, .gaveIn)
+        XCTAssertEqual(vm.lastLoggedEvent?.outcome, "gave_in")
+    }
+
+    func testMarkLastLogGaveInPersists() throws {
+        let habit = TestHelpers.makeHabit()
+        context.insert(habit)
+        try context.save()
+
+        let vm = LogViewModel(modelContext: context)
+        vm.logTemptation()
+        let eventId = vm.lastLoggedEvent!.id
+        vm.markLastLogGaveIn()
+
+        // Re-fetch from the store to confirm the flip was saved, not just held in memory.
+        let fetched = try context.fetch(FetchDescriptor<TemptationEvent>())
+        let match = fetched.first { $0.id == eventId }
+        XCTAssertEqual(match?.outcome, "gave_in")
+    }
+
+    func testMarkLastLogGaveInIsPureFlip_PreservesAllOtherFields() throws {
+        let habit = TestHelpers.makeHabit(name: "Smoking")
+        context.insert(habit)
+        try context.save()
+
+        let vm = LogViewModel(modelContext: context)
+        vm.logTemptation(contextTags: ["stressed", "alone"])
+        // Set the remaining mutable fields on the just-logged event to known values.
+        let event = vm.lastLoggedEvent!
+        event.intensity = 4
+        event.note = "anxious"
+        event.latitude = 37.3349
+        event.longitude = -122.0090
+        event.locationName = "Cupertino"
+        let originalOccurredAt = event.occurredAt
+        let originalHabitId = event.habit?.id
+        try context.save()
+
+        vm.markLastLogGaveIn()
+
+        // Only outcome changed.
+        XCTAssertEqual(event.outcomeEnum, .gaveIn)
+        XCTAssertEqual(event.intensity, 4)
+        XCTAssertEqual(event.contextTags, ["stressed", "alone"])
+        XCTAssertEqual(event.note, "anxious")
+        XCTAssertEqual(event.occurredAt, originalOccurredAt)
+        XCTAssertEqual(event.habit?.id, originalHabitId)
+        XCTAssertEqual(event.latitude, 37.3349)
+        XCTAssertEqual(event.longitude, -122.0090)
+        XCTAssertEqual(event.locationName, "Cupertino")
+    }
+
+    func testMarkLastLogGaveInDoesNotCreateSecondEvent() throws {
+        let habit = TestHelpers.makeHabit()
+        context.insert(habit)
+        try context.save()
+
+        let vm = LogViewModel(modelContext: context)
+        vm.logTemptation()
+        vm.markLastLogGaveIn()
+
+        let events = try context.fetch(FetchDescriptor<TemptationEvent>())
+        XCTAssertEqual(events.count, 1, "Gave in must edit the existing event, not create a new one")
+    }
+
+    func testMarkLastLogGaveInDoesNothingWithoutEvent() throws {
+        let vm = LogViewModel(modelContext: context)
+        // Should not crash and should create nothing.
+        vm.markLastLogGaveIn()
+
+        let events = try context.fetch(FetchDescriptor<TemptationEvent>())
+        XCTAssertTrue(events.isEmpty)
+        XCTAssertNil(vm.lastLoggedEvent)
+    }
+
+    // MARK: - Outcome Capture: UC-O3 (Undo vs Gave in are distinct)
+
+    func testUndoLastLogDeletesEvent() throws {
+        let habit = TestHelpers.makeHabit()
+        context.insert(habit)
+        try context.save()
+
+        let vm = LogViewModel(modelContext: context)
+        vm.logTemptation()
+        XCTAssertEqual(try context.fetch(FetchDescriptor<TemptationEvent>()).count, 1)
+
+        vm.undoLastLog()
+
+        XCTAssertNil(vm.lastLoggedEvent)
+        XCTAssertTrue(try context.fetch(FetchDescriptor<TemptationEvent>()).isEmpty)
+    }
+
+    func testGaveInLeavesEventInStoreWhereasUndoRemovesIt() throws {
+        let habit = TestHelpers.makeHabit()
+        context.insert(habit)
+        try context.save()
+
+        // Gave in path: event remains.
+        let vm1 = LogViewModel(modelContext: context)
+        vm1.logTemptation()
+        vm1.markLastLogGaveIn()
+        XCTAssertNotNil(vm1.lastLoggedEvent, "Gave in keeps lastLoggedEvent")
+        XCTAssertEqual(try context.fetch(FetchDescriptor<TemptationEvent>()).count, 1)
+
+        // Undo path on a fresh log: event removed.
+        let vm2 = LogViewModel(modelContext: context)
+        vm2.logTemptation()
+        XCTAssertEqual(try context.fetch(FetchDescriptor<TemptationEvent>()).count, 2)
+        vm2.undoLastLog()
+        XCTAssertNil(vm2.lastLoggedEvent, "Undo clears lastLoggedEvent")
+        XCTAssertEqual(try context.fetch(FetchDescriptor<TemptationEvent>()).count, 1)
+    }
+
+    // MARK: - Outcome Correction: UC-O4 (History picker options rule)
+    //
+    // NOTE: The picker's available-options computation and binding setter live
+    // inside EventDetailSheet (a private `let` in `body` and a private
+    // `outcomeBinding`), so they are NOT directly reachable from a unit test.
+    // Below:
+    //  - `availableOutcomeOptions(for:)` REPLICATES the exact rule from
+    //    HistoryView.swift to verify the documented behavior. This tests the
+    //    rule as inferred from the spec/source, not the View code itself.
+    //  - The binding *setter* behavior (write rawValue + persist) is exercised
+    //    at the reachable model seam, which is identical to what the setter does.
+
+    /// Mirror of the options rule in `EventDetailSheet.body` (HistoryView.swift):
+    /// "Not recorded"/.unknown is offered only when the event is currently unknown.
+    private func availableOutcomeOptions(for event: TemptationEvent) -> [TemptationEvent.Outcome] {
+        event.outcomeEnum == .unknown
+            ? [.resisted, .gaveIn, .unknown]
+            : [.resisted, .gaveIn]
+    }
+
+    func testHistoryPickerOffersUnknownOnlyForUnknownEvent() throws {
+        let habit = TestHelpers.makeHabit()
+        context.insert(habit)
+
+        let unknownEvent = TestHelpers.makeEvent(habit: habit, outcome: "unknown")
+        let resistedEvent = TestHelpers.makeEvent(habit: habit, outcome: "resisted")
+        let gaveInEvent = TestHelpers.makeEvent(habit: habit, outcome: "gave_in")
+        context.insert(unknownEvent)
+        context.insert(resistedEvent)
+        context.insert(gaveInEvent)
+        try context.save()
+
+        // Legacy/unknown event: all three offered, including .unknown.
+        XCTAssertEqual(availableOutcomeOptions(for: unknownEvent), [.resisted, .gaveIn, .unknown])
+
+        // Recorded events: .unknown must NOT be offered (no downgrade to "Not recorded").
+        XCTAssertEqual(availableOutcomeOptions(for: resistedEvent), [.resisted, .gaveIn])
+        XCTAssertFalse(availableOutcomeOptions(for: resistedEvent).contains(.unknown))
+        XCTAssertEqual(availableOutcomeOptions(for: gaveInEvent), [.resisted, .gaveIn])
+        XCTAssertFalse(availableOutcomeOptions(for: gaveInEvent).contains(.unknown))
+    }
+
+    func testHistoryPickerUnknownDropsAfterEventBecomesRecorded() throws {
+        let habit = TestHelpers.makeHabit()
+        context.insert(habit)
+        let event = TestHelpers.makeEvent(habit: habit, outcome: "unknown")
+        context.insert(event)
+        try context.save()
+
+        XCTAssertTrue(availableOutcomeOptions(for: event).contains(.unknown))
+
+        // Simulate the binding setter: write the new rawValue + persist.
+        event.outcome = TemptationEvent.Outcome.resisted.rawValue
+        try context.save()
+
+        // Once recorded, .unknown is no longer offered for that event.
+        XCTAssertFalse(availableOutcomeOptions(for: event).contains(.unknown))
+        XCTAssertEqual(availableOutcomeOptions(for: event), [.resisted, .gaveIn])
+    }
+
+    func testOutcomeBindingSetterWritesRawValueAndPersists() throws {
+        // Exercises the same mutation the EventDetailSheet outcomeBinding setter performs:
+        //   event.outcome = newValue.rawValue; try? modelContext.save()
+        let habit = TestHelpers.makeHabit()
+        context.insert(habit)
+        let event = TestHelpers.makeEvent(habit: habit, outcome: "resisted")
+        context.insert(event)
+        try context.save()
+        let eventId = event.id
+
+        event.outcome = TemptationEvent.Outcome.gaveIn.rawValue
+        try context.save()
+
+        let fetched = try context.fetch(FetchDescriptor<TemptationEvent>())
+        XCTAssertEqual(fetched.first { $0.id == eventId }?.outcome, "gave_in")
     }
 
     // MARK: - Fetch Habits Refresh

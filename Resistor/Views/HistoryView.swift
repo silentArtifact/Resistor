@@ -46,7 +46,6 @@ struct HistoryView: View {
     }
 
     @State private var selectedEvent: TemptationEvent?
-    @State private var showEventDetail = false
 
     var body: some View {
         Group {
@@ -58,10 +57,11 @@ struct HistoryView: View {
         }
         .navigationTitle(habit.map { "\($0.name) History" } ?? "All History")
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(isPresented: $showEventDetail) {
-            if let event = selectedEvent {
-                EventDetailSheet(event: event)
-            }
+        // Item-based presentation: the sheet always has its event bound when it
+        // appears, avoiding the isPresented/selectedEvent ordering race that can
+        // briefly present an empty sheet.
+        .sheet(item: $selectedEvent) { event in
+            EventDetailSheet(event: event)
         }
     }
 
@@ -169,7 +169,6 @@ struct HistoryView: View {
         .contentShape(Rectangle())
         .onTapGesture {
             selectedEvent = event
-            showEventDetail = true
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button(role: .destructive) {
@@ -210,7 +209,18 @@ struct HistoryView: View {
 
 struct EventDetailSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
     let event: TemptationEvent
+
+    private var outcomeBinding: Binding<TemptationEvent.Outcome> {
+        Binding(
+            get: { event.outcomeEnum },
+            set: { newValue in
+                event.outcome = newValue.rawValue
+                try? modelContext.save()
+            }
+        )
+    }
 
     var body: some View {
         NavigationStack {
@@ -246,11 +256,39 @@ struct EventDetailSheet: View {
 
                 // Outcome section
                 Section("Outcome") {
-                    HStack {
-                        Image(systemName: event.outcomeEnum.iconName)
-                            .foregroundStyle(event.outcomeEnum.color)
-                        Text(event.outcomeEnum.displayName)
+                    // "Not recorded" (unknown) is selectable only while the event is
+                    // currently unknown — a recorded outcome can't be downgraded back.
+                    // The current value is always present, so the Picker never warns.
+                    let options: [TemptationEvent.Outcome] = event.outcomeEnum == .unknown
+                        ? [.resisted, .gaveIn, .unknown]
+                        : [.resisted, .gaveIn]
+
+                    // A `.menu` Picker renders its selected value (icon + name +
+                    // chevron) as the trailing control. The leading `label:` is
+                    // a plain "Outcome" descriptor so the row reads
+                    // "Outcome → [⊗ Gave In ⌄]": a single value, matching the
+                    // icon+value rhythm of the other detail rows with no
+                    // duplicated icon. The outcome is conveyed by its icon SHAPE
+                    // (checkmark / xmark / questionmark) + name, so it never
+                    // relies on color alone.
+                    //
+                    // Limitation: SwiftUI strips custom foreground colors from a
+                    // `.menu` Picker's collapsed value glyph (and `.tint` only
+                    // colors the chevron, not the icon), so the trailing icon
+                    // renders in the default label color rather than the outcome
+                    // semantic color. Carrying a colored icon in the `label:`
+                    // would duplicate the glyph, which reads worse; the icon
+                    // shape + name already disambiguate the outcome.
+                    Picker(selection: outcomeBinding) {
+                        ForEach(options, id: \.self) { o in
+                            Label(o.displayName, systemImage: o.iconName)
+                                .tag(o)
+                        }
+                    } label: {
+                        Text("Outcome")
                     }
+                    .pickerStyle(.menu)
+                    .accessibilityLabel("Outcome")
                 }
 
                 // Intensity section
