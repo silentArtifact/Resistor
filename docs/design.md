@@ -48,6 +48,46 @@ Comprehensive design document for Resistor, an iOS habit-tracking app that logs 
 
 ## User Flows
 
+### Flow 0: First-Run Onboarding (premise intro → first habit)
+
+First launch only. Today the onboarding screen (S0) drops the user straight into
+naming a first habit, fronted only by a one-line tagline. A first-run user who has
+never seen a temptation-logging tool has no model for *what they are about to do* or
+*why the app deliberately omits streaks, scores, and reminders* — so the very design
+choices that make Resistor trustworthy (no gamification, no nudges, no judgment) read
+as missing features instead of intentional ones. This flow adds a brief premise
+**intro step before** the existing first-habit step to set that frame, then hands off
+to habit creation unchanged.
+
+The intro is **explanatory only**. It collects no input, makes no promises, and uses no
+motivational copy. It states what the app records and what it does not do, then steps
+aside.
+
+1. App launches for the first time (`UserSettings.hasCompletedOnboarding == false`).
+2. **Intro step** presents the premise: the user logs moments of temptation (and
+   whether they resisted or gave in), and the app turns that into pattern visibility —
+   not streaks, scores, or reminders. The user advances with a forward control.
+3. Flow continues into the **existing first-habit step** (name, optional description,
+   icon/color) — unchanged (S0 as it stands today).
+4. The user either creates a first habit ("Create habit and start logging") or skips
+   ("Skip for now"); both set `hasCompletedOnboarding = true` and land on the Log tab,
+   exactly as today.
+
+Edge cases:
+- **Skipping is still possible from the first-habit step**, as today. The intro step
+  itself is informational and is simply advanced past; reaching the habit step is not a
+  commitment to create a habit.
+- **The intro is first-run only.** It never reappears on later launches and there is no
+  in-app entry point to re-open it. Re-running onboarding only happens after "Delete All
+  Data" resets to first-run state (existing behavior), at which point the intro shows
+  again as part of the fresh first run.
+- **Back navigation** from the first-habit step to the intro step is permitted within the
+  onboarding flow (it is a self-contained first-run flow, not the tab-bar navigation the
+  one-level-deep rule governs). Advancing forward never loses entered habit data.
+- This flow adds **no persisted state and no schema change** — it is a presentational
+  step gated by the same `hasCompletedOnboarding` flag that already gates onboarding.
+  CloudKit-safe by construction.
+
 ### Flow 1: Quick Log (Core Loop)
 
 1. User opens app, lands on Log screen.
@@ -318,12 +358,205 @@ Edge cases:
 
 ### S0: Onboarding (first-run only)
 
-- App explanation (one or two sentences)
+The onboarding flow now has **two steps**: a premise **intro step** followed by the
+existing **first-habit step**. See Flow 0.
+
+**Step 1 — Premise intro (new):**
+
+- App name and identity mark
+- A short explanation of the core premise: log moments of temptation and whether they
+  were resisted or given in to; the app surfaces patterns over time
+- An explicit statement of what the app deliberately does *not* do: no streaks, no
+  scores, no reminders, no judgment
+- A forward control to continue to the first-habit step
+
+**Step 2 — First habit (existing, unchanged):**
+
 - Text field for first habit name
 - Optional description
 - Icon/color picker
 - "Create habit and start logging" button
 - "Skip for now" option
+
+#### Onboarding Intro (component and state spec)
+
+This is the build-ready spec for Step 1. Step 2 is untouched.
+
+**Step mechanism (how Step 1 relates to Step 2).**
+
+`OnboardingView` keeps its single `NavigationStack` root and gains a step enum driving
+which content the stack shows:
+
+```swift
+private enum OnboardingStep { case intro, firstHabit }
+@State private var step: OnboardingStep = .intro
+```
+
+- **Not** a `TabView(.page)` and **not** a `NavigationLink` push. A paged `TabView` would
+  add swipe-between-steps gesture ambiguity and dot indicators we do not want; a push
+  would add a back chevron and large-title chrome that fights the centered intro. Instead
+  the stack's content switches on `step` with an explicit, animated transition (below).
+  This keeps the existing `onComplete` closure and the existing first-habit view body
+  exactly as they are — the first-habit content moves verbatim into the `.firstHabit`
+  branch.
+- The intro **collects no input** and writes **nothing** to the model. `Continue` only
+  sets `step = .firstHabit`. `hasCompletedOnboarding` is still set solely by the existing
+  `createFirstHabit()` / `skipOnboarding()` paths in `OnboardingViewModel` — no VM change
+  is required. (The `OnboardingViewModel` may still init lazily in `onAppear` as today; it
+  is unused on the intro step.)
+- **Back navigation** (Step 2 → Step 1) is permitted per Flow 0 but **optional** and
+  low-priority: if added, it is a leading `Button("Back")` (plain, `.secondary`) in the
+  first-habit step's action area that sets `step = .intro` with the reverse transition.
+  Entered habit name/description/color/icon live on the persistent `OnboardingViewModel`,
+  so going back and forward never loses them. The intro itself has no back affordance (it
+  is the first thing shown; there is nowhere behind it).
+
+**Intro layout (top → bottom), inside `ScrollView { VStack }`:**
+
+The whole intro is wrapped in a `ScrollView` so it can grow past the viewport at the
+largest Dynamic Type sizes instead of clipping (see Accessibility). At default sizes the
+content does not fill the screen, so the `VStack` is vertically centered via a
+`.frame(minHeight:)` equal to the scroll viewport plus top/bottom `Spacer()`s inside, or
+equivalently `frame(maxHeight: .infinity)` with leading/trailing spacers — implementer's
+choice, the visual target is: identity block optically centered in the upper-middle,
+premise block beneath it, `Continue` pinned to the bottom safe-area inset.
+
+- **Screen padding:** 24pt horizontal (the standard Screen-padding token), applied to the
+  text column. `Continue` is also inset 24pt horizontally.
+- **Identity block** — `VStack(spacing: 16)`, `.multilineTextAlignment(.center)`:
+  - Identity mark: `Image(systemName: "bolt.shield.fill")`, `.font(.system(size: 64))`,
+    `.foregroundStyle(.tint)` (resolves the user accent at the app root; on first run the
+    accent is system default, so this is the muted/system tint, never a hardcoded brand
+    color). Reuses the existing onboarding mark, sized down from 72 → 64 to leave room for
+    the premise block. `.accessibilityHidden(true)` (decorative; the name carries identity).
+  - App name: `Text("Resistor")`, `.font(.largeTitle).fontWeight(.bold)`,
+    `Color.primary`.
+- **Spacer / gap:** 40pt fixed gap (`Spacer().frame(height: 40)` or
+  `.padding(.top, 40)` on the premise block) between identity and premise blocks — large
+  enough that the premise reads as a distinct section, not a subtitle of the title. This
+  replaces the old single-line tagline, which is removed.
+- **Premise block** — `VStack(alignment: .leading, spacing: 20)`, **leading-aligned**
+  (left-aligned reads as clinical fact statements; centered multi-line body wraps read as
+  marketing). Each of the three premise lines is its own `Text`:
+  - Line 1: `Text("Log each moment a temptation hits, and whether you resisted or gave in.")`
+  - Line 2: `Text("Over time, Resistor shows you the patterns: when temptations cluster and how often you resist.")`
+  - Line 3 (omissions): `Text("No streaks, no scores, no reminders.")`
+  - All three: `.font(.body)`, `.fixedSize(horizontal: false, vertical: true)` (so they
+    wrap and never truncate). Lines 1 and 2 are `Color.primary`; **line 3 is
+    `Color(.secondaryLabel)`** to read as a quieter factual footnote, visually
+    subordinate to what the app *does* (lines 1–2) — this also reinforces that line 3 is
+    a product fact, not a headline. The 20pt inter-line spacing groups them as three peers.
+  - No leading bullets, no icons, no numbering — plain stacked sentences. (Decorative
+    SF Symbol bullets were considered and rejected: they imply a checklist/feature-grid
+    and add VoiceOver noise.)
+- **Forward control** — pinned to bottom:
+  - `Text("Continue")`, `.font(.title2).fontWeight(.semibold)`, white text, full-width,
+    `.padding(.vertical, 20)`, background `Color.accentColor` (the resolved app tint),
+    `.cornerRadius(16)`. This is the **Primary Button** from the component catalog,
+    identical in treatment to "Log Temptation" and to the first-habit step's primary
+    button, so the forward action is visually consistent across both onboarding steps.
+  - Always enabled (no input gate). `.padding(.bottom, 32)` above the home indicator,
+    matching the first-habit step's bottom inset.
+
+**States.**
+
+- **Default (and only populated state):** identity block + three premise lines +
+  enabled `Continue`, as above. There is no data to load, so no loading/empty/error
+  state — the intro is static text. There is no selected/disabled state (no inputs;
+  `Continue` is never disabled).
+- **Pressed:** `Continue` uses the system button press dimming (no custom highlight
+  needed). On activate it advances to the first-habit step.
+- **Transition to Step 2:** content swaps via `.transition`. With motion allowed, an
+  asymmetric slide+fade: intro slides leading-out / first-habit slides trailing-in
+  (`.move(edge: .trailing).combined(with: .opacity)`), `.animation(.easeInOut(duration:
+  0.3), value: step)`. Back-nav (if implemented) uses the reverse.
+- **Reduce Motion variant:** when `reduceMotion` is true, the transition is a plain
+  `.opacity` cross-fade (or no animation at all — implementer may set
+  `.animation(nil, value: step)`). No slide, no scale. The intro requires no motion to
+  function; the transition is purely decorative and fully gated on `reduceMotion`.
+
+**Color and accent.** The intro uses only semantic colors (`Color.primary`,
+`Color(.secondaryLabel)`, `Color(.systemBackground)`) plus the resolved app `.tint` /
+`Color.accentColor` for the mark and the primary button — so dark mode is automatic and
+correct. No habit color appears on the intro (no habit exists yet on the intro step). No
+hardcoded brand hex. On first run `accentColorHex` is nil, so `.tint` is the system
+default; the intro must not assume any specific accent.
+
+#### Onboarding Intro (use cases)
+
+The intro exists to give a first-run user a correct mental model **before** their first
+action, so the absence of streaks/scores/reminders reads as intentional rather than
+incomplete. It requires **no schema change** and persists nothing new — it is gated by
+the existing `UserSettings.hasCompletedOnboarding` flag (Flow 0).
+
+**UC-OB1 — First-run user sees the premise before creating a habit.**
+As a first-run user, I want a short explanation of what Resistor records and how it
+differs from a streak tracker so that I understand what I'm about to do before I do it.
+Acceptance criteria:
+- On first launch (`hasCompletedOnboarding == false`), the premise intro step is shown
+  **before** the first-habit step.
+- The intro states, in clinical language, that the user logs moments of temptation and
+  whether they resisted or gave in, and that the app shows patterns over time.
+- The intro explicitly states the app does **not** use streaks, scores, or reminders.
+- The intro collects no input and makes no claim about outcomes the user will achieve.
+- A forward control advances to the first-habit step.
+
+**UC-OB2 — The intro never blocks reaching the existing flow.**
+As a first-run user, I want to move past the intro quickly so that it is a frame, not a
+gate.
+Acceptance criteria:
+- The intro step is advanced past with a single forward action; it requires no data
+  entry.
+- After advancing, the first-habit step is reached exactly as it exists today, with
+  "Create habit and start logging" and "Skip for now" both available.
+- Completing or skipping the first-habit step sets `hasCompletedOnboarding = true` and
+  lands on the Log tab (unchanged behavior).
+
+**UC-OB3 — The intro is first-run only and re-runs only on data reset.**
+As a returning user, I want never to see the intro again so that it does not become a
+recurring interruption (the app has no reminders or nudges by design).
+Acceptance criteria:
+- On every launch after onboarding completes, the intro is not shown.
+- There is no in-app control that re-opens the intro.
+- After "Delete All Data" resets the app to first-run state, the intro shows again as
+  part of the fresh first run.
+
+#### Onboarding Intro (exact copy)
+
+All strings clinical, no motivational/emotional language, no emoji, honoring the
+Forbidden Language table. These are the **final strings** the implementer ships; the
+ux-designer owns their on-screen placement and grouping (single intro screen vs. two),
+not their wording.
+
+The intro fits on **one screen**. Scope keeps it to a single screen (see Scope below);
+the copy is written so a designer can lay it out as one screen without a second.
+
+| Element | Final string |
+|---------|--------------|
+| App name | `Resistor` |
+| Premise line 1 | `Log each moment a temptation hits, and whether you resisted or gave in.` |
+| Premise line 2 | `Over time, Resistor shows you the patterns: when temptations cluster and how often you resist.` |
+| What it omits (line 3) | `No streaks, no scores, no reminders.` |
+| Forward control | `Continue` |
+
+Copy notes:
+- The three premise lines map to the three things the intro must convey: (1) **what you
+  record** — the moment and the outcome; (2) **what you get back** — pattern visibility;
+  (3) **what it deliberately is not** — no streaks/scores/reminders. A designer may
+  render these as three short lines or fold (1)+(2) into a tight pair, but all three
+  ideas must appear, and line 3's three omissions must all appear.
+- `No streaks, no scores, no reminders.` is a **statement of fact about the product**,
+  not reassurance about the user. It does not say "no judgment", "no pressure", or "no
+  guilt" — those frame the user's feelings (banned: motivational/emotional copy) rather
+  than the app's behavior. State what the app does not do; do not address how the user
+  should feel about it.
+- The existing one-line tagline `Track your temptations, understand your patterns.` is
+  **superseded** by the premise lines above and should not also appear on the intro (it
+  would duplicate line 2). It may remain only if the ux-designer keeps a separate
+  identity/title treatment; the premise lines are the canonical intro copy.
+- No "Welcome", no "Get started", no "Let's begin" — these are warmth/persona framing.
+  The forward control is the neutral `Continue`.
+- No emoji. No exclamation points. No second-person encouragement.
 
 ### S1: Log Screen (default tab)
 
@@ -2028,11 +2261,19 @@ User-defined. Managed via the `ContextTag` SwiftData model. Users create and del
 - Delete alert: "Delete all data?" / "This removes all habits, events, and settings. This cannot be undone." / "Delete Everything"
 
 **Onboarding:**
+
+_Intro step (new — see S0 Onboarding Intro):_
 - "Resistor"
-- "Track your temptations, understand your patterns."
+- "Log each moment a temptation hits, and whether you resisted or gave in."
+- "Over time, Resistor shows you the patterns: when temptations cluster and how often you resist."
+- "No streaks, no scores, no reminders."
+- "Continue"
+
+_First-habit step (existing):_
 - "What habit are you working on?"
 - "e.g., Sugar, Smoking, Social Media"
 - "Create habit and start logging" / "Skip for now"
+- Note: the old tagline "Track your temptations, understand your patterns." is superseded by the intro premise lines and should not also appear on the intro step.
 
 **Outcome Display Names:**
 - resisted -> "Resisted"
@@ -2202,6 +2443,48 @@ Guidelines, not gates. No CI to enforce.
 - VoiceOver must complete every flow
 - Habit cards, stat cards, chart containers grouped as single accessible elements
 - Custom labels for: log button ("Log temptation for [habit name]"), carousel arrows, intensity circles, outcome buttons
+
+#### Onboarding Intro (VoiceOver and Dynamic Type)
+
+- The intro is read-only explanatory text plus one forward control. VoiceOver reads the
+  app name, then the premise lines, then `Continue` (trait `.isButton`, on activate
+  advances to the first-habit step). The premise lines may be grouped so VoiceOver reads
+  them as one block followed by the button — the ux-designer decides grouping; no premise
+  line may be hidden from VoiceOver.
+- The forward control's hit target is ≥44×44pt.
+- All intro text honors Dynamic Type and must remain fully readable (no truncation, no
+  clipping) at the largest accessibility text sizes; the intro fits one screen at default
+  sizes and may scroll at the largest sizes rather than truncate. Any decorative
+  animation on the intro is gated on Reduce Motion (no motion is required for the intro
+  to function).
+
+**Concrete accessibility spec (build-ready):**
+
+- **VoiceOver reading order.** The decorative mark is `.accessibilityHidden(true)`.
+  Order is: (1) `"Resistor"` (the app-name `Text`), then (2) the premise block, then
+  (3) the `Continue` button. The three premise lines are wrapped in
+  `.accessibilityElement(children: .combine)` so VoiceOver reads them as **one** block:
+  `"Log each moment a temptation hits, and whether you resisted or gave in. Over time,
+  Resistor shows you the patterns: when temptations cluster and how often you resist. No
+  streaks, no scores, no reminders."` No premise line is hidden. (Reading them combined
+  avoids three separate swipe stops for what is one continuous statement; the visual
+  20pt gaps are presentational, not semantic boundaries.)
+- **Continue button.** Standard `Button` so it carries `.isButton` automatically. Label
+  is its text, `"Continue"`. No custom hint needed (the action is self-evident and the
+  intro makes no promise to qualify). Hit target is the full-width button, comfortably
+  ≥44×44pt (20pt vertical padding around a `.title2` label).
+- **Dynamic Type reflow.** Because the intro lives in a `ScrollView`, growing text
+  pushes content taller and the screen scrolls rather than truncating — the explicit
+  reflow answer to the one-screen density risk. `.fixedSize(horizontal: false, vertical:
+  true)` on every `Text` guarantees full wrapping at all sizes. No fixed heights anywhere
+  in the intro (no `.frame(height:)` on text or the button), so nothing clips large text.
+  At the largest accessibility sizes the identity mark may optionally shrink via
+  `@ScaledMetric` or simply scroll off above the fold — either is acceptable; the
+  premise text and `Continue` must never clip.
+- **Reduce Motion.** The step-to-step transition is the only motion on the intro and is
+  gated on `@Environment(\.accessibilityReduceMotion)`: slide+fade when off, plain
+  cross-fade or no animation when on (see Intro layout: Transition / Reduce Motion
+  variant above).
 
 #### Time-of-Day Drill-Down (VoiceOver)
 
