@@ -51,6 +51,8 @@ struct HabitsView: View {
                     }) {
                         Image(systemName: "plus")
                     }
+                    .accessibilityLabel("Add Habit")
+                    .accessibilityIdentifier("addHabitButton")
                 }
             }
         }
@@ -184,6 +186,9 @@ struct HabitsView: View {
                     .foregroundStyle(.tertiary)
             }
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityHint("Opens habit editor")
         .contentShape(Rectangle())
         .onTapGesture {
             vm.prepareEditHabit(habit)
@@ -271,7 +276,7 @@ struct HabitsView: View {
                                     try? modelContext.save()
                                 }
                                 .accessibilityLabel(color.name)
-                                .accessibilityAddTraits(isSelected ? .isSelected : [])
+                                .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
                         }
                     }
                 }
@@ -457,7 +462,7 @@ struct HabitsView: View {
                                     vm.selectedColorHex = color.hex
                                 }
                                 .accessibilityLabel(color.name)
-                                .accessibilityAddTraits(vm.selectedColorHex == color.hex ? .isSelected : [])
+                                .accessibilityAddTraits(vm.selectedColorHex == color.hex ? [.isButton, .isSelected] : .isButton)
                         }
                     }
                     .padding(.vertical, 8)
@@ -481,7 +486,7 @@ struct HabitsView: View {
                                     vm.selectedIconName = icon
                                 }
                                 .accessibilityLabel(icon.replacingOccurrences(of: ".fill", with: "").replacingOccurrences(of: ".", with: " "))
-                                .accessibilityAddTraits(vm.selectedIconName == icon ? .isSelected : [])
+                                .accessibilityAddTraits(vm.selectedIconName == icon ? [.isButton, .isSelected] : .isButton)
                         }
                     }
                     .padding(.vertical, 8)

@@ -23,6 +23,7 @@ struct OnboardingView: View {
                         .font(.body)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
                         .padding(.horizontal)
                 }
                 .padding(.top, 40)
@@ -70,10 +71,13 @@ struct OnboardingView: View {
                                                 vm.selectedColorHex = color.hex
                                             }
                                             .accessibilityLabel(color.name)
-                                            .accessibilityAddTraits(vm.selectedColorHex == color.hex ? .isSelected : [])
+                                            .accessibilityAddTraits(vm.selectedColorHex == color.hex ? [.isButton, .isSelected] : .isButton)
                                     }
                                 }
                                 .padding(.horizontal)
+                                // Vertical room so the selection ring isn't
+                                // clipped by the scroll view's content bounds.
+                                .padding(.vertical, 4)
                             }
                         }
 
@@ -102,10 +106,13 @@ struct OnboardingView: View {
                                                 vm.selectedIconName = icon
                                             }
                                             .accessibilityLabel(icon.replacingOccurrences(of: ".fill", with: "").replacingOccurrences(of: ".", with: " "))
-                                            .accessibilityAddTraits(vm.selectedIconName == icon ? .isSelected : [])
+                                            .accessibilityAddTraits(vm.selectedIconName == icon ? [.isButton, .isSelected] : .isButton)
                                     }
                                 }
                                 .padding(.horizontal)
+                                // Vertical room so the selection border isn't
+                                // clipped by the scroll view's content bounds.
+                                .padding(.vertical, 4)
                             }
                         }
                     }
@@ -131,6 +138,7 @@ struct OnboardingView: View {
                                 .cornerRadius(12)
                         }
                         .disabled(!vm.canCreateHabit)
+                        .accessibilityHint(vm.canCreateHabit ? "" : "Enter a habit name first")
 
                         Button(action: {
                             if vm.skipOnboarding() {
@@ -141,6 +149,7 @@ struct OnboardingView: View {
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                         }
+                        .accessibilityHint("You can add habits later from the Habits tab")
                     }
                     .padding(.horizontal)
                     .padding(.bottom, 32)
