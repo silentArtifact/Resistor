@@ -57,14 +57,14 @@
 		B2000007000000000000001A /* OnboardingViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000007000000000000000A /* OnboardingViewModelTests.swift */; };
 		B2000008000000000000001A /* HabitTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000008000000000000000A /* HabitTests.swift */; };
 		B2000009000000000000001A /* UserSettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000009000000000000000A /* UserSettingsTests.swift */; };
-		B20000FF000000000000001A /* OnboardingGatingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000FF000000000000000A /* OnboardingGatingTests.swift */; };
 		B200000A000000000000001A /* IntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000A000000000000000A /* IntegrationTests.swift */; };
 		B200000B000000000000001A /* InsightsViewModelPerformanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000B000000000000000A /* InsightsViewModelPerformanceTests.swift */; };
 		B200000C000000000000001A /* TipJarViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000C000000000000000A /* TipJarViewModelTests.swift */; };
 		B200000D000000000000001A /* DataExporterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000D000000000000000A /* DataExporterTests.swift */; };
 		B2000098000000000000001A /* QuickLogWidgetTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000098000000000000000A /* QuickLogWidgetTests.swift */; };
-		B200009A000000000000001A /* WatchLogStoreLogicTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200009A000000000000000A /* WatchLogStoreLogicTests.swift */; };
 		B2000099000000000000001A /* TimeOfDayDrillDownTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000099000000000000000A /* TimeOfDayDrillDownTests.swift */; };
+		B200009A000000000000001A /* WatchLogStoreLogicTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200009A000000000000000A /* WatchLogStoreLogicTests.swift */; };
+		B20000FF000000000000001A /* OnboardingGatingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000FF000000000000000A /* OnboardingGatingTests.swift */; };
 		B63040D04E809F970FF44C72 /* Color+Hex.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000E000000000000000A /* Color+Hex.swift */; };
 		BBE9A6248488296F235D2346 /* ContextTag.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000001000000000000000A /* ContextTag.swift */; };
 		BD76B06DC4D4366E47940AA2 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C1880531AD4D2C420470F188 /* Foundation.framework */; };
@@ -187,14 +187,14 @@
 		B2000007000000000000000A /* OnboardingViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingViewModelTests.swift; sourceTree = "<group>"; };
 		B2000008000000000000000A /* HabitTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HabitTests.swift; sourceTree = "<group>"; };
 		B2000009000000000000000A /* UserSettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserSettingsTests.swift; sourceTree = "<group>"; };
-		B20000FF000000000000000A /* OnboardingGatingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingGatingTests.swift; sourceTree = "<group>"; };
 		B200000A000000000000000A /* IntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntegrationTests.swift; sourceTree = "<group>"; };
 		B200000B000000000000000A /* InsightsViewModelPerformanceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsViewModelPerformanceTests.swift; sourceTree = "<group>"; };
 		B200000C000000000000000A /* TipJarViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TipJarViewModelTests.swift; sourceTree = "<group>"; };
 		B200000D000000000000000A /* DataExporterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataExporterTests.swift; sourceTree = "<group>"; };
 		B2000098000000000000000A /* QuickLogWidgetTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickLogWidgetTests.swift; sourceTree = "<group>"; };
-		B200009A000000000000000A /* WatchLogStoreLogicTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchLogStoreLogicTests.swift; sourceTree = "<group>"; };
 		B2000099000000000000000A /* TimeOfDayDrillDownTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimeOfDayDrillDownTests.swift; sourceTree = "<group>"; };
+		B200009A000000000000000A /* WatchLogStoreLogicTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchLogStoreLogicTests.swift; sourceTree = "<group>"; };
+		B20000FF000000000000000A /* OnboardingGatingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingGatingTests.swift; sourceTree = "<group>"; };
 		C1000001000000000000000A /* ContextTag.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContextTag.swift; sourceTree = "<group>"; };
 		C1880531AD4D2C420470F188 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/WatchOS.platform/Developer/SDKs/WatchOS11.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		C931270813D632B915D37D59 /* ResistorWidgetBundle.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ResistorWidgetBundle.swift; sourceTree = "<group>"; };
@@ -258,7 +258,6 @@
 				B0F43B7161041B07A165E315 /* Info.plist */,
 				8161180E40BC4690B0D6B00C /* ResistorWatch.entitlements */,
 			);
-			name = ResistorWatch;
 			path = ResistorWatch;
 			sourceTree = "<group>";
 		};
@@ -275,7 +274,6 @@
 			children = (
 				9A7A220FBBC346EEC2773BB4 /* SnapshotTests.swift */,
 			);
-			name = ResistorUITests;
 			path = ResistorUITests;
 			sourceTree = "<group>";
 		};
@@ -292,7 +290,6 @@
 				656E85A95F778C45397ECA90 /* Info.plist */,
 				49F792C9FFECBD4172FA9C25 /* ResistorWidget.entitlements */,
 			);
-			name = ResistorWidget;
 			path = ResistorWidget;
 			sourceTree = "<group>";
 		};
@@ -302,7 +299,6 @@
 				D34ABD48A949E05238016CBF /* SharedModelContainer.swift */,
 				0E671048A9259B7EBC8C1B43 /* TemptationLogger.swift */,
 			);
-			name = Shared;
 			path = Shared;
 			sourceTree = "<group>";
 		};
@@ -546,7 +542,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1500;
-				LastUpgradeCheck = 2630;
+				LastUpgradeCheck = 2650;
 				TargetAttributes = {
 					A1000000000000000000004A = {
 						CreatedOnToolsVersion = 15.0;
@@ -781,7 +777,6 @@
 		3FA008DE69D5C7186ACE7D71 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = ResistorWatch/ResistorWatch.entitlements;
@@ -1011,6 +1006,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Resistor;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Needed to track resistance locations.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -1045,6 +1041,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Resistor;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Needed to track resistance locations.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -1110,7 +1107,6 @@
 		BE6BD1A602F74A1CB179236A /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = ResistorWatch/ResistorWatch.entitlements;
