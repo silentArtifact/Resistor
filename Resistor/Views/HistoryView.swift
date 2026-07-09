@@ -107,21 +107,24 @@ struct HistoryView: View {
             }
 
             // Event details
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    // When the list is scoped to one habit, the screen title
-                    // already names it — showing it on every row is redundant.
-                    if habit == nil, let eventHabit = event.habit {
+            VStack(alignment: .leading, spacing: 6) {
+                // When the list is scoped to one habit, the screen title
+                // already names it — showing it on every row is redundant,
+                // so the row starts at the badge line and the time folds
+                // into that line's trailing edge instead of stranding on
+                // an otherwise-empty first line.
+                if habit == nil, let eventHabit = event.habit {
+                    HStack {
                         Text(eventHabit.name)
                             .font(.subheadline)
                             .fontWeight(.medium)
+
+                        Spacer()
+
+                        Text(formatTime(event.occurredAt))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
-
-                    Spacer()
-
-                    Text(formatTime(event.occurredAt))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
                 }
 
                 HStack(spacing: 8) {
@@ -134,7 +137,7 @@ struct HistoryView: View {
                             .font(.caption2)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
-                            .background(Color.gray.opacity(0.2))
+                            .background(Color(.secondarySystemFill))
                             .cornerRadius(4)
                     }
 
@@ -149,8 +152,18 @@ struct HistoryView: View {
                         }
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
-                        .background(Color.gray.opacity(0.2))
+                        .background(Color(.secondarySystemFill))
                         .cornerRadius(4)
+                    }
+
+                    // Time folds into the badge row whenever the name line
+                    // above isn't shown.
+                    if habit != nil || event.habit == nil {
+                        Spacer()
+
+                        Text(formatTime(event.occurredAt))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
                 }
 

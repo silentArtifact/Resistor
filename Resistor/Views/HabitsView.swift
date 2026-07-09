@@ -147,7 +147,7 @@ struct HabitsView: View {
                 .frame(width: 32)
 
             // Info
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
                     Text(habit.name)
                         .font(.body)
@@ -250,8 +250,8 @@ struct HabitsView: View {
                         .font(.body)
 
                     LazyVGrid(
-                        columns: [GridItem(.adaptive(minimum: 40), spacing: 12)],
-                        spacing: 12
+                        columns: [GridItem(.adaptive(minimum: 40), spacing: 16)],
+                        spacing: 16
                     ) {
                         ForEach(Self.accentColors, id: \.hex) { color in
                             let isSelected = settings.accentColorHex == color.hex
@@ -280,7 +280,7 @@ struct HabitsView: View {
                         }
                     }
                 }
-                .padding(.vertical, 6)
+                .padding(.vertical, 8)
             }
         }
 

@@ -25,6 +25,8 @@ struct InsightsView: View {
                     ProgressView()
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color(.systemGroupedBackground))
             .navigationTitle("Insights")
         }
         .onAppear {
@@ -180,7 +182,7 @@ struct InsightsView: View {
             .padding()
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(.secondarySystemBackground))
+                    .fill(Color(.secondarySystemGroupedBackground))
             )
         }
         .buttonStyle(.plain)
@@ -208,7 +210,7 @@ struct InsightsView: View {
                                 Capsule()
                                     .fill(isSelected
                                           ? (Color(hex: habit.colorHex ?? "#007AFF") ?? .blue)
-                                          : Color(.secondarySystemBackground))
+                                          : Color(.secondarySystemGroupedBackground))
                             )
                             .foregroundStyle(isSelected ? .white : .primary)
                         }
@@ -278,7 +280,7 @@ struct InsightsView: View {
             }
 
             if let topLoc = vm.topLocation {
-                HStack(spacing: 16) {
+                HStack(spacing: 12) {
                     LocationStatCard(
                         title: "Top Location",
                         value: topLoc,
@@ -310,9 +312,11 @@ struct InsightsView: View {
 
     private func changeColor(_ vm: InsightsViewModel) -> Color {
         let change = vm.changeFromPreviousPeriod
-        // For temptations, fewer is better (green), more is concerning (red)
+        // Fewer temptations reads as improvement (green). More is reported
+        // neutrally — red is reserved for destructive actions, and coloring a
+        // higher count as failure would editorialize a fact the user just logged.
         if change > 0 {
-            return .red
+            return .secondary
         } else if change < 0 {
             return .green
         } else {
@@ -757,7 +761,7 @@ struct InsightsView: View {
             .padding()
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(.secondarySystemBackground))
+                    .fill(Color(.secondarySystemGroupedBackground))
             )
         }
         .buttonStyle(.plain)
@@ -767,7 +771,7 @@ struct InsightsView: View {
 // MARK: - Section Card
 
 /// Wraps a section's content in the standard surface card used across Insights:
-/// a titled block on `secondarySystemBackground` with consistent padding,
+/// a titled block on `secondarySystemGroupedBackground` with consistent padding,
 /// corner radius, and internal spacing. Keeps every section visually uniform.
 private struct SectionCard<Content: View>: View {
     let title: String
@@ -789,7 +793,7 @@ private struct SectionCard<Content: View>: View {
         .padding()
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.secondarySystemBackground))
+                .fill(Color(.secondarySystemGroupedBackground))
         )
     }
 }
@@ -822,11 +826,11 @@ struct StatCard: View {
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.secondarySystemBackground))
+                .fill(Color(.secondarySystemGroupedBackground))
         )
         .accessibilityElement(children: .combine)
     }
@@ -855,11 +859,11 @@ struct LocationStatCard: View {
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.secondarySystemBackground))
+                .fill(Color(.secondarySystemGroupedBackground))
         )
         .accessibilityElement(children: .combine)
     }

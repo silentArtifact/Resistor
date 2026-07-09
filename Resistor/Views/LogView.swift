@@ -115,6 +115,8 @@ struct LogView: View {
                     ProgressView()
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color(.systemGroupedBackground))
             .navigationTitle("Log")
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
@@ -190,11 +192,11 @@ struct LogView: View {
 
         ZStack {
             VStack(spacing: 0) {
-                // Top spacer is bounded but smaller than the bottom flexible
-                // space, so the hero cluster sits just above optical center and
-                // the void under the navigation title is tightened.
+                // Proportional spacers (~1:2 top:bottom) float the hero cluster
+                // near optical center instead of pinning it under the nav title
+                // with a dead band above the tab bar.
                 Spacer(minLength: 0)
-                    .frame(maxHeight: 28)
+                    .frame(maxHeight: 96)
 
                 // Current habit card cluster — pager sits directly above the
                 // card it controls so the relationship reads as one unit.
@@ -262,42 +264,33 @@ struct LogView: View {
 
     @ViewBuilder
     private func habitCarousel(_ vm: LogViewModel) -> some View {
-        VStack(spacing: 8) {
-            HStack {
-                Button(action: { vm.selectPreviousHabit() }) {
-                    Image(systemName: "chevron.left")
-                        .font(.title2)
-                        .foregroundStyle(.secondary)
-                }
-                .accessibilityLabel("Previous habit")
-
-                Spacer()
-
-                Text("\(vm.selectedHabitIndex + 1) of \(vm.habits.count)")
-                    .font(.caption)
+        // One centered natural-width row — chevron · dots · chevron — instead
+        // of edge-pinned chevrons with a separate dots row below.
+        HStack(spacing: 20) {
+            Button(action: { vm.selectPreviousHabit() }) {
+                Image(systemName: "chevron.left")
+                    .font(.title2)
                     .foregroundStyle(.secondary)
-
-                Spacer()
-
-                Button(action: { vm.selectNextHabit() }) {
-                    Image(systemName: "chevron.right")
-                        .font(.title2)
-                        .foregroundStyle(.secondary)
-                }
-                .accessibilityLabel("Next habit")
             }
-            .padding(.horizontal, 24)
+            .accessibilityLabel("Previous habit")
 
             // Habit indicators
             HStack(spacing: 8) {
                 ForEach(Array(vm.habits.enumerated()), id: \.element.id) { index, _ in
                     Circle()
-                        .fill(index == vm.selectedHabitIndex ? accentColor : Color.gray.opacity(0.3))
+                        .fill(index == vm.selectedHabitIndex ? accentColor : Color(.tertiaryLabel))
                         .frame(width: 8, height: 8)
                 }
             }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Habit \(vm.selectedHabitIndex + 1) of \(vm.habits.count)")
+
+            Button(action: { vm.selectNextHabit() }) {
+                Image(systemName: "chevron.right")
+                    .font(.title2)
+                    .foregroundStyle(.secondary)
+            }
+            .accessibilityLabel("Next habit")
         }
     }
 
@@ -353,7 +346,7 @@ struct LogView: View {
         let filled = content
             .background(
                 RoundedRectangle(cornerRadius: 20)
-                    .fill(Color(.secondarySystemBackground))
+                    .fill(Color(.secondarySystemGroupedBackground))
                     .overlay(
                         // Background tint intensifies during hold. Resting tint is a
                         // touch stronger than before so the surface separates from
@@ -579,7 +572,7 @@ struct LogView: View {
                     Text(tag.name)
                         .font(.subheadline)
                         .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
+                        .padding(.vertical, 8)
                         .background(
                             RoundedRectangle(cornerRadius: 8)
                                 // Semantic fill (not a fixed translucent gray) so
