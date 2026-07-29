@@ -82,6 +82,7 @@ watch.build_configurations.each do |config|
   s["INFOPLIST_KEY_WKCompanionAppBundleIdentifier"] = APP_BUNDLE_ID
   s["INFOPLIST_KEY_UISupportedInterfaceOrientations"] = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown"
   s["SDKROOT"]                           = "watchos"
+  s["ASSETCATALOG_COMPILER_APPICON_NAME"] = "AppIcon"
   s["WATCHOS_DEPLOYMENT_TARGET"]         = WATCHOS_DEPLOYMENT_TARGET
   s["TARGETED_DEVICE_FAMILY"]            = "4"
   s["SUPPORTED_PLATFORMS"]               = "watchos watchsimulator"
@@ -131,6 +132,25 @@ SHARED_APP_FILES.each do |rel|
   end
   next if watch.source_build_phase.files_references.include?(ref)
   watch.add_file_references([ref])
+end
+
+# ---------------------------------------------------------------------------
+# 3b. Share the app's asset catalog with the watch target so the watch bundle
+#     actually ships an AppIcon. Without it watchOS finishes the install ring
+#     and then reverts to "Install" (an iconless watch app won't stay put).
+#     The catalog's AppIcon.appiconset carries both an ios and a watchos
+#     1024x1024 entry pointing at the same (alpha-free) PNG — one image, no
+#     duplication. Reuses the existing file reference.
+# ---------------------------------------------------------------------------
+assets_ref = project.files.find do |f|
+  f.real_path.to_s == File.join(ROOT, "Resistor/Assets.xcassets")
+end
+if assets_ref
+  unless watch.resources_build_phase.files_references.include?(assets_ref)
+    watch.add_resources([assets_ref])
+  end
+else
+  warn "WARNING: Resistor/Assets.xcassets reference not found; watch app will have no icon."
 end
 
 # ---------------------------------------------------------------------------

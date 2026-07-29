@@ -250,6 +250,27 @@ iPhone↔Apple Watch, so phone/watch parity comes from CloudKit sync, not the
 shared App-Group store the widget uses. The target is wired by the idempotent
 `scripts/add_watch_target.rb` (rerun if the target is lost).
 
+**The watch target's asset-catalog membership is load-bearing, not cosmetic.**
+The watch shares the iOS app's `Resistor/Assets.xcassets` (its
+`AppIcon.appiconset` carries both an `ios` and a `watchos` 1024x1024 entry
+pointing at the same PNG — one image, no duplication). A watch app that ships
+**no** icon installs on device and then silently reverts: the ring fills, then
+the button goes back to "Install". That was the symptom before this membership
+existed, so don't "clean it up". App icons must also have **no alpha channel**
+(watchOS and App Store validation both reject it) — verify with
+`sips -g hasAlpha`.
+
+`ResistorWatchComplication/` is a watchOS WidgetKit app extension
+(`com.resistor.app.watchkitapp.complication`) embedded in **ResistorWatch**'s
+PlugIns and wired by the idempotent `scripts/add_watch_complication_target.rb`.
+It exists so the watch app is reachable from a watch face — the whole point of
+wrist-fast logging. It is a static launcher glyph only: `StaticConfiguration`,
+one timeline entry, `.never` policy, no entitlements / App Group / SwiftData and
+zero shared source. Tapping a complication launches its owning app on watchOS,
+so there is no deep-link plumbing. Showing live data (e.g. today's resisted
+count) would require moving the watch store into an App Group so the extension
+process could read it — deferred.
+
 ### Xcode MCP bridge (preferred when connected)
 
 An `xcode` MCP server (Apple's `xcrun mcpbridge`) is registered with Claude Code
@@ -337,6 +358,11 @@ coexist on disk; each mode only cleans its own files.
 - #47 — Quick-log widget: device verification + App Group / CloudKit capability setup
 - #48 — No haptics firing on device (tap impact + hold Core Haptics both silent)
 - #49 — watchOS app: wrist-fast resisted-temptation logging (post-v1, companion to widget)
+  - Device install also needs the `com.resistor.app.watchkitapp` App ID to have
+    iCloud enabled with the `iCloud.com.resistor.app` container selected in the
+    developer portal — the watch entitlements request it, and automatic signing
+    won't mint a profile for an entitlement the App ID lacks. That failure looks
+    identical to the missing-icon bug (install ring completes, then reverts).
 
 ## Remaining Work (v1.0)
 

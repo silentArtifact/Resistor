@@ -8,16 +8,19 @@
 
 /* Begin PBXBuildFile section */
 		0436E9E21A4995EE8549E6FE /* UserSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000D000000000000000A /* UserSettings.swift */; };
+		04F359FF96C10F4B55BE53B4 /* ResistorWatchComplication.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 95D889C949679DFDA0EC69EA /* ResistorWatchComplication.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		16460213A8B00BBED48310E6 /* QuickLogProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D464333421E9C39C03F5A57 /* QuickLogProvider.swift */; };
 		1678E0842EBF3ABBE56F3401 /* ResistorWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F4A323D24B5922D97906FD1 /* ResistorWidget.swift */; };
 		18A195F9B7925BB56D429711 /* ResistorWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = DF18F3D313F229C82C59743E /* ResistorWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		1EA2AB1E243FA4FF3695A153 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D550B62AA43FA6F8E07A3859 /* Foundation.framework */; };
+		3CCC347E1657F5C34088D7DB /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A100000F000000000000000A /* Assets.xcassets */; };
 		3EB933B6532E4FB909C64487 /* QuickLogWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E111D234A6D4D52B3C29F28 /* QuickLogWidgetView.swift */; };
 		400E7DE395ECA6EA4C1D3F9E /* LogResistedIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCA4656BDF208C2526724BEB /* LogResistedIntent.swift */; };
 		411562E8E9D44C6CAE3051F7 /* SelectHabitIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07168381249E78F8A95464E7 /* SelectHabitIntent.swift */; };
 		43CA41D12F89724100D11E7D /* LocationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43CA41D02F89724100D11E7D /* LocationManager.swift */; };
 		43CA41D32F89730100D11E7D /* EventMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43CA41D22F89730100D11E7D /* EventMapView.swift */; };
 		473FA6570E3A8419D4FE1399 /* TemptationEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000C000000000000000A /* TemptationEvent.swift */; };
+		4D8F24A948196773B143BEA5 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C1880531AD4D2C420470F188 /* Foundation.framework */; };
 		504578B580DC558233088F52 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D550B62AA43FA6F8E07A3859 /* Foundation.framework */; };
 		5577480B2A50DEAC74829F3E /* Color+Hex.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000E000000000000000A /* Color+Hex.swift */; };
 		5B9352C836AFB5E055E3C7D8 /* TemptationEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000C000000000000000A /* TemptationEvent.swift */; };
@@ -25,6 +28,7 @@
 		62975B4D5E55D6B9286A334D /* WatchLogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D4597E26EF41C66F2BAD61A /* WatchLogView.swift */; };
 		6338F6467C5189388ECC395C /* ContextTag.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000001000000000000000A /* ContextTag.swift */; };
 		6AD46C3EBEED5D591162E51E /* WatchLogStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80D3AB0EA799474A518E40CE /* WatchLogStore.swift */; };
+		74814CEC0773B750D5E8971D /* ResistorWatchComplication.swift in Sources */ = {isa = PBXBuildFile; fileRef = CABA9A53B23917079FC676D9 /* ResistorWatchComplication.swift */; };
 		77053A802CD8451E81504253 /* HabitAppEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39097DA98DAC5F5C22FA4BD3 /* HabitAppEntity.swift */; };
 		8132D3C8C3A433BC0731783F /* ResistorWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F32E0160D608ABC8D400DB5F /* ResistorWatchApp.swift */; };
 		8C41ECC1C5222C46E02AACD8 /* TemptationLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E671048A9259B7EBC8C1B43 /* TemptationLogger.swift */; };
@@ -102,6 +106,13 @@
 			remoteGlobalIDString = A1000000000000000000004A;
 			remoteInfo = Resistor;
 		};
+		B4E4F4B40764730837440A14 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A1000000000000000000005A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 49000F61470F8412D00EA883;
+			remoteInfo = ResistorWatchComplication;
+		};
 		DB19973F018B8962B41E9727 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = A1000000000000000000005A /* Project object */;
@@ -119,6 +130,17 @@
 			dstSubfolderSpec = 13;
 			files = (
 				18A195F9B7925BB56D429711 /* ResistorWidget.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5F49D1FC3E6692B2F5DB7CA7 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				04F359FF96C10F4B55BE53B4 /* ResistorWatchComplication.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -154,6 +176,7 @@
 		821F40704A2FEA56AED6D538 /* ResistorWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ResistorWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8CE4E3C730BCF819722BC72C /* WatchModelContainer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchModelContainer.swift; sourceTree = "<group>"; };
 		912EC19ED1BF0A2FAA78B0EA /* ResistorUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ResistorUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		95D889C949679DFDA0EC69EA /* ResistorWatchComplication.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ResistorWatchComplication.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		9A7A220FBBC346EEC2773BB4 /* SnapshotTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SnapshotTests.swift; sourceTree = "<group>"; };
 		A1000000000000000000000A /* Resistor.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Resistor.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A1000001000000000000000A /* ResistorApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResistorApp.swift; sourceTree = "<group>"; };
@@ -198,15 +221,25 @@
 		C1000001000000000000000A /* ContextTag.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContextTag.swift; sourceTree = "<group>"; };
 		C1880531AD4D2C420470F188 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/WatchOS.platform/Developer/SDKs/WatchOS11.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		C931270813D632B915D37D59 /* ResistorWidgetBundle.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ResistorWidgetBundle.swift; sourceTree = "<group>"; };
+		CABA9A53B23917079FC676D9 /* ResistorWatchComplication.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ResistorWatchComplication.swift; sourceTree = "<group>"; };
 		D34ABD48A949E05238016CBF /* SharedModelContainer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SharedModelContainer.swift; sourceTree = "<group>"; };
 		D550B62AA43FA6F8E07A3859 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		DCA4656BDF208C2526724BEB /* LogResistedIntent.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LogResistedIntent.swift; sourceTree = "<group>"; };
 		DF18F3D313F229C82C59743E /* ResistorWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ResistorWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		E7A986130363EAECA937D1B7 /* UITestSeed.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UITestSeed.swift; sourceTree = "<group>"; };
+		EA0B763FFF3EFE37B6C96C6A /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		F32E0160D608ABC8D400DB5F /* ResistorWatchApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ResistorWatchApp.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		6BA58064FD8870EFBC24B14B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4D8F24A948196773B143BEA5 /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		89C43C4A14FC556B163FA582 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -293,6 +326,16 @@
 			path = ResistorWidget;
 			sourceTree = "<group>";
 		};
+		5A4C03345F81C66AE490D3E6 /* ResistorWatchComplication */ = {
+			isa = PBXGroup;
+			children = (
+				CABA9A53B23917079FC676D9 /* ResistorWatchComplication.swift */,
+				EA0B763FFF3EFE37B6C96C6A /* Info.plist */,
+			);
+			name = ResistorWatchComplication;
+			path = ResistorWatchComplication;
+			sourceTree = "<group>";
+		};
 		8FA9546FF2F51539BFE26BD3 /* Shared */ = {
 			isa = PBXGroup;
 			children = (
@@ -321,6 +364,7 @@
 				34EE3083C015C6E3C9BB1CD1 /* ResistorUITests */,
 				38FAD11F73233976C5E40B7B /* ResistorWidget */,
 				011F37B0423D8FB4DB63CDC5 /* ResistorWatch */,
+				5A4C03345F81C66AE490D3E6 /* ResistorWatchComplication */,
 			);
 			sourceTree = "<group>";
 		};
@@ -350,6 +394,7 @@
 				912EC19ED1BF0A2FAA78B0EA /* ResistorUITests.xctest */,
 				DF18F3D313F229C82C59743E /* ResistorWidget.appex */,
 				821F40704A2FEA56AED6D538 /* ResistorWatch.app */,
+				95D889C949679DFDA0EC69EA /* ResistorWatchComplication.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -461,6 +506,23 @@
 			productReference = DF18F3D313F229C82C59743E /* ResistorWidget.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
+		49000F61470F8412D00EA883 /* ResistorWatchComplication */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1F55BD094D45852C96099B87 /* Build configuration list for PBXNativeTarget "ResistorWatchComplication" */;
+			buildPhases = (
+				A17E8677AB4FA6362F449033 /* Sources */,
+				6BA58064FD8870EFBC24B14B /* Frameworks */,
+				4AE87697CA8A3A01C49B9DAF /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ResistorWatchComplication;
+			productName = ResistorWatchComplication;
+			productReference = 95D889C949679DFDA0EC69EA /* ResistorWatchComplication.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		76E2CC07855EBA50C692CD07 /* ResistorWatch */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 59ADAD1C28CD641C4A87CE62 /* Build configuration list for PBXNativeTarget "ResistorWatch" */;
@@ -468,10 +530,12 @@
 				C64D20DB94A71551E1001DF7 /* Sources */,
 				EC690A6CFBF7AE0C2D0F24E8 /* Frameworks */,
 				86402CBD0E4435CE47DCD22A /* Resources */,
+				5F49D1FC3E6692B2F5DB7CA7 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				C50399F39E8137C268E5CCF6 /* PBXTargetDependency */,
 			);
 			name = ResistorWatch;
 			productName = ResistorWatch;
@@ -571,15 +635,24 @@
 				B9F79058ED76416224DE5D15 /* ResistorUITests */,
 				23E13FD62591E63A1BC9D959 /* ResistorWidget */,
 				76E2CC07855EBA50C692CD07 /* ResistorWatch */,
+				49000F61470F8412D00EA883 /* ResistorWatchComplication */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		4AE87697CA8A3A01C49B9DAF /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		86402CBD0E4435CE47DCD22A /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				3CCC347E1657F5C34088D7DB /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -659,6 +732,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A17E8677AB4FA6362F449033 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				74814CEC0773B750D5E8971D /* ResistorWatchComplication.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		AAC7D9B4B927670E141B7E64 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -728,6 +809,12 @@
 			target = A1000000000000000000004A /* Resistor */;
 			targetProxy = B2000001000000000000007A /* PBXContainerItemProxy */;
 		};
+		C50399F39E8137C268E5CCF6 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = ResistorWatchComplication;
+			target = 49000F61470F8412D00EA883 /* ResistorWatchComplication */;
+			targetProxy = B4E4F4B40764730837440A14 /* PBXContainerItemProxy */;
+		};
 		D186095CB259AD43E77B8D73 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			name = ResistorWatch;
@@ -771,6 +858,34 @@
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
 				TEST_TARGET_NAME = Resistor;
+			};
+			name = Debug;
+		};
+		22C1041C7A7D74467BC471B8 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = HBXLU45HR7;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ResistorWatchComplication/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Resistor;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.resistor.app.watchkitapp.complication;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
 			};
 			name = Debug;
 		};
@@ -1139,9 +1254,47 @@
 			};
 			name = Release;
 		};
+		F1C0783C940F7C679F3AA359 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = HBXLU45HR7;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ResistorWatchComplication/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Resistor;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.resistor.app.watchkitapp.complication;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				VALIDATE_PRODUCT = YES;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		1F55BD094D45852C96099B87 /* Build configuration list for PBXNativeTarget "ResistorWatchComplication" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F1C0783C940F7C679F3AA359 /* Release */,
+				22C1041C7A7D74467BC471B8 /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		59ADAD1C28CD641C4A87CE62 /* Build configuration list for PBXNativeTarget "ResistorWatch" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
