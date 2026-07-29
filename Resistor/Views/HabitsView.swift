@@ -469,18 +469,21 @@ struct HabitsView: View {
                 }
 
                 Section("Icon") {
+                    let selectedColor = Color(hex: vm.selectedColorHex) ?? .blue
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 50))], spacing: 12) {
                         ForEach(HabitsViewModel.availableIcons, id: \.self) { icon in
+                            let isSelected = vm.selectedIconName == icon
                             Image(systemName: icon)
                                 .font(.title2)
+                                .foregroundStyle(isSelected ? selectedColor : Color.primary)
                                 .frame(width: 50, height: 50)
                                 .background(
                                     RoundedRectangle(cornerRadius: 8)
-                                        .fill(vm.selectedIconName == icon ? Color.blue.opacity(0.2) : Color.clear)
+                                        .fill(isSelected ? selectedColor.opacity(0.2) : Color.clear)
                                 )
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 8)
-                                        .stroke(vm.selectedIconName == icon ? Color.blue : Color.clear, lineWidth: 2)
+                                        .stroke(isSelected ? selectedColor : Color.clear, lineWidth: 2)
                                 )
                                 .onTapGesture {
                                     vm.selectedIconName = icon

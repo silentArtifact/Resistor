@@ -630,18 +630,21 @@ private struct AddHabitFromLogSheet: View {
                 }
 
                 Section("Icon") {
+                    let iconColor = Color(hex: selectedColor) ?? .blue
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 50))], spacing: 12) {
                         ForEach(HabitsViewModel.availableIcons, id: \.self) { icon in
+                            let isSelected = selectedIcon == icon
                             Image(systemName: icon)
                                 .font(.title2)
+                                .foregroundStyle(isSelected ? iconColor : Color.primary)
                                 .frame(width: 50, height: 50)
                                 .background(
                                     RoundedRectangle(cornerRadius: 8)
-                                        .fill(selectedIcon == icon ? Color.blue.opacity(0.2) : Color.clear)
+                                        .fill(isSelected ? iconColor.opacity(0.2) : Color.clear)
                                 )
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 8)
-                                        .stroke(selectedIcon == icon ? Color.blue : Color.clear, lineWidth: 2)
+                                        .stroke(isSelected ? iconColor : Color.clear, lineWidth: 2)
                                 )
                                 .onTapGesture { selectedIcon = icon }
                                 .accessibilityLabel(icon.replacingOccurrences(of: ".fill", with: "").replacingOccurrences(of: ".", with: " "))
