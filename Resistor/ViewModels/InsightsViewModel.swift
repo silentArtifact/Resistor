@@ -339,9 +339,13 @@ final class InsightsViewModel {
     // MARK: - Location Distribution
 
     func locationDistribution() -> [(location: String, count: Int)] {
+        // User-named places win over the coarse reverse-geocoded string, so two
+        // spots that geocode identically ("Midtown, New York") still separate
+        // into "Home" and "Work" once named.
+        let places = (try? modelContext.fetch(FetchDescriptor<Place>())) ?? []
         var counts: [String: Int] = [:]
         for event in cachedEventsInRange {
-            if let name = event.locationName, !name.isEmpty {
+            if let name = places.groupingName(for: event) {
                 counts[name, default: 0] += 1
             }
         }

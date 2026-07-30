@@ -4,8 +4,12 @@ import MapKit
 
 struct EventMapView: View {
     @Query(sort: \TemptationEvent.occurredAt, order: .reverse) private var allEvents: [TemptationEvent]
+    @Query(sort: \Place.createdAt) private var places: [Place]
 
     let habit: Habit?
+
+    /// The event whose spot is being named, driving the `PlaceNameSheet`.
+    @State private var namingEvent: TemptationEvent?
 
     private var eventsWithLocation: [TemptationEvent] {
         let filtered: [TemptationEvent]
@@ -27,6 +31,9 @@ struct EventMapView: View {
         }
         .navigationTitle("Event Map")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(item: $namingEvent) { event in
+            PlaceNameSheet(event: event)
+        }
     }
 
     private var mapContent: some View {
@@ -34,7 +41,7 @@ struct EventMapView: View {
             ForEach(eventsWithLocation) { event in
                 if let lat = event.latitude, let lon = event.longitude {
                     Annotation(
-                        event.locationDisplayName ?? "",
+                        places.displayName(for: event) ?? "",
                         coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lon)
                     ) {
                         eventPin(event)
@@ -42,17 +49,39 @@ struct EventMapView: View {
                 }
             }
         }
+        .safeAreaInset(edge: .top, spacing: 0) { namingHint }
+    }
+
+    /// Pins carry no affordance of their own, so the map states the gesture.
+    private var namingHint: some View {
+        Text("Tap a pin to name the place.")
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 8)
+            .background(.ultraThinMaterial)
     }
 
     @ViewBuilder
     private func eventPin(_ event: TemptationEvent) -> some View {
-        Circle()
-            .fill(event.outcomeEnum.color)
-            .frame(width: 12, height: 12)
-            .overlay(
-                Circle()
-                    .stroke(Color(.systemBackground), lineWidth: 2)
-            )
+        Button {
+            namingEvent = event
+        } label: {
+            Circle()
+                .fill(event.outcomeEnum.color)
+                .frame(width: 12, height: 12)
+                .overlay(
+                    Circle()
+                        .stroke(Color(.systemBackground), lineWidth: 2)
+                )
+                // Pins are 12pt; pad the tap target out to something a finger
+                // can hit without changing what's drawn.
+                .padding(12)
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(places.displayName(for: event) ?? "Unnamed location")
+        .accessibilityHint("Double tap to name this place.")
     }
 
     private var emptyState: some View {
@@ -76,6 +105,6 @@ struct EventMapView: View {
 #Preview {
     NavigationStack {
         EventMapView(habit: nil)
-            .modelContainer(for: [Habit.self, TemptationEvent.self, UserSettings.self, ContextTag.self], inMemory: true)
+            .modelContainer(for: [Habit.self, TemptationEvent.self, UserSettings.self, ContextTag.self, Place.self], inMemory: true)
     }
 }

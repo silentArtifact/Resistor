@@ -21,7 +21,8 @@ Resistor/
 │   ├── Habit.swift                   # @Model — habit entity
 │   ├── TemptationEvent.swift         # @Model — logged event entity
 │   ├── UserSettings.swift            # @Model — singleton settings
-│   └── ContextTag.swift              # @Model — user-defined context tag
+│   ├── ContextTag.swift              # @Model — user-defined context tag
+│   └── Place.swift                   # @Model — user-named location + distance matching
 ├── Services/
 │   ├── DataExporter.swift            # CSV/JSON export of temptation events
 │   └── LocationManager.swift         # GPS location capture for events
@@ -38,6 +39,7 @@ Resistor/
     ├── HabitsView.swift              # Habit management + settings (S3)
     ├── HistoryView.swift             # Past events list + detail sheet
     ├── EventMapView.swift            # Map view for location-tagged events
+    ├── PlaceNameSheet.swift          # Name/rename the spot an event was logged
     └── OnboardingView.swift          # First-run flow (S0)
 ```
 
@@ -87,6 +89,38 @@ Enums defined in extensions:
 | `createdAt` | `Date` | Set at init |
 
 User-defined context tags managed from the Habits & Settings screen. Displayed as selectable chips on the Log screen before logging. Tag names are stored directly in `TemptationEvent.contextTags` as raw strings.
+
+### Place
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `id` | `UUID` | No `@Attribute(.unique)` (CloudKit) |
+| `name` | `String` | Short user-facing name — "Home", "Work" |
+| `latitude` / `longitude` | `Double` | The named coordinate |
+| `createdAt` | `Date` | Set at init |
+
+A short name the user assigns to a spot. Events within `Place.matchRadius`
+(150 m) display the name instead of the coarse reverse-geocoded
+"Neighborhood, City" string, in History, on the map, and in Insights' Top
+Locations.
+
+**Matching is by distance, never by geocoded name.** At the app's
+`kCLLocationAccuracyHundredMeters` fixes, home and the grocery store a mile away
+routinely reverse-geocode to the *same* string, so aliasing that string would
+rename both. Resolution lives in `Place.swift` as a `Collection where Element ==
+Place` extension — `match`, `displayName(for:)` (falls back to the geocoded name,
+then raw coordinates), and `groupingName(for:)` (the Insights chart key, which
+deliberately drops raw coordinates). Views get the list via `@Query`; the
+Insights VM fetches it. Nothing is written onto the event, so naming, renaming,
+and un-naming apply retroactively and are lossless.
+
+Duplicate names are allowed on purpose: a drifting fix or a site with two
+entrances is covered by saving a second `Place` with the same name, and display
+groups by name.
+
+Named from `PlaceNameSheet`, reachable two ways — tap a pin on the Event Map, or
+tap the Location row in a History event's detail. There is no manage-places list
+in Settings; a place is renamed or removed through the same sheet.
 
 ### UserSettings
 

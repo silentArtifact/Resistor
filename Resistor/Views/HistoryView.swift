@@ -5,6 +5,7 @@ import MapKit
 struct HistoryView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \TemptationEvent.occurredAt, order: .reverse) private var allEvents: [TemptationEvent]
+    @Query(sort: \Place.createdAt) private var places: [Place]
 
     let habit: Habit?
 
@@ -142,7 +143,7 @@ struct HistoryView: View {
                     }
 
                     // Location badge
-                    if let locName = event.locationDisplayName {
+                    if let locName = places.displayName(for: event) {
                         HStack(spacing: 2) {
                             Image(systemName: "location.fill")
                                 .font(.caption2)
@@ -223,7 +224,10 @@ struct HistoryView: View {
 struct EventDetailSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @Query(sort: \Place.createdAt) private var places: [Place]
     let event: TemptationEvent
+
+    @State private var showPlaceNameSheet = false
 
     private var outcomeBinding: Binding<TemptationEvent.Outcome> {
         Binding(
@@ -328,11 +332,21 @@ struct EventDetailSheet: View {
                 // Location section
                 if event.hasLocation {
                     Section("Location") {
-                        HStack(spacing: 8) {
-                            Image(systemName: "location.fill")
-                                .foregroundStyle(.secondary)
-                            Text(event.locationDisplayName ?? "Unknown")
+                        Button {
+                            showPlaceNameSheet = true
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "location.fill")
+                                    .foregroundStyle(.secondary)
+                                Text(places.displayName(for: event) ?? "Unknown")
+                                    .foregroundStyle(.primary)
+                                Spacer()
+                                Text(places.match(event) == nil ? "Name" : "Rename")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
+                        .accessibilityHint("Double tap to name this place.")
 
                         if let lat = event.latitude, let lon = event.longitude {
                             Map(initialPosition: .region(MKCoordinateRegion(
@@ -367,6 +381,9 @@ struct EventDetailSheet: View {
                     }
                 }
             }
+            .sheet(isPresented: $showPlaceNameSheet) {
+                PlaceNameSheet(event: event)
+            }
         }
         .presentationDetents([.medium, .large])
     }
@@ -384,6 +401,6 @@ struct EventDetailSheet: View {
 #Preview {
     NavigationStack {
         HistoryView(habit: nil)
-            .modelContainer(for: [Habit.self, TemptationEvent.self, UserSettings.self, ContextTag.self], inMemory: true)
+            .modelContainer(for: [Habit.self, TemptationEvent.self, UserSettings.self, ContextTag.self, Place.self], inMemory: true)
     }
 }

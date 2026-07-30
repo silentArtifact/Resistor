@@ -82,6 +82,16 @@ enum UITestSeed {
             ["Stressed"], ["Bored", "On Phone"], ["Alone"], ["Stressed", "Bored"],
             ["With Friends"], ["Alone", "Bored"], []
         ]
+        // Three spots for GPS-tagged events. The first two reverse-geocode to
+        // the SAME coarse string — the case named places exist to separate — so
+        // screenshots show "Home" and "Mission, San Francisco" side by side.
+        let spots: [(lat: Double, lon: Double, name: String)] = [
+            (37.7749, -122.4194, "Mission, San Francisco"),
+            (37.7849, -122.4194, "Mission, San Francisco"),
+            (37.7649, -122.4294, "Financial District, San Francisco")
+        ]
+        context.insert(Place(name: "Home", latitude: spots[0].lat, longitude: spots[0].lon))
+
         var seedIndex = 0
         for habit in [sugar, phone] {
             // Deterministic-ish daily counts decreasing toward today (progress shape).
@@ -92,13 +102,17 @@ enum UITestSeed {
                     guard let base = calendar.date(byAdding: .day, value: -dayOffset, to: now),
                           let when = calendar.date(bySettingHour: hour, minute: (seedIndex * 7) % 60, second: 0, of: base)
                     else { continue }
+                    let spot = spots[seedIndex % spots.count]
                     let event = TemptationEvent(
                         habit: habit,
                         occurredAt: when,
                         intensity: (seedIndex % 5) + 1,
                         outcome: outcomes[seedIndex % outcomes.count],
                         contextTags: tagSets[seedIndex % tagSets.count],
-                        note: seedIndex % 6 == 0 ? "Noticed the urge and waited it out." : nil
+                        note: seedIndex % 6 == 0 ? "Noticed the urge and waited it out." : nil,
+                        latitude: spot.lat,
+                        longitude: spot.lon,
+                        locationName: spot.name
                     )
                     context.insert(event)
                     seedIndex += 1

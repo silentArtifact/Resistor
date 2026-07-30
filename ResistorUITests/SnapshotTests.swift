@@ -206,28 +206,43 @@ final class SnapshotTests: XCTestCase {
 
         // The real expand interaction is a `chartOverlay` spatial-tap hit test
         // on the chart plot. The mirrored accessibility buttons are zero-height
-        // proxies whose frames don't track the chart, so we tap the chart plot
-        // directly by normalized position within the scroll view. The four
-        // period bands run left→right (Morning, Afternoon, Evening, Night); dy
-        // sits on the bars, above the x-axis labels.
-        func tapPeriod(dx: CGFloat) {
-            scroll.coordinate(withNormalizedOffset: CGVector(dx: dx, dy: 0.63)).tap()
+        // proxies whose frames don't track the chart, so we tap the plot
+        // directly — but anchored to the card's *title*, not to a normalized
+        // offset in the scroll view. A normalized offset silently drifts onto a
+        // neighbouring card whenever the content above changes height, and a
+        // missed tap just skips the capture with no failure.
+        let title = app.staticTexts["Time of Day"]
+        guard title.waitForExistence(timeout: 3) else {
+            XCTFail("Time of Day card never appeared — drill-down capture skipped")
+            return
+        }
+        let titleFrame = title.frame
+
+        // The four period bands run left→right (Morning, Afternoon, Evening,
+        // Night) across the card's width; `plotY` sits on the bars, below the
+        // title and above the x-axis labels.
+        func tapPeriod(dx: CGFloat, named: String) {
+            let plotY = titleFrame.maxY + 60
+            let x = titleFrame.minX + (app.frame.width - titleFrame.minX * 2) * dx
+            app.coordinate(withNormalizedOffset: .zero)
+                .withOffset(CGVector(dx: x, dy: plotY))
+                .tap()
+            XCTAssertTrue(
+                app.buttons["Collapse hourly breakdown"].waitForExistence(timeout: 2),
+                "Tapping the \(named) band did not expand the hourly drill-down"
+            )
         }
 
         // Evening — the simple 4-bar case (3rd of 4 bands).
-        tapPeriod(dx: 0.60)
-        if app.buttons["Collapse hourly breakdown"].waitForExistence(timeout: 2) {
-            snapshot(app, name: "02-Insights-tod-evening\(sfx)")
-            collapseTimeOfDay(app)
-        }
+        tapPeriod(dx: 0.60, named: "Evening")
+        snapshot(app, name: "02-Insights-tod-evening\(sfx)")
+        collapseTimeOfDay(app)
 
         // Night — the dense 8-bar across-midnight case (21,22,23,0,1,2,3,4),
         // 4th of 4 bands.
-        tapPeriod(dx: 0.82)
-        if app.buttons["Collapse hourly breakdown"].waitForExistence(timeout: 2) {
-            snapshot(app, name: "02-Insights-tod-night\(sfx)")
-            collapseTimeOfDay(app)
-        }
+        tapPeriod(dx: 0.85, named: "Night")
+        snapshot(app, name: "02-Insights-tod-night\(sfx)")
+        collapseTimeOfDay(app)
 
         // Restore scroll position for any later legs.
         scroll.swipeDown(velocity: .fast)

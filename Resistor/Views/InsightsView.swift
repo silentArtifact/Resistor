@@ -66,13 +66,19 @@ struct InsightsView: View {
                 if !vm.hasData {
                     noDataView
                 } else {
+                    // Time range. Lives at screen level because it scopes every
+                    // card below it — it reads `cachedEventsInRange`, which all
+                    // of them do. Buried inside the Daily Trend card it looked
+                    // like it only controlled that one chart.
+                    timeRangePicker(vm)
+
                     // Summary stats
                     summaryStats(vm)
 
                     // Outcome breakdown
                     outcomeBreakdown(vm)
 
-                    // Daily trend chart (with embedded time range picker)
+                    // Daily trend chart
                     dailyTrendChart(vm)
 
                     // Time of day distribution
@@ -342,16 +348,29 @@ struct InsightsView: View {
         let data = vm.dailyDistribution()
 
         SectionCard(title: "Daily Trend") {
-            timeRangePicker(vm)
-
+            // A line, not bars: this is the one card reading a continuous series
+            // (every day in range, zero-filled by `dailyDistribution`), so the
+            // shape over time is the point. The categorical charts stay bars.
             Chart(data, id: \.date) { item in
-                BarMark(
+                LineMark(
                     x: .value("Date", item.date, unit: .day),
                     y: .value("Count", item.count)
                 )
                 .foregroundStyle(Color(hex: vm.selectedHabit?.colorHex ?? "#007AFF") ?? .blue)
+
+                // Points only on the 7-day view; 30 of them reads as noise.
+                if vm.selectedTimeRange == .week {
+                    PointMark(
+                        x: .value("Date", item.date, unit: .day),
+                        y: .value("Count", item.count)
+                    )
+                    .foregroundStyle(Color(hex: vm.selectedHabit?.colorHex ?? "#007AFF") ?? .blue)
+                }
             }
             .frame(height: 200)
+            // Counts are integers; let Charts pick ticks but never fractional
+            // ones, and keep the baseline at 0 so a flat week still reads.
+            .chartYScale(domain: 0...max(data.map(\.count).max() ?? 0, 1))
             .chartXAxis {
                 AxisMarks(values: .stride(by: .day, count: vm.selectedTimeRange == .week ? 1 : 5)) { _ in
                     AxisGridLine()
@@ -520,8 +539,8 @@ struct InsightsView: View {
         .chartXAxis {
             AxisMarks { value in
                 AxisValueLabel {
-                    if let label = value.as(String.self) {
-                        Text(label)
+                    if let label = value.as(String.self), let hour = Int(label) {
+                        Text(Self.axisHourLabel(hour, in: period))
                             .font(.caption2)
                     }
                 }
@@ -551,17 +570,23 @@ struct InsightsView: View {
         count == 1 ? "1 event" : "\(count) events"
     }
 
-    /// 24-hour value → full 12-hour clock form for VoiceOver: 0→"12 AM",
-    /// 13→"1 PM", 12→"12 PM", 18→"6 PM".
-    private static func twelveHourClock(_ hour: Int) -> String {
-        let period = hour < 12 ? "AM" : "PM"
-        let twelve: Int
-        if hour % 12 == 0 {
-            twelve = 12
-        } else {
-            twelve = hour % 12
-        }
-        return "\(twelve) \(period)"
+    /// 24-hour value → 12-hour clock form: 0→"12 AM", 13→"1 PM", 18→"6 PM".
+    /// With `meridiem: false` the AM/PM is dropped ("1"), for axis ticks where
+    /// the half hasn't changed since the previous tick.
+    static func twelveHourClock(_ hour: Int, meridiem: Bool = true) -> String {
+        let twelve = hour % 12 == 0 ? 12 : hour % 12
+        guard meridiem else { return "\(twelve)" }
+        return "\(twelve) \(hour < 12 ? "AM" : "PM")"
+    }
+
+    /// Axis tick text for the hourly drill-down. The window's first hour and any
+    /// hour that crosses AM↔PM carry the meridiem ("9 PM", "12 AM"); the rest are
+    /// bare ("10", "11") so Night's eight labels still fit across a phone.
+    static func axisHourLabel(_ hour: Int, in period: TimeOfDayPeriod) -> String {
+        let hours = period.hours
+        guard let index = hours.firstIndex(of: hour) else { return twelveHourClock(hour) }
+        let crossesMeridiem = index == 0 || (hours[index - 1] < 12) != (hour < 12)
+        return twelveHourClock(hour, meridiem: crossesMeridiem)
     }
 
     @ViewBuilder
@@ -625,7 +650,16 @@ struct InsightsView: View {
         let monthData = vm.monthSummaries()
 
         if !weekData.isEmpty || !monthData.isEmpty {
-            SectionCard(title: "Summary") {
+            // The one card the time range does NOT scope — it reports whole weeks
+            // and months from the habit's full history, so it says so.
+            SectionCard(
+                title: "Summary",
+                accessory: AnyView(
+                    Text("All time")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                )
+            ) {
                 Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 10) {
                     // Column headers explain the otherwise-bare numbers.
                     GridRow {

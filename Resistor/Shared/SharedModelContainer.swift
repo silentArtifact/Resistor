@@ -33,7 +33,8 @@ enum SharedModelContainer {
             Habit.self,
             TemptationEvent.self,
             UserSettings.self,
-            ContextTag.self
+            ContextTag.self,
+            Place.self
         ])
     }
 
