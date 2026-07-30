@@ -193,7 +193,7 @@ iCloud sync via SwiftData + CloudKit imposes these restrictions:
 | Tone | Clinical, minimal — no emotional language, no persona |
 | Appearance | Dark mode default, light mode must also work |
 | Accent color | User-configurable from 9 muted hues in Settings |
-| Notifications | **None, permanently.** Do not add notification features. |
+| Notifications | **None, permanently.** Do not add notification features. (Does *not* cover the silent CloudKit sync push — see below.) |
 | iCloud sync | Required for v1 — SwiftData + CloudKit container |
 | Distribution | TestFlight -> App Store, free with optional tip jar |
 | Haptics | Tap log: `UIImpactFeedbackGenerator(.medium)`. Hold log: Core Haptics continuous pattern with escalating intensity. |
@@ -204,7 +204,16 @@ iCloud sync via SwiftData + CloudKit imposes these restrictions:
 ## Conventions
 
 - **No third-party dependencies.** System frameworks only.
-- **No notifications.** Permanent design choice.
+- **No notifications.** Permanent design choice. **One apparent exception that
+  isn't one:** both the phone and watch carry `aps-environment` and the
+  `remote-notification` background mode, and the App IDs have Push Notifications
+  enabled. That is the *silent* push `NSPersistentCloudKitContainer` needs to
+  learn the remote database changed — without it a watch log took minutes to
+  reach the phone, because the store only imported at launch. There is no
+  `UNUserNotificationCenter.requestAuthorization` call anywhere, no permission
+  prompt, and no alert/badge/sound. The rule is about user-facing notifications
+  and still holds absolutely. Don't "remove the notification stuff" on sight, and
+  don't treat it as a precedent for adding real notifications.
 - **Clinical tone.** No emotional language, no motivational copy. See `docs/design.md`.
 - **SF Symbols** for all icons. No custom image assets (except app icon).
 - **Hex strings** for colors, parsed at runtime via `Color+Hex`.
@@ -243,22 +252,48 @@ xcodebuild -project Resistor.xcodeproj \
   build
 ```
 
-The watch app (`ResistorWatch/`) is a single-screen, tap-only quick-log
-companion (issue #49). It has its **own** SwiftData `ModelContainer` on the same
+The watch app (`ResistorWatch/`) is a single-screen quick-log companion (issue
+#49). **Release logs** — a flick and a 3s hold both write an event, matching the
+phone, where the ramp changes how it feels, not whether it commits. Holding past
+3s keeps buzzing until release.
+
+Two watch-specific traps, both load-bearing:
+
+- **`CHHapticEngine` does not exist in the watchOS SDK.** The phone's continuous
+  ramped pattern is approximated by a repeated discrete `WKHapticType.click` at a
+  tightening gap. Don't try to port `LogViewModel`'s Core Haptics code; it cannot
+  compile there.
+- **The hold gesture's `minimumDuration` is 86,400s on purpose.** A long press
+  that *succeeds* ends the gesture and reports the press as over while the finger
+  is still down, cutting the haptic off mid-hold. Setting it beyond any real press
+  means only `onPressingChanged` fires and `perform` is dead by design. Don't
+  "fix" it to 3s.
+
+Shake-to-undo (`ShakeDetector.swift`) deletes the last logged event within a 5s
+window, via Core Motion — watchOS has no shake gesture API. The accelerometer runs
+only during that window.
+
+It has its **own** SwiftData `ModelContainer` on the same
 CloudKit container (`iCloud.com.resistor.app`) — App Groups do **not** bridge
 iPhone↔Apple Watch, so phone/watch parity comes from CloudKit sync, not the
 shared App-Group store the widget uses. The target is wired by the idempotent
 `scripts/add_watch_target.rb` (rerun if the target is lost).
 
-**The watch target's asset-catalog membership is load-bearing, not cosmetic.**
-The watch shares the iOS app's `Resistor/Assets.xcassets` (its
+**The watch target shares the iOS app's `Resistor/Assets.xcassets`** — its
 `AppIcon.appiconset` carries both an `ios` and a `watchos` 1024x1024 entry
-pointing at the same PNG — one image, no duplication). A watch app that ships
-**no** icon installs on device and then silently reverts: the ring fills, then
-the button goes back to "Install". That was the symptom before this membership
-existed, so don't "clean it up". App icons must also have **no alpha channel**
-(watchOS and App Store validation both reject it) — verify with
-`sips -g hasAlpha`.
+pointing at the same PNG (one image, no duplication). Keep the membership: a
+shipped watch app needs an icon, and App Store validation rejects icons with an
+**alpha channel** (verify with `sips -g hasAlpha`).
+
+**Correction (2026-07-29):** an earlier version of this note claimed a missing
+icon was what made the install ring fill and then revert to "Install". That was
+wrong — a guess from a plausible detail, never verified. The actual cause was
+that the Apple Watch had **never been registered as a development device**, so no
+provisioning profile covered it. Two other explanations were also asserted and
+disproven along the way (the App ID's iCloud capability, the profile's `Platform`
+array). If you see the install-ring revert, check device registration and the
+profile's `ProvisionedDevices` **first** — read the artifacts (`security cms -D -i
+<profile> | plutil -p -`), don't reason from what looks likely.
 
 `ResistorWatchComplication/` is a watchOS WidgetKit app extension
 (`com.resistor.app.watchkitapp.complication`) embedded in **ResistorWatch**'s
@@ -358,11 +393,13 @@ coexist on disk; each mode only cleans its own files.
 - #47 — Quick-log widget: device verification + App Group / CloudKit capability setup
 - #48 — No haptics firing on device (tap impact + hold Core Haptics both silent)
 - #49 — watchOS app: wrist-fast resisted-temptation logging (post-v1, companion to widget)
-  - Device install also needs the `com.resistor.app.watchkitapp` App ID to have
-    iCloud enabled with the `iCloud.com.resistor.app` container selected in the
-    developer portal — the watch entitlements request it, and automatic signing
-    won't mint a profile for an entitlement the App ID lacks. That failure looks
-    identical to the missing-icon bug (install ring completes, then reverts).
+  - The `com.resistor.app.watchkitapp` App ID needs iCloud enabled with the
+    `iCloud.com.resistor.app` container selected, **and** Push Notifications
+    enabled (for the silent CloudKit sync push) — automatic signing won't mint a
+    profile for an entitlement the App ID lacks. Both are set as of 2026-07-29.
+  - **If the install ring completes and then reverts to "Install":** check that
+    the watch is a registered development device and appears in the profile's
+    `ProvisionedDevices`. That — not a missing icon — was the cause last time.
 
 ## Remaining Work (v1.0)
 

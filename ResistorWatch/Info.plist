@@ -6,6 +6,15 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<!-- Silent CloudKit push wake-up, NOT a user-facing notification. SwiftData's
+	     CloudKit sync (NSPersistentCloudKitContainer) learns the remote database
+	     changed only via a silent push; without this the store imports on launch
+	     and whenever its engine next runs. No UNUserNotificationCenter
+	     authorization, no prompt, no alert/badge/sound. -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 	<key>WKApplication</key>
 	<true/>
 	<key>WKCompanionAppBundleIdentifier</key>

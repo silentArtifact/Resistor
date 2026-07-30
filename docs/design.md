@@ -1823,16 +1823,59 @@ mid-sync), so today's count is unknown. The watch **must never show a false `0`*
 
 ##### Interaction and motion
 
-- **Tap-only — the elaborate phone hold-to-log ramp is dropped on the watch.**
-  **Recommendation (decided here): tap-only.** The phone's multi-layer hold effect
-  (3s ramp, glow, radiating ring, Core Haptics intensity escalation) is explicitly
-  **not** ported to the watch. Rationale: (1) the hold ramp exists to add a moment
-  of deliberation/weight to the phone log — the watch's entire reason for being is
-  *speed* ("raise wrist, one tap, done"), so a 3-second hold would directly
-  undermine its purpose; (2) the watch's small screen has no room for the layered
-  glow/ring visual system; (3) Core Haptics continuous patterns are a phone stack —
-  the watch uses discrete `WKHapticType` signals, not a ramped continuous engine.
-  A watch tap is a single discrete log. There is **no hold gesture on the watch.**
+- **Release logs, at any progress.** *(Revised 2026-07-29 — supersedes the
+  original "tap-only" decision recorded here.)* The watch now carries the phone's
+  hold ramp. The original rationale for dropping it was that the watch exists for
+  *speed*, and a 3-second hold undermines that — but a flick still logs on
+  release, so the fast case costs nothing and the deliberate case gains the same
+  weight it has on the phone. `holdDuration` matches the phone's 3s.
+  - **The hold has no commit threshold**, matching the phone exactly: press
+    begins the ramp, release writes the event, and how far the ring got only ever
+    changed how it felt getting there. **Holding past 3s is allowed** — the ramp
+    sits at full and the haptic keeps going until release.
+  - Implementation note: the gesture is a single `onLongPressGesture` whose
+    `minimumDuration` is set to a day so it **never succeeds**. A long press that
+    succeeds *ends* the gesture, reporting the press as over while the finger is
+    still down — which would cut the buzz off at 3s. Only the
+    `onPressingChanged` transitions are used; `perform` is dead by design.
+  - **Visual parity:** the phone's layer stack is mirrored, sized for a circle on
+    a wrist — progress trim ring (starting at 12 o'clock), blurred breathing glow
+    border, radiating ring that scales out and fades, layered halo shadows, 1.08x
+    scale, icon glow, and dimming of the name/count. Rings that sit *on* the
+    habit-color disc are white (a habit-color ring on a habit-color fill would be
+    invisible); the radiating ring and halo shadows sit *behind* it on the dark
+    canvas and stay habit-color. Shadow radii are roughly half the phone's.
+  - **Haptics — the one place parity is impossible.** `CHHapticEngine` does not
+    exist in the watchOS SDK, so the phone's continuous pattern with ramped
+    intensity and sharpness cannot be ported. The watch approximates "ongoing
+    escalating vibration" with a repeated discrete `WKHapticType.click` whose gap
+    tightens from 0.12s to 0.03s across the ramp — deliberately past the point
+    where the Taptic Engine articulates separate taps, so they smear into a buzz
+    instead of staying countable. If ticks start *dropping*, that's the sign the
+    gap went too far.
+  - **Reduce Motion:** decorative layers (scale, glow pulse, radiating ring, icon
+    glow, dimming) are gated off. The **progress ring is not** — it is the
+    gesture's only progress feedback, not decoration. Haptics are unaffected;
+    Reduce Motion is about motion.
+- **Shake to undo.** Shaking the wrist within the undo window deletes the event
+  the last log created. The delete propagates to the phone over CloudKit the same
+  way the insert does, so an undone log doesn't reappear there.
+  - **Window = ack dwell = 5s**, deliberately one value: the "Shake to undo" hint
+    is on screen for exactly as long as shaking works, and the hint is the only
+    thing that teaches the gesture. Matches the phone banner's 5s undo window.
+  - **Detection:** watchOS has no shake gesture (`UIEventSubtype.motionShake` is
+    iOS-only), so `ShakeDetector` reads Core Motion — 3 bursts of
+    `userAcceleration` above 2g inside 1.2s, each ≥0.08s apart. Device motion
+    strips gravity, so raising/lowering/rotating the wrist reads near zero; the
+    refractory gap stops one continuous jolt registering as three spikes.
+    Accelerometer runs **only** during the window, not continuously.
+  - **Undo haptic** is `.retry`, distinct from the log's `.success` so the wrist
+    can tell a log from an un-log without looking.
+  - **Accessibility:** a motion-only affordance is no use to someone who can't
+    shake reliably — or who would trigger it by accident. The same undo is offered
+    as a VoiceOver custom action while the window is open. It adds no visible
+    control, so it can't collide with the press gesture the way an on-screen
+    button would.
 - **Tap behavior:** one tap on the filled circle → `TemptationLogger.logResisted`
   for the target habit → success haptic → "Logged" acknowledgment (state c) →
   auto-return to at-rest after 1.2s with the incremented count.
@@ -2104,9 +2147,10 @@ No haptics on navigation, sheets, or secondary actions.
 log only — `WKInterfaceDevice.current().play(.success)`, fired solely on a
 successful write (gated on `TemptationLogger.logResisted` returning success).
 **No** haptic on a tap in a non-loggable watch state (no habit / habit
-unavailable), no `.failure`/`.click` fallback, no sound, no notification. The
-phone's Core Haptics continuous hold pattern does **not** exist on the watch
-(tap-only, no hold-to-log).
+unavailable), no `.failure` fallback, no sound, no notification. During a **hold**
+the watch also fires repeated `.click` ticks at a tightening gap (0.22s → 0.07s)
+as its stand-in for the phone's Core Haptics continuous ramp, which cannot be
+ported — `CHHapticEngine` is absent from the watchOS SDK.
 
 ### Sheet Presentation
 

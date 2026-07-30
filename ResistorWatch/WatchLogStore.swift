@@ -78,6 +78,11 @@ final class WatchLogStore {
         )
     }
 
+    /// The most recent event this store logged, retained so shake-to-undo has
+    /// something to delete. Cleared once undone. Mirrors the phone
+    /// `LogViewModel.lastLoggedEvent`/`undoLastLog` pair.
+    private(set) var lastLoggedEvent: TemptationEvent?
+
     /// Logs one resisted temptation against the currently-resolved target habit,
     /// then refreshes the count. Returns `true` on a successful save.
     ///
@@ -96,8 +101,34 @@ final class WatchLogStore {
             return false
         }
         let event = TemptationLogger.logResisted(for: habit, in: context)
+        // Only a genuinely saved event is undoable — `logResisted` discards its
+        // insert on failure, so a nil here must not leave a stale target behind.
+        lastLoggedEvent = event
         refresh()
         return event != nil
+    }
+
+    /// Deletes the event most recently logged from this watch, then refreshes the
+    /// count. Returns `true` only if something was actually removed, so the
+    /// caller doesn't acknowledge an undo that didn't happen.
+    ///
+    /// The delete propagates to the phone the same way the insert does — via
+    /// CloudKit — so an undone log doesn't reappear there.
+    @discardableResult
+    func undoLast() -> Bool {
+        guard let context = modelContext, let event = lastLoggedEvent else {
+            return false
+        }
+        context.delete(event)
+        do {
+            try context.save()
+        } catch {
+            print("Failed to undo watch temptation event: \(error)")
+            return false
+        }
+        lastLoggedEvent = nil
+        refresh()
+        return true
     }
 
     // MARK: - Target resolution

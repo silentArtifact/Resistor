@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Silent CloudKit push wake-up, NOT a user-facing notification. SwiftData's
+	     CloudKit sync (NSPersistentCloudKitContainer) learns the remote database
+	     changed only via a silent push; without this the store imports on launch
+	     and whenever its engine next runs, which is why a watch log took minutes
+	     to appear here. No UNUserNotificationCenter authorization, no prompt, no
+	     alert/badge/sound — the "no notifications" rule in CLAUDE.md is about
+	     user-facing notifications and still holds.
+
+	     This file exists ONLY because UIBackgroundModes is array-valued and
+	     Xcode's INFOPLIST_KEY_* build settings silently ignore it (verified: the
+	     key never reached the built bundle). Everything else still comes from the
+	     INFOPLIST_KEY_* settings via GENERATE_INFOPLIST_FILE = YES, which merges
+	     with this file. Don't move the other keys in here. -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
+</dict>
+</plist>

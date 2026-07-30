@@ -136,11 +136,15 @@ end
 
 # ---------------------------------------------------------------------------
 # 3b. Share the app's asset catalog with the watch target so the watch bundle
-#     actually ships an AppIcon. Without it watchOS finishes the install ring
-#     and then reverts to "Install" (an iconless watch app won't stay put).
-#     The catalog's AppIcon.appiconset carries both an ios and a watchos
-#     1024x1024 entry pointing at the same (alpha-free) PNG — one image, no
-#     duplication. Reuses the existing file reference.
+#     ships an AppIcon. The catalog's AppIcon.appiconset carries both an ios and
+#     a watchos 1024x1024 entry pointing at the same (alpha-free) PNG — one
+#     image, no duplication. Reuses the existing file reference.
+#
+#     NOTE: this comment used to claim an iconless watch app "won't stay put" —
+#     that the install ring fills and then reverts to "Install". That was never
+#     verified and is wrong; the real cause was the watch not being a registered
+#     development device. Keep the membership because a shipped app needs an
+#     icon, not because of the install bug.
 # ---------------------------------------------------------------------------
 assets_ref = project.files.find do |f|
   f.real_path.to_s == File.join(ROOT, "Resistor/Assets.xcassets")
