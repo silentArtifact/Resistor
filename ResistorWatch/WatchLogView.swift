@@ -42,11 +42,14 @@ struct WatchLogView: View {
     /// repeated `.click` whose gap tightens from max to min across the ramp,
     /// which reads on the wrist as an accelerating buzz.
     private static let hapticGapMax: TimeInterval = 0.10
-    /// Empirical, and the only way to set it: 0.07s read as countable taps, 0.03s
-    /// made the engine start dropping them. The floor is somewhere between, so
-    /// this is the bisect. Tighten only until dropping reappears — a dropped tick
-    /// is a worse artefact than a slightly countable one.
-    private static let hapticGapMin: TimeInterval = 0.05
+    /// Empirical, and the only way to set it — measured on an Apple Watch Series
+    /// 8: 0.03s and 0.05s both dropped ticks, 0.07s did not but reads as countable
+    /// taps. 0.07s is therefore the floor: the tightest gap the engine delivers
+    /// cleanly, and no setting is both seamless and gap-free. Erring toward
+    /// gap-free, because a dropped tick is a stutter — a worse artefact than a
+    /// buzz you could count if you tried. Don't tighten it without re-measuring
+    /// on a device; the simulator plays no haptics at all.
+    private static let hapticGapMin: TimeInterval = 0.07
 
     /// Which acknowledgement is showing, if any. An enum rather than two bools so
     /// "logged" and "undone" can't both be on screen.
