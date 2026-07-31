@@ -33,21 +33,26 @@ struct ComplicationView: View {
         switch family {
         case .accessoryInline:
             Label("Resistor", systemImage: "bolt.shield.fill")
+                .containerBackground(.clear, for: .widget)
         case .accessoryCorner:
             glyph
+                .padding(2)
                 .widgetAccentable()
+                .containerBackground(.clear, for: .widget)
         default:
-            ZStack {
-                AccessoryWidgetBackground()
-                glyph
-                    .widgetAccentable()
-            }
+            glyph
+                .padding(10)
+                .widgetAccentable()
+                .containerBackground(for: .widget) { AccessoryWidgetBackground() }
         }
     }
 
+    // Resizable, not a fixed .font size: the circular container is ~10pt wider
+    // on a 49mm Ultra than on a 40mm, and a fixed glyph clips on the small one.
     private var glyph: some View {
         Image(systemName: "bolt.shield.fill")
-            .font(.title2)
+            .resizable()
+            .scaledToFit()
             .accessibilityLabel("Open Resistor")
     }
 }
