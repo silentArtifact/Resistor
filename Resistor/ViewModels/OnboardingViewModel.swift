@@ -8,7 +8,7 @@ final class OnboardingViewModel {
 
     var habitName: String = ""
     var habitDescription: String = ""
-    var selectedColorHex: String = "#007AFF"
+    var selectedColorHex: String = HabitsViewModel.availableColors[0].hex
     var selectedIconName: String = "circle.fill"
 
     var canCreateHabit: Bool {

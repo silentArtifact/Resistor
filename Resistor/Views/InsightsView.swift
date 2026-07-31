@@ -242,7 +242,7 @@ struct InsightsView: View {
                     Text("\(pct)% resisted")
                         .font(.subheadline)
                         .fontWeight(.medium)
-                        .foregroundStyle(.green)
+                        .foregroundStyle(TemptationEvent.Outcome.resisted.color)
                 )
             }
         ) {
@@ -389,33 +389,24 @@ struct InsightsView: View {
 
             if vm.peakTimeOfDay != nil || vm.peakDayOfWeek != nil {
                 HStack(spacing: 12) {
+                    // No subtitle: "of day" and "of week" restated the title in
+                    // smaller type and told the reader nothing the word "Peak"
+                    // hadn't. An empty line reads better than a filled one that
+                    // says nothing.
                     if let peak = vm.peakTimeOfDay {
-                        StatCard(
-                            title: "Peak Time",
-                            value: peak,
-                            subtitle: "of day"
-                        )
+                        StatCard(title: "Peak Time", value: peak)
                     }
 
                     if let peakDay = vm.peakDayOfWeek {
-                        StatCard(
-                            title: "Peak Day",
-                            value: peakDay,
-                            subtitle: "of week"
-                        )
+                        StatCard(title: "Peak Day", value: peakDay)
                     }
                 }
             }
 
-            if let topLoc = vm.topLocation {
-                HStack(spacing: 12) {
-                    LocationStatCard(
-                        title: "Top Location",
-                        value: topLoc,
-                        subtitle: "most frequent"
-                    )
-                }
-            }
+            // The "Top Location" card is gone: the Top Locations chart further
+            // down this same scroll names the same place and shows the two
+            // behind it, so the card was the identical fact stated twice with
+            // less in it.
         }
     }
 
@@ -446,7 +437,7 @@ struct InsightsView: View {
         if change > 0 {
             return .secondary
         } else if change < 0 {
-            return .green
+            return TemptationEvent.Outcome.resisted.color
         } else {
             return .primary
         }
@@ -847,7 +838,7 @@ struct InsightsView: View {
                 Text("\(pct)%")
                     .font(.subheadline)
                     .fontWeight(.medium)
-                    .foregroundStyle(.green)
+                    .foregroundStyle(TemptationEvent.Outcome.resisted.color)
             } else {
                 Text("—").font(.subheadline).foregroundStyle(.tertiary)
             }
@@ -855,7 +846,9 @@ struct InsightsView: View {
             if let avg = summary.averageIntensity {
                 Text(String(format: "%.1f", avg))
                     .font(.subheadline)
-                    .foregroundStyle(.orange)
+                    // Intensity is a magnitude, not an outcome — colouring it
+                    // the "gave in" sienna implied a high average was a failure.
+                    .foregroundStyle(.secondary)
             } else {
                 Text("—").font(.subheadline).foregroundStyle(.tertiary)
             }
@@ -883,17 +876,41 @@ struct InsightsView: View {
         let data = vm.locationDistribution()
 
         if !data.isEmpty {
+            let barColor = Color(hex: vm.selectedHabit?.colorHex ?? "#007AFF") ?? .blue
+
             SectionCard(title: "Top Locations") {
-                Chart(data, id: \.location) { item in
-                    BarMark(
-                        x: .value("Count", item.count),
-                        y: .value("Location", item.location)
-                    )
-                    .foregroundStyle(Color(hex: vm.selectedHabit?.colorHex ?? "#007AFF") ?? .blue)
-                }
-                .frame(height: CGFloat(data.count) * 40)
-                .chartXAxis {
-                    AxisMarks(values: .automatic(desiredCount: 4))
+                // Not a chart with a category axis. Place names are long
+                // ("Financial District, San Francisco") and Charts had to draw
+                // them inside the plot, where they landed on top of their own
+                // bars. The name gets a full-width line of its own and the bar
+                // sits under it, so the label can't collide with anything and
+                // the bars still compare at a glance.
+                VStack(alignment: .leading, spacing: 10) {
+                    let maxCount = data.map(\.count).max() ?? 1
+                    ForEach(data, id: \.location) { item in
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(spacing: 8) {
+                                Text(item.location)
+                                    .font(.subheadline)
+                                    .lineLimit(1)
+                                Spacer(minLength: 8)
+                                Text("\(item.count)")
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                    .monospacedDigit()
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            GeometryReader { geo in
+                                Capsule()
+                                    .fill(barColor)
+                                    .frame(width: max(geo.size.width * CGFloat(item.count) / CGFloat(maxCount), 3))
+                            }
+                            .frame(height: 6)
+                        }
+                        // The count is already stated as text on the line above.
+                        .accessibilityElement(children: .combine)
+                    }
                 }
             }
         }
@@ -959,7 +976,9 @@ private struct SectionCard<Content: View>: View {
 struct StatCard: View {
     let title: String
     let value: String
-    let subtitle: String
+    /// Optional, and omitted rather than filled with a restatement of the
+    /// title — see the Peak Time / Peak Day cards.
+    var subtitle: String? = nil
     var valueColor: Color = .primary
 
     var body: some View {
@@ -977,9 +996,11 @@ struct StatCard: View {
                 // fits a half-width card at large Dynamic Type without clipping.
                 .minimumScaleFactor(0.5)
 
-            Text(subtitle)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
+            if let subtitle {
+                Text(subtitle)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 16)
@@ -992,38 +1013,6 @@ struct StatCard: View {
     }
 }
 
-/// A stat card variant that uses a smaller font for longer text values (e.g. location names).
-struct LocationStatCard: View {
-    let title: String
-    let value: String
-    let subtitle: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
-            Text(value)
-                .font(.headline)
-                .fontWeight(.bold)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-
-            Text(subtitle)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.secondarySystemGroupedBackground))
-        )
-        .accessibilityElement(children: .combine)
-    }
-}
 
 #Preview {
     InsightsView()

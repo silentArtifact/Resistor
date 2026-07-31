@@ -117,7 +117,7 @@ struct OnboardingView: View {
             VStack(spacing: 16) {
                 Image(systemName: "bolt.shield.fill")
                     .font(.system(size: 72))
-                    .foregroundStyle(.blue)
+                    .foregroundStyle(.tint)
 
                 Text("Resistor")
                     .font(.largeTitle)
@@ -193,11 +193,11 @@ struct OnboardingView: View {
                                         .frame(width: 44, height: 44)
                                         .background(
                                             RoundedRectangle(cornerRadius: 8)
-                                                .fill(vm.selectedIconName == icon ? Color.blue.opacity(0.2) : Color.clear)
+                                                .fill(vm.selectedIconName == icon ? AnyShapeStyle(.tint.opacity(0.2)) : AnyShapeStyle(Color.clear))
                                         )
                                         .overlay(
                                             RoundedRectangle(cornerRadius: 8)
-                                                .stroke(vm.selectedIconName == icon ? Color.blue : Color.clear, lineWidth: 2)
+                                                .stroke(vm.selectedIconName == icon ? AnyShapeStyle(.tint) : AnyShapeStyle(Color.clear), lineWidth: 2)
                                         )
                                         .onTapGesture {
                                             vm.selectedIconName = icon
@@ -231,7 +231,7 @@ struct OnboardingView: View {
                             .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
                             .padding()
-                            .background(vm.canCreateHabit ? Color.blue : Color.gray)
+                            .background(vm.canCreateHabit ? AnyShapeStyle(.tint) : AnyShapeStyle(Color(.systemGray3)))
                             .cornerRadius(12)
                     }
                     .disabled(!vm.canCreateHabit)

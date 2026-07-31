@@ -12,7 +12,7 @@ struct LogView: View {
            let color = Color(hex: hex) {
             return color
         }
-        return .blue
+        return UserSettings.defaultAccentColor
     }
 
     @State private var viewModel: LogViewModel?
@@ -617,7 +617,7 @@ struct LogView: View {
             // Status group (combined accessibility element, no button trait)
             HStack(spacing: 8) {
                 Image(systemName: didGiveIn ? "xmark.circle.fill" : "checkmark.circle.fill")
-                    .foregroundStyle(didGiveIn ? .orange : .green)
+                    .foregroundStyle(outcome.color)
                     .contentTransition(reduceMotion ? .identity : .symbolEffect(.replace))
                 Text(didGiveIn ? TemptationEvent.Outcome.gaveIn.displayName : "Logged")
                     .fontWeight(.medium)
@@ -641,7 +641,7 @@ struct LogView: View {
                     } label: {
                         Text("Gave in")
                             .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.orange)
+                            .foregroundStyle(TemptationEvent.Outcome.gaveIn.color)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 11)
                             .contentShape(Rectangle())

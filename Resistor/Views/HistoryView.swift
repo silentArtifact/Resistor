@@ -118,65 +118,54 @@ struct HistoryView: View {
                     .frame(width: 28)
             }
 
-            // Event details
-            VStack(alignment: .leading, spacing: 6) {
-                // When the list is scoped to one habit, the screen title
-                // already names it — showing it on every row is redundant,
-                // so the row starts at the badge line and the time folds
-                // into that line's trailing edge instead of stranding on
-                // an otherwise-empty first line.
-                if habit == nil, let eventHabit = event.habit {
-                    HStack {
+            // Event details.
+            //
+            // Two lines, because the row carries two kinds of fact and they
+            // used to compete for one. The outcome, the habit and the time are
+            // fixed — every event has exactly one of each. The circumstances
+            // are a variable-length list. Racing them all in a single HStack
+            // meant SwiftUI compressed whichever lost, so "Gave In" hyphenated
+            // to "Gav / e In" and a place truncated to "H…" while the row next
+            // to it had room for "Home".
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(spacing: 8) {
+                    outcomeLabel(event.outcome)
+
+                    // When the list is scoped to one habit, the screen title
+                    // already names it.
+                    if habit == nil, let eventHabit = event.habit {
                         Text(eventHabit.name)
                             .font(.subheadline)
                             .fontWeight(.medium)
-
-                        Spacer()
-
-                        Text(formatTime(event.occurredAt))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
                     }
+
+                    Spacer(minLength: 8)
+
+                    Text(formatTime(event.occurredAt))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
 
-                HStack(spacing: 8) {
-                    // Outcome badge
-                    outcomeLabel(event.outcome)
-
-                    // Context tags
-                    ForEach(event.contextTags, id: \.self) { tagRaw in
-                        Text(TemptationEvent.displayName(for: tagRaw))
-                            .font(.caption2)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(Color(.secondarySystemFill))
-                            .cornerRadius(4)
-                    }
-
-                    // Location badge
-                    if let locName = places.displayName(for: event) {
-                        HStack(spacing: 2) {
+                // Circumstances as one sentence rather than a run of chips.
+                // Chips gave five equal-weight boxes the same visual authority
+                // as the outcome, and each one truncated on its own; a single
+                // line truncates once, at the end, where it costs least. The
+                // glyph marks the leading item as a place, which is the only
+                // distinction that mattered.
+                let place = places.displayName(for: event)
+                let tags = event.contextTags.map { TemptationEvent.displayName(for: $0) }
+                if place != nil || !tags.isEmpty {
+                    HStack(spacing: 4) {
+                        if place != nil {
                             Image(systemName: "location.fill")
                                 .font(.caption2)
-                            Text(locName)
-                                .font(.caption2)
-                                .lineLimit(1)
                         }
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Color(.secondarySystemFill))
-                        .cornerRadius(4)
-                    }
-
-                    // Time folds into the badge row whenever the name line
-                    // above isn't shown.
-                    if habit != nil || event.habit == nil {
-                        Spacer()
-
-                        Text(formatTime(event.occurredAt))
+                        Text(([place].compactMap { $0 } + tags).joined(separator: " · "))
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
                     }
+                    .foregroundStyle(.secondary)
                 }
 
                 // Note if present
@@ -213,6 +202,10 @@ struct HistoryView: View {
             Text(parsed.displayName)
                 .font(.caption2)
         }
+        // The verdict is the one thing on the row that must never wrap or
+        // shrink; without this it hyphenated to "Re- sist- ed".
+        .lineLimit(1)
+        .fixedSize()
         .padding(.horizontal, 6)
         .padding(.vertical, 2)
         .background(parsed.color.opacity(0.2))

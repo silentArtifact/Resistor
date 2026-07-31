@@ -14,24 +14,12 @@ struct HabitsView: View {
     @State private var exportURL: URL?
     @State private var newTagName: String = ""
 
-    private static let accentColors: [(name: String, hex: String)] = [
-        ("Slate Blue", "#6B7FA3"),
-        ("Storm Gray", "#7A7F8A"),
-        ("Sage", "#7A8F7A"),
-        ("Dusty Rose", "#A37A7A"),
-        ("Copper", "#A3897A"),
-        ("Lavender", "#8A7FA3"),
-        ("Teal", "#6B9E9E"),
-        ("Charcoal", "#5A5A5F"),
-        ("Dusk", "#8A7A99"),
-    ]
-
     /// The user-configured accent color, falling back to the system tint.
     private var accentColor: Color {
         if let hex = userSettings.first?.accentColorHex, let color = Color(hex: hex) {
             return color
         }
-        return .accentColor
+        return UserSettings.defaultAccentColor
     }
 
     var body: some View {
@@ -264,7 +252,7 @@ struct HabitsView: View {
                         columns: [GridItem(.adaptive(minimum: 40), spacing: 16)],
                         spacing: 16
                     ) {
-                        ForEach(Self.accentColors, id: \.hex) { color in
+                        ForEach(UserSettings.accentPalette, id: \.hex) { color in
                             let isSelected = settings.accentColorHex == color.hex
                             Circle()
                                 .fill(Color(hex: color.hex) ?? .blue)

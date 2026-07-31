@@ -190,6 +190,36 @@ Do **not** use `DispatchQueue.main.asyncAfter` for sheet timing. Always use `onD
 - Accent color applied via `.tint()` at the app root in `ContentView`
 - Available colors/icons defined as static properties on `HabitsViewModel`
 
+**One muted palette, no system colours.** The app used to ship two: nine muted
+accent hues in Settings, and — for habits, and therefore for every chart bar,
+history icon, Log card and widget — the raw iOS system wheel (`#007AFF`,
+`#34C759`, `#FF9500`…). Most of the app's colour came from the second one, so
+the parts a user actually looked at were the parts that looked like a default.
+Three rules keep it unified:
+
+- `HabitsViewModel.availableColors` is the **habit** palette (Sand, Clay, Rose,
+  Periwinkle, Slate Blue, Teal, Sage, Moss, Ochre, Storm); it and
+  `UserSettings.accentPalette` are the only palettes. Everything is mid-tone
+  because a habit colour has to work as chart ink and as a filled glyph on both
+  a white card and a black one. New habits take `availableColors[0]` — don't
+  reintroduce a `#007AFF` literal at a creation site.
+- `TemptationEvent.Outcome.color` is **not** `.green` / `.orange` / `.gray`.
+  Those three are the most-repeated ink in the app (History badges, the Outcomes
+  bar, the Log confirmation banner, map pins) and at full saturation they were
+  the loudest thing on every screen, in an app whose tone is deliberately
+  clinical. A saturated green also grades the user — it's the colour of a pass
+  mark. The muted sage/sienna/slate are the **only** colours in the app that
+  vary by mode, via `Color(light:dark:)`: they're drawn as text on a 20% wash of
+  themselves, so they have to clear 4.5:1 against both a near-white and a
+  near-black background and no single muted tone does both. (`Color(light:dark:)`
+  falls back to the dark value on watchOS, which has no light mode and no
+  `UIColor(dynamicProvider:)`.)
+- `UserSettings.defaultAccentColor` is what a nil `accentColorHex` means —
+  Lavender, not the system tint. Onboarding runs before any accent is chosen, so
+  falling through to `.accentColor` made the one screen every user sees the one
+  screen with none of the app's own colour in it. `UserSettings` owns the accent
+  palette because three separate views resolve it.
+
 ### Manual Cascade Deletion
 
 CloudKit forbids cascade delete rules. When deleting a habit, manually delete all child events first:
@@ -198,6 +228,40 @@ CloudKit forbids cascade delete rules. When deleting a habit, manually delete al
 for event in habit.events { modelContext.delete(event) }
 modelContext.delete(habit)
 ```
+
+### History rows: two lines, one of them a sentence
+
+An event row carries two different kinds of fact, and they must not share a line.
+The outcome, the habit and the time are fixed — exactly one of each, every time.
+The circumstances (place + context tags) are a variable-length list. They used to
+race in a single `HStack`, so SwiftUI compressed whichever lost: "Gave In"
+hyphenated to "Gav / e In", "Resisted" to "Re- sist- ed", and a place truncated
+to "H…" on one row while the row below had room for "Home".
+
+So: line one is `outcomeLabel` + habit name (unscoped lists only) + time, with
+the badge `.fixedSize()` because the verdict is the one thing that must never
+wrap. Line two is the circumstances as **one dot-separated line** — "Home ·
+Stressed · Bored" — not a run of chips. Chips gave five grey boxes the same
+visual authority as the outcome and each truncated independently; a single line
+truncates once, at the end, where it costs least. The `location.fill` glyph marks
+the leading item as a place, which was the only distinction the chips carried.
+
+### Insights: no filler labels, no duplicated facts
+
+Two rules the screen kept breaking:
+
+- **A label must say something the title doesn't.** "Peak Time / Night / *of
+  day*" and "Peak Day / Sun / *of week*" restated the title in smaller type.
+  `StatCard.subtitle` is optional for exactly this — omit it rather than fill it.
+  "temptations" and "−10%" stay, because those are a unit and a figure.
+- **Don't state a fact twice on one scroll.** A "Top Location" stat card sat
+  above a "Top Locations" chart naming the same place with two more behind it.
+  The card is gone.
+
+Top Locations is a hand-built list (name + count on its own full-width line, bar
+underneath), not a `Chart` with a category axis: place names are long enough
+("Financial District, San Francisco") that Charts drew the labels inside the plot
+on top of their own bars.
 
 ### Pattern Detection (Insights "Patterns" card)
 

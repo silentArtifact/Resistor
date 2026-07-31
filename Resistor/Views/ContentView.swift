@@ -29,7 +29,7 @@ struct ContentView: View {
            let color = Color(hex: hex) {
             return color
         }
-        return .blue
+        return UserSettings.defaultAccentColor
     }
 
     var body: some View {

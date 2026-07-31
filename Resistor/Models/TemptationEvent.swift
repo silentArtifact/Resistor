@@ -63,11 +63,24 @@ extension TemptationEvent {
             }
         }
 
+        /// Muted, not `.green` / `.orange`.
+        ///
+        /// These three colours are the most-repeated ink in the app — the
+        /// History badges, the Outcomes bar, the Log confirmation banner, the
+        /// map pins — and at full system saturation they were the loudest thing
+        /// on every screen, in an app whose whole palette is deliberately
+        /// desaturated and whose tone is deliberately clinical. A saturated
+        /// green also grades the user: it is the colour of a pass mark. Muted
+        /// sage and sienna still separate the two outcomes at a glance without
+        /// scoring them.
+        ///
+        /// Values are picked to clear 4.5:1 as text on a 20%-opacity wash of
+        /// themselves — how `HistoryView` actually draws them — in both modes.
         var color: Color {
             switch self {
-            case .resisted: return .green
-            case .gaveIn: return .orange
-            case .unknown: return .gray
+            case .resisted: return Color(light: "#3F6B4A", dark: "#8FBF9B")
+            case .gaveIn: return Color(light: "#8C4F32", dark: "#D89A78")
+            case .unknown: return Color(light: "#5F646B", dark: "#A0A6AE")
             }
         }
     }

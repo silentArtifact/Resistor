@@ -352,7 +352,7 @@ final class HabitsViewModelTests: XCTestCase {
 
         XCTAssertEqual(vm.habitName, "")
         XCTAssertEqual(vm.habitDescription, "")
-        XCTAssertEqual(vm.selectedColorHex, "#007AFF")
+        XCTAssertEqual(vm.selectedColorHex, HabitsViewModel.availableColors[0].hex)
         XCTAssertEqual(vm.selectedIconName, "circle.fill")
         XCTAssertTrue(vm.showAddHabitSheet)
         XCTAssertFalse(vm.isEditing)
@@ -373,7 +373,7 @@ final class HabitsViewModelTests: XCTestCase {
         XCTAssertNil(vm.habitToEdit)
         XCTAssertEqual(vm.habitName, "")
         XCTAssertEqual(vm.habitDescription, "")
-        XCTAssertEqual(vm.selectedColorHex, "#007AFF")
+        XCTAssertEqual(vm.selectedColorHex, HabitsViewModel.availableColors[0].hex)
         XCTAssertEqual(vm.selectedIconName, "circle.fill")
     }
 

@@ -1,4 +1,7 @@
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 extension Color {
     init?(hex: String) {
@@ -30,5 +33,23 @@ extension Color {
         default:
             return nil
         }
+    }
+
+    /// A colour that resolves to a different hex in light and dark mode.
+    ///
+    /// Every other colour in the app is a single fixed hex, which works because
+    /// the palette is mid-tone by design. The outcome colours can't be: they are
+    /// set as *text* on a tint of themselves, so they have to clear a contrast
+    /// floor against a near-white and a near-black background, and no one muted
+    /// tone does both. watchOS has no light mode and no dynamic-provider API, so
+    /// it takes the dark value directly.
+    init(light: String, dark: String) {
+        #if os(watchOS)
+        self = Color(hex: dark) ?? .gray
+        #else
+        self = Color(uiColor: UIColor { traits in
+            UIColor(Color(hex: traits.userInterfaceStyle == .dark ? dark : light) ?? .gray)
+        })
+        #endif
     }
 }

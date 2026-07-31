@@ -15,7 +15,7 @@ final class HabitsViewModel {
     // Form fields for add/edit
     var habitName: String = ""
     var habitDescription: String = ""
-    var selectedColorHex: String = "#007AFF"
+    var selectedColorHex: String = HabitsViewModel.availableColors[0].hex
     var selectedIconName: String = "circle.fill"
 
     var isEditing: Bool {
@@ -58,7 +58,7 @@ final class HabitsViewModel {
         habitToEdit = nil
         habitName = ""
         habitDescription = ""
-        selectedColorHex = "#007AFF"
+        selectedColorHex = HabitsViewModel.availableColors[0].hex
         selectedIconName = "circle.fill"
         showAddHabitSheet = true
     }
@@ -67,7 +67,7 @@ final class HabitsViewModel {
         habitToEdit = habit
         habitName = habit.name
         habitDescription = habit.habitDescription ?? ""
-        selectedColorHex = habit.colorHex ?? "#007AFF"
+        selectedColorHex = habit.colorHex ?? HabitsViewModel.availableColors[0].hex
         selectedIconName = habit.iconName ?? "circle.fill"
         showAddHabitSheet = true
     }
@@ -108,7 +108,7 @@ final class HabitsViewModel {
         habitToEdit = nil
         habitName = ""
         habitDescription = ""
-        selectedColorHex = "#007AFF"
+        selectedColorHex = HabitsViewModel.availableColors[0].hex
         selectedIconName = "circle.fill"
     }
 
@@ -192,17 +192,30 @@ final class HabitsViewModel {
 // MARK: - Available Colors and Icons
 
 extension HabitsViewModel {
+    /// The habit palette, in the same muted register as the accent swatches in
+    /// `HabitsView`.
+    ///
+    /// This used to be the raw iOS system wheel (`#007AFF`, `#34C759`,
+    /// `#FF9500`, …), which meant the app shipped two palettes: nine muted hues
+    /// the user picked an accent from, and ten fully-saturated ones that then
+    /// coloured every habit card, chart bar, history icon and widget — most of
+    /// the app's colour. One picker looked designed and the other looked like a
+    /// default, because it was one.
+    ///
+    /// Mid-tone on purpose: a habit colour has to work as chart ink and as a
+    /// filled glyph on both a white card and a black one, so nothing here goes
+    /// near the light or dark end.
     static let availableColors: [(name: String, hex: String)] = [
-        ("Blue", "#007AFF"),
-        ("Green", "#34C759"),
-        ("Orange", "#FF9500"),
-        ("Red", "#FF3B30"),
-        ("Purple", "#AF52DE"),
-        ("Pink", "#FF2D55"),
-        ("Teal", "#5AC8FA"),
-        ("Indigo", "#5856D6"),
-        ("Yellow", "#FFCC00"),
-        ("Gray", "#8E8E93")
+        ("Sand", "#E8A87C"),
+        ("Clay", "#C97B63"),
+        ("Rose", "#C77D8A"),
+        ("Periwinkle", "#7D7AA8"),
+        ("Slate Blue", "#6E7FA8"),
+        ("Teal", "#5E9E9E"),
+        ("Sage", "#7F9E76"),
+        ("Moss", "#8A9B5F"),
+        ("Ochre", "#C6A15B"),
+        ("Storm", "#7A8290")
     ]
 
     static let availableIcons: [String] = [
