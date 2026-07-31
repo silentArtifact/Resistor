@@ -49,6 +49,59 @@ final class HabitsViewModelTests: XCTestCase {
         XCTAssertEqual(vm.archivedHabits.count, 1)
     }
 
+    // MARK: - Reordering
+
+    func testMoveHabitsRewritesSortOrderDensely() throws {
+        let a = TestHelpers.makeHabit(name: "A", createdAt: Date(timeIntervalSince1970: 100))
+        let b = TestHelpers.makeHabit(name: "B", createdAt: Date(timeIntervalSince1970: 200))
+        let c = TestHelpers.makeHabit(name: "C", createdAt: Date(timeIntervalSince1970: 300))
+        [a, b, c].forEach { context.insert($0) }
+        try context.save()
+
+        let vm = HabitsViewModel(modelContext: context)
+        XCTAssertEqual(vm.activeHabits.map(\.name), ["A", "B", "C"], "createdAt order before any drag")
+
+        // Drag C to the top.
+        vm.moveHabits(from: IndexSet(integer: 2), to: 0)
+
+        XCTAssertEqual(vm.activeHabits.map(\.name), ["C", "A", "B"])
+        XCTAssertEqual(vm.activeHabits.map(\.sortOrder), [0, 1, 2], "dense 0..n-1, no ties")
+    }
+
+    /// The order must survive a refetch — it's persisted on the model, not a
+    /// display-only shuffle held in the view model.
+    func testMoveHabitsPersists() throws {
+        let a = TestHelpers.makeHabit(name: "A", createdAt: Date(timeIntervalSince1970: 100))
+        let b = TestHelpers.makeHabit(name: "B", createdAt: Date(timeIntervalSince1970: 200))
+        [a, b].forEach { context.insert($0) }
+        try context.save()
+
+        let vm = HabitsViewModel(modelContext: context)
+        vm.moveHabits(from: IndexSet(integer: 1), to: 0)
+
+        let refetched = HabitsViewModel(modelContext: context)
+        XCTAssertEqual(refetched.activeHabits.map(\.name), ["B", "A"])
+    }
+
+    /// A habit added after a reorder lands at the end, not at the top — every
+    /// pre-existing habit starts at sortOrder 0, so a new one defaulting to 0
+    /// would jump the queue.
+    func testNewHabitSortsLastAfterReorder() throws {
+        let a = TestHelpers.makeHabit(name: "A", createdAt: Date(timeIntervalSince1970: 100))
+        let b = TestHelpers.makeHabit(name: "B", createdAt: Date(timeIntervalSince1970: 200))
+        [a, b].forEach { context.insert($0) }
+        try context.save()
+
+        let vm = HabitsViewModel(modelContext: context)
+        vm.moveHabits(from: IndexSet(integer: 1), to: 0) // B, A
+
+        vm.prepareNewHabit()
+        vm.habitName = "New"
+        vm.saveHabit()
+
+        XCTAssertEqual(vm.activeHabits.map(\.name), ["B", "A", "New"])
+    }
+
     func testFetchHabitsHandlesEmptyDatabase() throws {
         let vm = HabitsViewModel(modelContext: context)
         XCTAssertTrue(vm.habits.isEmpty)

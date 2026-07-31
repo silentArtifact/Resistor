@@ -32,10 +32,24 @@ final class WatchLogStore {
     /// The current render state. The View observes this.
     private(set) var state: WatchLogState = .noHabit
 
+    /// Every non-archived habit, in the phone's display order — the options the
+    /// picker offers. Empty when the store couldn't be opened.
+    private(set) var habitOptions: [Habit] = []
+
+    /// The habit picked on the watch this session, if any. Deliberately in
+    /// memory only: the phone's Log screen also opens on the default habit
+    /// every launch, so persisting a watch-local override would make the two
+    /// devices disagree about what "the" habit is. Cleared on relaunch.
+    private var selectedHabitID: UUID?
+
     /// `nil` when the watch store could not be opened (CloudKit/container
     /// failure). The View renders the count-unavailable branch when a target is
     /// otherwise known.
     private let modelContext: ModelContext?
+
+    /// Owned rather than injected: the watch has exactly one caller and no test
+    /// target on this checkout. Same `LocationProviding` the phone uses.
+    private let locationManager = LocationManager()
 
     init() {
         if let container = try? WatchModelContainer.makeContainer() {
@@ -46,15 +60,32 @@ final class WatchLogStore {
         refresh()
     }
 
+    /// Asks for when-in-use location once, so a wrist log can carry a fix like a
+    /// phone log does. No-op after the user has answered either way.
+    func requestLocationPermissionIfNeeded() {
+        guard locationManager.authorizationStatus == .notDetermined else { return }
+        locationManager.requestPermission()
+    }
+
+    /// Switches which habit the button logs against. The choice sticks until the
+    /// app is relaunched or the habit stops being loggable.
+    func select(habitID: UUID) {
+        selectedHabitID = habitID
+        refresh()
+    }
+
     /// Recomputes `state` from the store: resolves the target habit and reads
     /// today's count.
     func refresh() {
         guard let context = modelContext else {
             // Store unavailable entirely — we can't even resolve a habit. Treat
             // as no-habit rather than inventing a target.
+            habitOptions = []
             state = .noHabit
             return
         }
+
+        habitOptions = activeHabits(in: context)
 
         guard let habit = resolveTargetHabit(in: context) else {
             // Distinguish (e) from (d): if a default was configured but is gone
@@ -104,6 +135,16 @@ final class WatchLogStore {
         // Only a genuinely saved event is undoable — `logResisted` discards its
         // insert on failure, so a nil here must not leave a stale target behind.
         lastLoggedEvent = event
+
+        // Same fire-and-forget stamp the phone applies, so a wrist log shows up
+        // on the map and in Top Locations too. `attachLocation` drops the write
+        // if a shake undid the event while the fix was in flight.
+        if let event {
+            Task { @MainActor in
+                await locationManager.attachLocation(to: event, in: context)
+            }
+        }
+
         refresh()
         return event != nil
     }
@@ -133,13 +174,18 @@ final class WatchLogStore {
 
     // MARK: - Target resolution
 
-    /// Resolves the target habit: `UserSettings.defaultHabitId` if it points at a
-    /// live non-archived habit, else the sole/first non-archived habit in a
-    /// deterministic order (by `createdAt`, then `id`). Returns `nil` only when
-    /// no non-archived habit exists at all.
+    /// Resolves the target habit: whatever was picked on the watch this session
+    /// if it's still live, else `UserSettings.defaultHabitId` if that points at a
+    /// live non-archived habit, else the first non-archived habit in display
+    /// order. Returns `nil` only when no non-archived habit exists at all.
     private func resolveTargetHabit(in context: ModelContext) -> Habit? {
         let active = activeHabits(in: context)
         guard !active.isEmpty else { return nil }
+
+        if let selectedHabitID,
+           let picked = active.first(where: { $0.id == selectedHabitID }) {
+            return picked
+        }
 
         if let defaultID = defaultHabitId(in: context),
            let match = active.first(where: { $0.id == defaultID }) {
@@ -149,14 +195,12 @@ final class WatchLogStore {
         return active.first
     }
 
-    /// All non-archived habits in a deterministic order.
+    /// All non-archived habits in the phone's display order, so the picker and
+    /// the fallback target agree with the Log carousel.
     private func activeHabits(in context: ModelContext) -> [Habit] {
         let descriptor = FetchDescriptor<Habit>(
             predicate: #Predicate { !$0.isArchived },
-            sortBy: [
-                SortDescriptor(\Habit.createdAt, order: .forward),
-                SortDescriptor(\Habit.id, order: .forward)
-            ]
+            sortBy: Habit.displayOrder
         )
         return (try? context.fetch(descriptor)) ?? []
     }

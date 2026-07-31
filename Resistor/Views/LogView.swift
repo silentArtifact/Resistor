@@ -740,7 +740,8 @@ private struct AddHabitFromLogSheet: View {
                             name: name.trimmingCharacters(in: .whitespacesAndNewlines),
                             habitDescription: description.isEmpty ? nil : description,
                             colorHex: selectedColor,
-                            iconName: selectedIcon
+                            iconName: selectedIcon,
+                            sortOrder: Habit.nextSortOrder(in: modelContext)
                         )
                         modelContext.insert(habit)
                         try? modelContext.save()

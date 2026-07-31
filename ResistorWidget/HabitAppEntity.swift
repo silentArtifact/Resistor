@@ -39,12 +39,12 @@ struct HabitEntityQuery: EntityQuery {
                 predicate: #Predicate { habit in
                     !habit.isArchived && ids.contains(habit.id)
                 },
-                sortBy: [SortDescriptor(\.createdAt)]
+                sortBy: Habit.displayOrder
             )
         } else {
             descriptor = FetchDescriptor<Habit>(
                 predicate: #Predicate { !$0.isArchived },
-                sortBy: [SortDescriptor(\.createdAt)]
+                sortBy: Habit.displayOrder
             )
         }
         return (try? context.fetch(descriptor)) ?? []

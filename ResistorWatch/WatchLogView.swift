@@ -73,6 +73,7 @@ struct WatchLogView: View {
     /// available for exactly as long as a shake is.
     @State private var canUndo = false
     @State private var shakeDetector = ShakeDetector()
+    @State private var showHabitPicker = false
 
     // MARK: Hold state
     @State private var isHolding = false
@@ -95,6 +96,14 @@ struct WatchLogView: View {
                 vm = WatchLogStore()
             } else {
                 vm?.refresh()
+            }
+            // Mirrors the phone's Log screen: ask once, on first sight of the
+            // screen, so a log has a fix to attach.
+            vm?.requestLocationPermissionIfNeeded()
+        }
+        .sheet(isPresented: $showHabitPicker) {
+            if let vm {
+                habitPicker(vm)
             }
         }
         .onChange(of: scenePhase) { _, phase in
@@ -129,7 +138,7 @@ struct WatchLogView: View {
         if let vm {
             switch vm.state {
             case let .loggable(_, name, colorHex, iconName, count):
-                loggable(name: name, colorHex: colorHex, iconName: iconName, count: count)
+                loggable(vm, name: name, colorHex: colorHex, iconName: iconName, count: count)
             case .noHabit:
                 nonLoggable(
                     symbol: "square.dashed",
@@ -152,7 +161,7 @@ struct WatchLogView: View {
     // MARK: - (a)/(b)/(c)/(f) Loggable
 
     @ViewBuilder
-    private func loggable(name: String, colorHex: String?, iconName: String?, count: Int?) -> some View {
+    private func loggable(_ vm: WatchLogStore, name: String, colorHex: String?, iconName: String?, count: Int?) -> some View {
         let habitColor = Color(hex: colorHex ?? "#007AFF") ?? .blue
         let symbol = iconName ?? "circle.fill"
         // Surrounding chrome recedes during the hold so the button is the only
@@ -160,13 +169,7 @@ struct WatchLogView: View {
         let dim = reduceMotion ? 0.0 : Double(holdProgress) * 0.5
 
         VStack(spacing: 8) {
-            Text(name)
-                .font(.headline)
-                .fontWeight(.semibold)
-                .foregroundStyle(.primary)
-                .multilineTextAlignment(.center)
-                .lineLimit(2)
-                .minimumScaleFactor(0.8)
+            habitName(vm, name: name)
                 .opacity(1 - dim)
 
             ZStack {
@@ -215,6 +218,69 @@ struct WatchLogView: View {
                 .opacity(1 - dim)
         }
         .padding(.horizontal, 4)
+    }
+
+    /// The habit's name — and, when there is more than one to log against, the
+    /// control that changes it. A separate tap target above the button rather
+    /// than a swipe across it: the button already owns press-and-hold, and the
+    /// phone's carousel swipe needed a 0.15s arming delay to stop every swipe
+    /// flashing the hold visuals. There is nothing to arm here.
+    @ViewBuilder
+    private func habitName(_ vm: WatchLogStore, name: String) -> some View {
+        let label = Text(name)
+            .font(.headline)
+            .fontWeight(.semibold)
+            .foregroundStyle(.primary)
+            .multilineTextAlignment(.center)
+            .lineLimit(2)
+            .minimumScaleFactor(0.8)
+
+        if vm.habitOptions.count > 1 {
+            Button {
+                showHabitPicker = true
+            } label: {
+                HStack(spacing: 4) {
+                    label
+                    Image(systemName: "chevron.down")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Changes which habit you're logging.")
+        } else {
+            label
+        }
+    }
+
+    /// Full-screen list of the habits the watch can log against. watchOS has no
+    /// room for the phone's carousel, and a `Picker` would need the Crown while
+    /// the screen's one scroll view already wants it.
+    private func habitPicker(_ vm: WatchLogStore) -> some View {
+        let current: UUID? = {
+            if case let .loggable(habitID, _, _, _, _) = vm.state { return habitID }
+            return nil
+        }()
+
+        return List(vm.habitOptions) { habit in
+            Button {
+                vm.select(habitID: habit.id)
+                showHabitPicker = false
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: habit.iconName ?? "circle.fill")
+                        .foregroundStyle(Color(hex: habit.colorHex ?? "#007AFF") ?? .blue)
+                    Text(habit.name)
+                        .lineLimit(2)
+                    Spacer(minLength: 4)
+                    if habit.id == current {
+                        Image(systemName: "checkmark")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .accessibilityAddTraits(habit.id == current ? [.isButton, .isSelected] : .isButton)
+        }
     }
 
     /// The habit-color disc, with the hold effect layered over and behind it.

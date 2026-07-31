@@ -43,7 +43,12 @@ SHARED_APP_FILES = [
   "Resistor/Models/UserSettings.swift",
   "Resistor/Models/ContextTag.swift",
   "Resistor/Extensions/Color+Hex.swift",
-  "Resistor/Shared/TemptationLogger.swift"
+  "Resistor/Shared/TemptationLogger.swift",
+  # CoreLocation + CLGeocoder are both available on watchOS, so the watch logs
+  # locations through the same LocationManager the phone uses rather than a
+  # watch-specific copy. Needs NSLocationWhenInUseUsageDescription in the watch
+  # Info.plist — the phone's authorization does not carry across devices.
+  "Resistor/Services/LocationManager.swift"
 ].freeze
 
 project = Xcodeproj::Project.open(PROJECT_PATH)

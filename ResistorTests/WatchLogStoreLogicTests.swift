@@ -27,11 +27,13 @@ final class WatchLogStoreLogicTests: XCTestCase {
     override func setUp() async throws {
         container = try TestHelpers.makeModelContainer()
         context = container.mainContext
+        selectedHabitID = nil
     }
 
     override func tearDown() async throws {
         container = nil
         context = nil
+        selectedHabitID = nil
     }
 
     // MARK: - Mirror of WatchLogStore's private logic
@@ -40,10 +42,7 @@ final class WatchLogStoreLogicTests: XCTestCase {
     private func activeHabits() -> [Habit] {
         let descriptor = FetchDescriptor<Habit>(
             predicate: #Predicate { !$0.isArchived },
-            sortBy: [
-                SortDescriptor(\Habit.createdAt, order: .forward),
-                SortDescriptor(\Habit.id, order: .forward)
-            ]
+            sortBy: Habit.displayOrder
         )
         return (try? context.fetch(descriptor)) ?? []
     }
@@ -53,10 +52,18 @@ final class WatchLogStoreLogicTests: XCTestCase {
         return (try? context.fetch(descriptor))?.first?.defaultHabitId
     }
 
+    /// The habit picked on the watch this session, mirroring
+    /// `WatchLogStore.selectedHabitID` (in-memory, cleared on relaunch).
+    private var selectedHabitID: UUID?
+
     /// Verbatim copy of `WatchLogStore.resolveTargetHabit(in:)`.
     private func resolveTargetHabit() -> Habit? {
         let active = activeHabits()
         guard !active.isEmpty else { return nil }
+        if let selectedHabitID,
+           let picked = active.first(where: { $0.id == selectedHabitID }) {
+            return picked
+        }
         if let defaultID = defaultHabitId(),
            let match = active.first(where: { $0.id == defaultID }) {
             return match
@@ -155,6 +162,67 @@ final class WatchLogStoreLogicTests: XCTestCase {
 
         let target = try XCTUnwrap(resolveTargetHabit())
         XCTAssertFalse(target.name.isEmpty, "target habit must be named")
+    }
+
+    // MARK: - Watch habit switching
+
+    /// A habit picked on the watch beats the configured default — the whole
+    /// point of the picker is logging against something other than the default
+    /// without reaching for the phone.
+    func testSelectionBeatsConfiguredDefault() throws {
+        let defaultHabit = TestHelpers.makeHabit(name: "Default", createdAt: Date(timeIntervalSince1970: 100))
+        let other = TestHelpers.makeHabit(name: "Other", createdAt: Date(timeIntervalSince1970: 200))
+        context.insert(defaultHabit)
+        context.insert(other)
+        context.insert(makeSettings(defaultHabitId: defaultHabit.id))
+        try context.save()
+
+        XCTAssertEqual(resolveTargetHabit()?.id, defaultHabit.id, "default before any pick")
+
+        selectedHabitID = other.id
+        XCTAssertEqual(resolveTargetHabit()?.id, other.id, "watch pick wins")
+    }
+
+    /// A picked habit that is later archived stops being the target — the watch
+    /// falls back rather than logging to an archived habit.
+    func testArchivedSelectionFallsBackToDefault() throws {
+        let defaultHabit = TestHelpers.makeHabit(name: "Default", createdAt: Date(timeIntervalSince1970: 100))
+        let picked = TestHelpers.makeHabit(name: "Picked", createdAt: Date(timeIntervalSince1970: 200))
+        context.insert(defaultHabit)
+        context.insert(picked)
+        context.insert(makeSettings(defaultHabitId: defaultHabit.id))
+        try context.save()
+
+        selectedHabitID = picked.id
+        XCTAssertEqual(resolveTargetHabit()?.id, picked.id)
+
+        picked.isArchived = true
+        try context.save()
+
+        XCTAssertEqual(resolveTargetHabit()?.id, defaultHabit.id,
+                       "archived pick is dropped, not logged against")
+    }
+
+    /// The picker offers exactly the loggable habits, in the phone's display
+    /// order — so reordering on the phone reorders the watch list.
+    func testHabitOptionsMatchPhoneDisplayOrder() throws {
+        let a = TestHelpers.makeHabit(name: "A", createdAt: Date(timeIntervalSince1970: 100))
+        let b = TestHelpers.makeHabit(name: "B", createdAt: Date(timeIntervalSince1970: 200))
+        let archived = TestHelpers.makeHabit(name: "Archived", isArchived: true, createdAt: Date(timeIntervalSince1970: 50))
+        context.insert(a)
+        context.insert(b)
+        context.insert(archived)
+        try context.save()
+
+        XCTAssertEqual(activeHabits().map(\.name), ["A", "B"], "archived habits are not offered")
+
+        // Phone drag: B moved above A.
+        b.sortOrder = 0
+        a.sortOrder = 1
+        try context.save()
+
+        XCTAssertEqual(activeHabits().map(\.name), ["B", "A"], "watch follows the phone's order")
+        XCTAssertEqual(resolveTargetHabit()?.name, "B", "and so does the fallback target")
     }
 
     // MARK: - UC-WATCH-5: non-loggable states resolve, never a false target

@@ -326,7 +326,7 @@ final class SnapshotTests: XCTestCase {
         nameField.typeText("Bare")
         app.buttons["Save"].tap()
 
-        // Habits sort by createdAt, so the new one is last in the carousel.
+        // New habits take the next sortOrder, so the new one is last in the carousel.
         let bare = app.buttons["Log temptation for Bare"]
         for _ in 0..<3 where !bare.exists {
             app.buttons["Next habit"].tap()

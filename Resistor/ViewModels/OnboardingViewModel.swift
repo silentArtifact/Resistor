@@ -27,7 +27,8 @@ final class OnboardingViewModel {
             name: trimmedName,
             habitDescription: habitDescription.isEmpty ? nil : habitDescription,
             colorHex: selectedColorHex,
-            iconName: selectedIconName
+            iconName: selectedIconName,
+            sortOrder: Habit.nextSortOrder(in: modelContext)
         )
         modelContext.insert(newHabit)
 

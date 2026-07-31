@@ -87,6 +87,7 @@
 		E9EDE74E8B6B57BC689F9C14 /* UserSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000D000000000000000A /* UserSettings.swift */; };
 		EAEF7E8BCE46317330387F07 /* TemptationLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E671048A9259B7EBC8C1B43 /* TemptationLogger.swift */; };
 		EE9C4D3F81EBC93818857F9D /* Habit.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000B000000000000000A /* Habit.swift */; };
+		F6A929603263FAEAE20203FA /* LocationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43CA41D02F89724100D11E7D /* LocationManager.swift */; };
 		FB44752C7ABC0BE72C3E3204 /* ShakeDetectorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92336A99675FFE2911DBEE63 /* ShakeDetectorTests.swift */; };
 		FF615900DA32C1A79BFA88C6 /* ShakeDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6BF00C891AC6A8DE660DA6C /* ShakeDetector.swift */; };
 /* End PBXBuildFile section */
@@ -811,6 +812,7 @@
 				5577480B2A50DEAC74829F3E /* Color+Hex.swift in Sources */,
 				EAEF7E8BCE46317330387F07 /* TemptationLogger.swift in Sources */,
 				9323F6EB4158AC92D2B96065 /* ShakeDetector.swift in Sources */,
+				F6A929603263FAEAE20203FA /* LocationManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

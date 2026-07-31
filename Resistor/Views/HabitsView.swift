@@ -45,6 +45,14 @@ struct HabitsView: View {
             }
             .navigationTitle("Habits")
             .toolbar {
+                // Drag-to-reorder needs edit mode; only worth offering once
+                // there's more than one active habit to move.
+                if (viewModel?.activeHabits.count ?? 0) > 1 {
+                    ToolbarItem(placement: .topBarLeading) {
+                        EditButton()
+                    }
+                }
+
                 ToolbarItem(placement: .primaryAction) {
                     Button(action: {
                         viewModel?.prepareNewHabit()
@@ -107,6 +115,9 @@ struct HabitsView: View {
                 Section("Active Habits") {
                     ForEach(vm.activeHabits) { habit in
                         habitRow(habit, vm: vm)
+                    }
+                    .onMove { source, destination in
+                        vm.moveHabits(from: source, to: destination)
                     }
                 }
             }

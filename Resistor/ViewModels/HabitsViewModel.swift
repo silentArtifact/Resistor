@@ -33,7 +33,7 @@ final class HabitsViewModel {
 
     func fetchHabits() {
         let descriptor = FetchDescriptor<Habit>(
-            sortBy: [SortDescriptor(\.createdAt)]
+            sortBy: Habit.displayOrder
         )
         do {
             let all = try modelContext.fetch(descriptor)
@@ -88,7 +88,8 @@ final class HabitsViewModel {
                 name: trimmedName,
                 habitDescription: habitDescription.isEmpty ? nil : habitDescription,
                 colorHex: selectedColorHex,
-                iconName: selectedIconName
+                iconName: selectedIconName,
+                sortOrder: Habit.nextSortOrder(in: modelContext)
             )
             modelContext.insert(newHabit)
         }
@@ -109,6 +110,28 @@ final class HabitsViewModel {
         habitDescription = ""
         selectedColorHex = "#007AFF"
         selectedIconName = "circle.fill"
+    }
+
+    // MARK: - Reorder
+
+    /// Applies a drag in the Active Habits list. Rewrites `sortOrder` for the
+    /// whole active list rather than nudging the moved habit, so the stored
+    /// order stays a dense 0..n-1 and can't drift into ties after repeated
+    /// drags. Archived habits are left alone — they're a separate section and
+    /// aren't draggable.
+    func moveHabits(from source: IndexSet, to destination: Int) {
+        var reordered = activeHabits
+        reordered.move(fromOffsets: source, toOffset: destination)
+        for (index, habit) in reordered.enumerated() {
+            habit.sortOrder = index
+        }
+
+        do {
+            try modelContext.save()
+            fetchHabits()
+        } catch {
+            print("Failed to reorder habits: \(error)")
+        }
     }
 
     // MARK: - Archive/Delete

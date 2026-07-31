@@ -58,9 +58,20 @@ All four entities use the `@Model` macro. CloudKit compatibility constraints app
 | `iconName` | `String?` | SF Symbol name (e.g., `"flame.fill"`) |
 | `isArchived` | `Bool` | Soft-delete flag; archived habits hidden from Log/Insights |
 | `createdAt` | `Date` | Set at init |
+| `sortOrder` | `Int` | User's drag-to-reorder position. Default 0 |
 | `events` | `[TemptationEvent]` | `@Relationship(inverse: \TemptationEvent.habit)` — no cascade |
 
 Computed: `todayEventsCount`, `thisWeekEventsCount`, `activeEventsCount`.
+
+**Ordering is `Habit.displayOrder`, not `createdAt`.** Every habit list — the Log
+carousel, the Habits screen, the widget's picker, the watch's picker and fallback
+target — sorts by `[sortOrder, createdAt, id]`, so one drag on the Habits screen
+reorders all four. Reorder is edit-mode `.onMove` → `HabitsViewModel.moveHabits`,
+which rewrites the whole active list to a dense 0..n-1 rather than nudging one
+row, so repeated drags can't drift into ties. Until a first drag every habit is 0
+and the `createdAt` tiebreak reproduces the pre-`sortOrder` order exactly — which
+is also why a *new* habit must take `Habit.nextSortOrder(in:)` at creation
+(all three creation sites do), or it would default to 0 and jump to the top.
 
 ### TemptationEvent
 
@@ -309,6 +320,30 @@ The watch app (`ResistorWatch/`) is a single-screen quick-log companion (issue
 #49). **Release logs** — a flick and a 3s hold both write an event, matching the
 phone, where the ramp changes how it feels, not whether it commits. Holding past
 3s keeps buzzing until release.
+
+**Habit switching:** tapping the habit name (a chevron appears once there is more
+than one active habit) opens a full-screen list. Not a swipe across the button —
+that already owns press-and-hold, and the phone's carousel needed a 0.15s arming
+delay to stop every swipe flashing the hold visuals. The pick lives in memory
+only (`WatchLogStore.selectedHabitID`) and resets to the default habit on
+relaunch, exactly like the phone's Log screen; persisting a watch-local override
+would make the two devices disagree about what "the" habit is. Target resolution
+is pick → `UserSettings.defaultHabitId` → first in `Habit.displayOrder`, and a
+pick that gets archived falls back rather than logging to an archived habit.
+
+**Location:** the watch logs coordinates like the phone, via the *same*
+`Resistor/Services/LocationManager.swift` (CoreLocation and `CLGeocoder` both
+exist on watchOS) — it's a member of the watch target, wired by
+`scripts/add_watch_target.rb`. The capture itself is
+`LocationProviding.attachLocation(to:in:)`, shared by `LogViewModel` and
+`WatchLogStore`; it fires after the event is saved, so no fix just means no
+location, never a failed log. It drops the write if the event was undone while
+the fix was in flight. The watch needs its **own**
+`NSLocationWhenInUseUsageDescription` (in `ResistorWatch/Info.plist`) and its own
+authorization — the phone's grant does not carry across devices, so the watch
+prompts on first launch. `Place` naming is unaffected: nothing is written onto
+the event, so a watch-logged coordinate resolves to a named place on the phone
+retroactively.
 
 Two watch-specific traps, both load-bearing:
 

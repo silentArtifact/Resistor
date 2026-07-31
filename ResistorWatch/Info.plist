@@ -11,6 +11,11 @@
 	     changed only via a silent push; without this the store imports on launch
 	     and whenever its engine next runs. No UNUserNotificationCenter
 	     authorization, no prompt, no alert/badge/sound. -->
+	<!-- The watch requests its own when-in-use authorization; the phone's grant
+	     does not carry over. Without this key CoreLocation refuses the request
+	     outright and every wrist log is saved without a location. -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Needed to track resistance locations.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>

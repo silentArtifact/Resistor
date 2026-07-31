@@ -44,7 +44,7 @@ final class LogViewModel {
     func fetchHabits() {
         let descriptor = FetchDescriptor<Habit>(
             predicate: #Predicate { !$0.isArchived },
-            sortBy: [SortDescriptor(\.createdAt)]
+            sortBy: Habit.displayOrder
         )
         do {
             habits = try modelContext.fetch(descriptor)
@@ -82,34 +82,12 @@ final class LogViewModel {
         lastLoggedEvent = event
 
         // Capture location asynchronously (fire-and-forget) only after successful save
-        if let locationManager = locationManager, locationManager.isAuthorized {
-            Task { @MainActor in
-                await captureLocation(for: event)
+        if let locationManager {
+            Task { @MainActor [modelContext] in
+                await locationManager.attachLocation(to: event, in: modelContext)
             }
         }
         return true
-    }
-
-    @MainActor
-    private func captureLocation(for event: TemptationEvent) async {
-        guard let locationManager = locationManager else { return }
-        guard let location = await locationManager.requestCurrentLocation() else { return }
-
-        event.latitude = location.coordinate.latitude
-        event.longitude = location.coordinate.longitude
-
-        if let placeName = await locationManager.reverseGeocode(
-            latitude: location.coordinate.latitude,
-            longitude: location.coordinate.longitude
-        ) {
-            event.locationName = placeName
-        }
-
-        do {
-            try modelContext.save()
-        } catch {
-            print("Failed to save location for event: \(error)")
-        }
     }
 
     func triggerConfirmation() {
