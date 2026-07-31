@@ -303,6 +303,40 @@ final class SnapshotTests: XCTestCase {
     }
 
     /// Captures a full-screen screenshot and attaches it under `name`.
+    /// The Log card is a swipeable page, so its size must not depend on which
+    /// habit it shows — a card that resizes mid-slide shoves the rest of the
+    /// column around. A habit with no description used to render a shorter card
+    /// (the description Text was omitted entirely); it now reserves its lines.
+    /// Creates a description-less habit and asserts its card matches a described
+    /// one. Lives here rather than in its own file because the UITest target has
+    /// an explicit file list, not a synchronized folder group.
+    func testHabitCardSizeIsIndependentOfDescription() {
+        let app = XCUIApplication()
+        app.launchArguments += ["-uiTestMode"]
+        app.launch()
+
+        let described = app.buttons["Log temptation for Sugar"]
+        XCTAssertTrue(described.waitForExistence(timeout: 5), "seeded habit card not found")
+        let describedSize = described.frame.size
+
+        app.buttons["addHabitButtonLog"].tap()
+        let nameField = app.textFields["Habit name"]
+        XCTAssertTrue(nameField.waitForExistence(timeout: 5), "add-habit sheet did not appear")
+        nameField.tap()
+        nameField.typeText("Bare")
+        app.buttons["Save"].tap()
+
+        // Habits sort by createdAt, so the new one is last in the carousel.
+        let bare = app.buttons["Log temptation for Bare"]
+        for _ in 0..<3 where !bare.exists {
+            app.buttons["Next habit"].tap()
+        }
+        XCTAssertTrue(bare.waitForExistence(timeout: 2), "new habit card not reachable")
+
+        XCTAssertEqual(bare.frame.width, describedSize.width, accuracy: 0.5)
+        XCTAssertEqual(bare.frame.height, describedSize.height, accuracy: 0.5)
+    }
+
     private func snapshot(_ app: XCUIApplication, name: String) {
         let screenshot = XCUIScreen.main.screenshot()
         let attachment = XCTAttachment(screenshot: screenshot)

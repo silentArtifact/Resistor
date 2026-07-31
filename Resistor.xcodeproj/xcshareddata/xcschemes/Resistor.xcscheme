@@ -39,6 +39,33 @@
                ReferencedContainer = "container:Resistor.xcodeproj">
             </BuildableReference>
          </TestableReference>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "B9F79058ED76416224DE5D15"
+               BuildableName = "ResistorUITests.xctest"
+               BlueprintName = "ResistorUITests"
+               ReferencedContainer = "container:Resistor.xcodeproj">
+            </BuildableReference>
+            <SkippedTests>
+               <Test
+                  Identifier = "SnapshotTests/testCaptureAllScreens()">
+               </Test>
+               <Test
+                  Identifier = "SnapshotTests/testCaptureAllScreensDark()">
+               </Test>
+               <Test
+                  Identifier = "SnapshotTests/testCaptureOnboardingIntro()">
+               </Test>
+               <Test
+                  Identifier = "SnapshotTests/testCaptureOnboardingIntroDark()">
+               </Test>
+               <Test
+                  Identifier = "SnapshotTests/testCaptureOnboardingIntroLargeText()">
+               </Test>
+            </SkippedTests>
+         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction

@@ -272,6 +272,25 @@ out on `LogView`'s habit card; 26's does not). The workflow downloads the watchO
 runtime before testing because the scheme embeds the watch app (see below).
 **Test target:** `ResistorTests` — unit tests for ViewModels, Models, and Services.
 
+**`ResistorUITests` is also in the `Resistor` scheme's test action, with the five
+screenshot-harness `testCapture…` tests explicitly skipped** — so CI runs the
+UITest target's *assertions* but not its captures. The captures are a dev tool
+(one taps an Insights chart band by computed pixel offset with a 2s timeout,
+which flakes on a slower runner rather than signalling anything). Consequences:
+a new assertion UITest runs in CI automatically, which is the point; a new
+`testCapture…` must be added to `<SkippedTests>` in
+`xcshareddata/xcschemes/Resistor.xcscheme` or it will run there too. Verify what
+the scheme will actually run without running it:
+
+```bash
+xcodebuild test-without-building -project Resistor.xcodeproj -scheme Resistor \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+  -enumerate-tests -test-enumeration-style flat
+```
+
+The full UITest suite (captures included) still runs under the separate
+`ResistorUITests` scheme, which is what `scripts/ui-shots.sh` drives.
+
 **watchOS runtime required for the iOS test action.** The `Resistor` scheme now
 embeds the `ResistorWatch` watch app (Embed Watch Content phase), so
 `xcodebuild test -scheme Resistor …` builds the watch app and **fails on a fresh

@@ -29,9 +29,8 @@ struct LogView: View {
     @State private var didHold = false
     // Pulsing glow toggle (driven by repeating animation)
     @State private var glowPulsing = false
-    // Expanding ripple ring counter
-    @State private var pulseRingScale: CGFloat = 1.0
-    @State private var pulseRingOpacity: CGFloat = 1.0
+    // Direction of the most recent habit switch, picking the card slide edges
+    @State private var slideForward = true
 
     private func logTemptationAction(_ vm: LogViewModel) {
         // Intersect with current tags to drop any that were deleted while selected
@@ -47,6 +46,41 @@ struct LogView: View {
         // The confirmation banner is a transient visual; VoiceOver won't read it
         // on its own, so post an explicit announcement of the result.
         UIAccessibility.post(notification: .announcement, argument: "Temptation logged")
+    }
+
+    /// Every habit switch — swipe, chevron, or VoiceOver action — routes here so
+    /// the card always slides in the direction the change implies, and so any
+    /// leftover drag offset settles as part of the same animation.
+    private func switchHabit(_ vm: LogViewModel, forward: Bool) {
+        slideForward = forward
+        withAnimation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.85)) {
+            if forward { vm.selectNextHabit() } else { vm.selectPreviousHabit() }
+            cardDragOffset = 0
+        }
+    }
+
+    /// The outgoing card leaves the way the finger went; the incoming one enters
+    /// from the far edge. Opacity rides along because `.move` only travels the
+    /// card's own width — it stops at the 24pt page margin, so the trailing sliver
+    /// would otherwise blink out at the screen edge.
+    private var cardTransition: AnyTransition {
+        .asymmetric(
+            insertion: .move(edge: slideForward ? .trailing : .leading).combined(with: .opacity),
+            removal: .move(edge: slideForward ? .leading : .trailing).combined(with: .opacity)
+        )
+    }
+
+    /// A hold and a carousel swipe both start as a finger landing on the card, so
+    /// committing to hold state at touch-down made *every* swipe flash the hold
+    /// visuals (the resting border cuts to 0, rings and vignette appear) and fire
+    /// haptics, only to cancel them a frame later. Arm first; `startHold` runs
+    /// only if the finger is still roughly where it landed after the window.
+    /// `holdStartTime` marks "armed or holding" so the swipe branch can cancel it.
+    private func armHold(_ vm: LogViewModel) {
+        holdStartTime = Date()
+        holdTimer = Timer.scheduledTimer(withTimeInterval: 0.15, repeats: false) { [self] _ in
+            startHold(vm)
+        }
     }
 
     private func startHold(_ vm: LogViewModel) {
@@ -207,7 +241,18 @@ struct LogView: View {
                             .padding(.bottom, 16)
                     }
 
-                    habitCard(habit, vm: vm)
+                    // ZStack so the outgoing and incoming cards overlap during the
+                    // slide rather than both claiming space in the column. Safe
+                    // because every card is the same height — see habitCard.
+                    ZStack {
+                        habitCard(habit, vm: vm)
+                            .id(habit.id)
+                            .transition(cardTransition)
+                    }
+                    .offset(x: cardDragOffset)
+                    // The card's own zIndex now only orders it within this stack;
+                    // the hold glow still has to sit above the rest of the column.
+                    .zIndex(isHolding ? 1 : 0)
 
                     Label("Tap or hold to log", systemImage: "hand.tap")
                         .font(.subheadline)
@@ -267,7 +312,7 @@ struct LogView: View {
         // One centered natural-width row — chevron · dots · chevron — instead
         // of edge-pinned chevrons with a separate dots row below.
         HStack(spacing: 20) {
-            Button(action: { vm.selectPreviousHabit() }) {
+            Button(action: { switchHabit(vm, forward: false) }) {
                 Image(systemName: "chevron.left")
                     .font(.title2)
                     .foregroundStyle(.secondary)
@@ -285,7 +330,7 @@ struct LogView: View {
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Habit \(vm.selectedHabitIndex + 1) of \(vm.habits.count)")
 
-            Button(action: { vm.selectNextHabit() }) {
+            Button(action: { switchHabit(vm, forward: true) }) {
                 Image(systemName: "chevron.right")
                     .font(.title2)
                     .foregroundStyle(.secondary)
@@ -296,6 +341,12 @@ struct LogView: View {
 
     private func habitCard(_ habit: Habit, vm: LogViewModel) -> some View {
         let habitColor = Color(hex: habit.colorHex ?? "#007AFF") ?? .blue
+        // An empty string measures short even under `lineLimit(_:reservesSpace:)`
+        // — it reserved ~10pt where two lines want ~41. A single space carries
+        // real line metrics and renders as nothing, so a habit with no
+        // description gets a card the exact size of one that has a description.
+        let rawDescription = habit.habitDescription ?? ""
+        let description = rawDescription.isEmpty ? " " : rawDescription
         let cardScale = reduceMotion ? 1.0 : 1.0 + (holdProgress * 0.08)
         let glowPulseIntensity: CGFloat = glowPulsing ? 1.0 : 0.5
         // Resting affordance: a steady habit-color border so the card reads as
@@ -314,30 +365,43 @@ struct LogView: View {
 
         // Inner content — icon, name, optional description.
         let content = VStack(spacing: 16) {
-            // Icon — gets its own glow during hold
+            // Icon — gets its own glow during hold. Boxed to a fixed height
+            // because SF Symbols don't share a bounding box at a given point
+            // size: `sun.max.fill`'s rays make it 3pt taller than `circle.fill`,
+            // enough on its own to give two habits differently-sized cards. The
+            // box is a constant rather than a scaled value because
+            // `.system(size:)` is itself fixed and ignores Dynamic Type. Nothing
+            // clips — a taller symbol just overflows into the stack spacing.
             Image(systemName: habit.iconName ?? "circle.fill")
                 .font(.system(size: 48))
+                .frame(height: 56)
                 .foregroundStyle(habitColor)
                 .shadow(
                     color: habitColor.opacity(isHolding ? holdProgress * 0.8 : 0),
                     radius: isHolding ? 6 + holdProgress * 14 : 0
                 )
 
-            // Name
+            // Name — one line always. A long name scales down rather than
+            // wrapping, so it can't add height (see the description note).
             Text(habit.name)
                 .font(.title)
                 .fontWeight(.bold)
-                .multilineTextAlignment(.center)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
 
-            // Description
-            if let description = habit.habitDescription, !description.isEmpty {
-                Text(description)
-                    .font(.body)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.horizontal)
-            }
+            // Description — always rendered and always two lines tall, even when
+            // absent or one line, because every habit card must be the same size:
+            // the card is a swipeable page, and a per-habit height would resize
+            // the page mid-slide and shove the rest of the column around. Height
+            // comes from the reserved line count, so it still tracks Dynamic Type
+            // instead of being pinned to a magic number. Cost: a description over
+            // two lines truncates.
+            Text(description)
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .lineLimit(2, reservesSpace: true)
+                .padding(.horizontal)
         }
         .padding(32)
         .frame(maxWidth: .infinity)
@@ -416,12 +480,11 @@ struct LogView: View {
             // visible arrows are also labelled, but only render with >1 habit).
             .accessibilityActions {
                 if vm.habits.count > 1 {
-                    Button("Next habit") { vm.selectNextHabit() }
-                    Button("Previous habit") { vm.selectPreviousHabit() }
+                    Button("Next habit") { switchHabit(vm, forward: true) }
+                    Button("Previous habit") { switchHabit(vm, forward: false) }
                 }
             }
             .padding(.horizontal, 24)
-            .offset(x: cardDragOffset)
             .contentShape(RoundedRectangle(cornerRadius: 20))
             .onTapGesture {
                 // Only handle tap if the drag gesture didn't trigger a hold
@@ -436,14 +499,15 @@ struct LogView: View {
                         let distance = sqrt(value.translation.width * value.translation.width + value.translation.height * value.translation.height)
 
                         if distance > 30 {
-                            // User is swiping, cancel hold and handle carousel
-                            if isHolding {
+                            // User is swiping — drop the armed (or running) hold
+                            // before any of its visuals or haptics engage.
+                            if holdStartTime != nil {
                                 cancelHold(vm)
                             }
                             cardDragOffset = value.translation.width * 0.4
-                        } else if !isHolding && distance < 10 {
-                            // Finger staying still — start hold
-                            startHold(vm)
+                        } else if holdStartTime == nil && distance < 10 {
+                            // Finger staying still — arm the hold
+                            armHold(vm)
                         }
                     }
                     .onEnded { value in
@@ -452,14 +516,17 @@ struct LogView: View {
                         if distance > 30 {
                             // Swipe gesture ended — cancel any hold state
                             didHold = false
-                            if value.translation.width > 50 {
-                                vm.selectPreviousHabit()
-                            } else if value.translation.width < -50 {
-                                vm.selectNextHabit()
-                            }
-                            if reduceMotion {
+                            // Commit on predicted end translation, which folds in
+                            // release velocity: a fast flick travels little before
+                            // liftoff, so gating on raw translation left a 30–50pt
+                            // dead band where the card animated but never switched.
+                            let dx = value.predictedEndTranslation.width
+                            if abs(dx) > 50 {
+                                switchHabit(vm, forward: dx < 0)
+                            } else if reduceMotion {
                                 cardDragOffset = 0
                             } else {
+                                // Not far enough — snap back, same habit.
                                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                     cardDragOffset = 0
                                 }
@@ -467,6 +534,11 @@ struct LogView: View {
                         } else if isHolding {
                             // Hold released — log temptation
                             endHold(vm)
+                        } else {
+                            // Lifted before the hold armed (a tap) — kill the
+                            // pending arm timer so it can't start a hold with no
+                            // finger down. onTapGesture still does the logging.
+                            cancelHold(vm)
                         }
                     }
             )
@@ -476,7 +548,9 @@ struct LogView: View {
                 holdTimer = nil
                 holdStartTime = nil
             }
-            .animation(reduceMotion ? .none : .interactiveSpring, value: cardDragOffset)
+            // No implicit animation on cardDragOffset: a spring between the finger
+            // and the card lags direct manipulation (and fought the explicit
+            // release spring in onEnded). Drag tracks 1:1; only the snap animates.
     }
 
     @ViewBuilder
