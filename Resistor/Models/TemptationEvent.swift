@@ -103,8 +103,13 @@ extension TemptationEvent {
     }
 
     var timeOfDayPeriod: String {
-        let hour = hourOfDay
-        switch hour {
+        Self.timeOfDayPeriod(for: occurredAt)
+    }
+
+    /// The period any date falls in. Static so the Log screen can ask which
+    /// period *now* is without inventing an event to ask on behalf of.
+    static func timeOfDayPeriod(for date: Date) -> String {
+        switch Calendar.current.component(.hour, from: date) {
         case 5..<12: return "Morning"
         case 12..<17: return "Afternoon"
         case 17..<21: return "Evening"

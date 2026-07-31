@@ -68,6 +68,11 @@ final class InsightsViewModel {
     private(set) var cachedPreviousPeriodCount: Int = 0
 
     func refreshEventsInRange() {
+        // Patterns are all-time, so a range switch technically remines nothing
+        // new — but hanging it here means every path that changes the habit
+        // (didSet, fetchHabits) refreshes them, with no fourth call site to miss.
+        defer { refreshPatterns() }
+
         guard let habit = selectedHabit else {
             cachedEventsInRange = []
             cachedPreviousPeriodCount = 0
@@ -358,6 +363,41 @@ final class InsightsViewModel {
 
     var topLocation: String? {
         locationDistribution().first?.location
+    }
+
+    // MARK: - Trigger Patterns
+
+    /// Combinations (time × day × place × context) the habit's temptations land
+    /// on more often than the separate rates explain.
+    ///
+    /// Mined over the habit's **full history**, not `cachedEventsInRange` — a
+    /// 7-day window holds too few occasions for any pair to clear the noise
+    /// floor, so scoping it to the picker would mean the card is empty exactly
+    /// when a new user first looks at it. Each row still reports itself over a
+    /// recent window (`Pattern.frequencyDescription`), so mining deep does not
+    /// mean showing stale.
+    private(set) var cachedPatterns: [PatternFinder.Pattern] = []
+
+    /// Separate sittings logged for this habit — the unit the finder counts in,
+    /// and what the empty state reports progress toward.
+    private(set) var occasionCount = 0
+
+    private func refreshPatterns() {
+        guard let habit = selectedHabit else {
+            cachedPatterns = []
+            occasionCount = 0
+            return
+        }
+        let places = (try? modelContext.fetch(FetchDescriptor<Place>())) ?? []
+        let events = habit.safeEvents
+        occasionCount = PatternFinder.occasions(of: events, places: places).count
+        cachedPatterns = PatternFinder.patterns(in: events, places: places)
+    }
+
+    /// True once the habit has enough occasions for pattern mining to say
+    /// anything. Separates "no patterns found" from "not enough data yet".
+    var hasEnoughDataForPatterns: Bool {
+        occasionCount >= PatternFinder.minimumOccasions
     }
 }
 

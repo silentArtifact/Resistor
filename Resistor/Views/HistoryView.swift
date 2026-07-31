@@ -8,6 +8,10 @@ struct HistoryView: View {
     @Query(sort: \Place.createdAt) private var places: [Place]
 
     let habit: Habit?
+    /// When set, shows only the events that make up this pattern — the answer
+    /// to "which eight Friday evenings?" that the Insights card otherwise asks
+    /// the user to take on trust.
+    var pattern: PatternFinder.Pattern? = nil
 
     private static let groupDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -29,10 +33,17 @@ struct HistoryView: View {
     }()
 
     private var events: [TemptationEvent] {
+        var result = allEvents
         if let habit = habit {
-            return allEvents.filter { $0.habit?.id == habit.id }
+            result = result.filter { $0.habit?.id == habit.id }
         }
-        return allEvents
+        if let pattern {
+            // Same facet extraction the finder used, so the filter cannot drift
+            // from what produced the pattern.
+            let wanted = Set(pattern.facets)
+            result = result.filter { PatternFinder.facets(of: $0, places: places).isSuperset(of: wanted) }
+        }
+        return result
     }
 
     private var groupedEvents: [(String, [TemptationEvent])] {
@@ -56,7 +67,7 @@ struct HistoryView: View {
                 eventsList
             }
         }
-        .navigationTitle(habit.map { "\($0.name) History" } ?? "All History")
+        .navigationTitle(pattern?.summary ?? habit.map { "\($0.name) History" } ?? "All History")
         .navigationBarTitleDisplayMode(.inline)
         // Item-based presentation: the sheet always has its event bound when it
         // appears, avoiding the isPresented/selectedEvent ordering race that can

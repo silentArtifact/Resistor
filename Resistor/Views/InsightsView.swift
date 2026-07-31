@@ -66,6 +66,13 @@ struct InsightsView: View {
                 if !vm.hasData {
                     noDataView
                 } else {
+                    // Trigger patterns. Sits *above* the range picker because it
+                    // is the only card the picker does not scope — each row
+                    // states its own window. Below the picker it read as though
+                    // 7 Days applied to it, and directly contradicted the Peak
+                    // Day / Peak Time cards it sat under.
+                    triggerPatterns(vm)
+
                     // Time range. Lives at screen level because it scopes every
                     // card below it — it reads `cachedEventsInRange`, which all
                     // of them do. Buried inside the Daily Trend card it looked
@@ -106,6 +113,121 @@ struct InsightsView: View {
             .padding(.horizontal, 24)
             .padding(.vertical, 16)
         }
+    }
+
+    /// The one card that reads several axes at once. Every chart below it shows
+    /// a single dimension, where a combination like "Friday evenings at Home"
+    /// disappears into two unremarkable bars.
+    ///
+    /// Deliberately carries no outcome figure. This card answers "what sets me
+    /// off"; a resisted percentage answers "how am I doing", and putting the
+    /// second next to the first reads as a grade on the situation rather than a
+    /// description of it. Progress is visible here as a pattern thinning out.
+    @ViewBuilder
+    private func triggerPatterns(_ vm: InsightsViewModel) -> some View {
+        let patterns = vm.cachedPatterns
+
+        SectionCard(title: "Patterns") {
+            if patterns.isEmpty {
+                // Distinguishes "not enough logged yet" from "logged plenty,
+                // nothing clusters" — the second is a real, useful answer. The
+                // first counts up so the wait has a visible end.
+                Text(vm.hasEnoughDataForPatterns
+                     ? "No situation stands out yet. Temptations are spread evenly across times, days, and places."
+                     : "Not enough yet — \(vm.occasionCount) of about \(PatternFinder.minimumOccasions) separate times logged.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                // Hairlines rather than gaps: these are discrete findings in
+                // rank order, and undivided they read as one paragraph of
+                // wrapped text — the two-line rows make that worse, not better.
+                VStack(spacing: 0) {
+                    ForEach(Array(patterns.enumerated()), id: \.element.id) { index, pattern in
+                        if index > 0 { Divider() }
+                        NavigationLink {
+                            HistoryView(habit: vm.selectedHabit, pattern: pattern)
+                        } label: {
+                            patternRow(pattern)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func patternRow(_ pattern: PatternFinder.Pattern) -> some View {
+        let active = pattern.recent?.isActive ?? true
+
+        VStack(alignment: .leading, spacing: 7) {
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                // The finding is what the card exists to produce, so it is set
+                // at body weight rather than under it — at .subheadline the
+                // card's own title outranked its content.
+                Text(pattern.summary)
+                    .font(.body)
+                    .fontWeight(.medium)
+                    .foregroundStyle(active ? Color.primary : Color.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+
+            HStack(spacing: 9) {
+                if let recent = pattern.recent {
+                    recencyTally(recent, active: active)
+                }
+
+                Text(pattern.frequencyDescription)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .contentShape(Rectangle())
+        .padding(.vertical, 11)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(pattern.summary). \(pattern.frequencyDescription)")
+        .accessibilityHint("Shows the matching events")
+    }
+
+    /// One mark per slot in the pattern's recent window, oldest to newest,
+    /// filled where the situation occurred.
+    ///
+    /// The mark count *is* the window length — eight Fridays draw eight marks —
+    /// so this is the evidence itself rather than a gauge of it. It exists
+    /// because the ratio alone cannot show direction, and direction is the only
+    /// progress this app claims: a trigger being beaten empties from the right.
+    /// A faded pattern keeps its marks but loses the accent, so the one thing
+    /// colour means here stays "still live".
+    private func recencyTally(_ recent: PatternFinder.Recent, active: Bool) -> some View {
+        // .tint rather than a threaded-in colour: Insights inherits the user's
+        // accent from the root .tint() and has no accent plumbing of its own.
+        // A faded pattern drops to a neutral fill rather than a dimmer accent,
+        // so the one thing colour means on this row stays "still live".
+        let occurred: AnyShapeStyle = active
+            ? AnyShapeStyle(.tint)
+            : AnyShapeStyle(Color(.secondaryLabel))
+
+        // 4pt marks with 3pt gaps, not 3-and-2: the point is that they can be
+        // counted — eight marks *are* the eight Fridays — and tighter than this
+        // they merge into a single bar. The extra width also gives the empty
+        // slots enough area to register, which matters most in the case that
+        // has nothing but empty slots.
+        return HStack(spacing: 3) {
+            ForEach(Array(recent.hits.enumerated()), id: \.offset) { _, hit in
+                Capsule()
+                    .fill(hit ? occurred : AnyShapeStyle(Color(.quaternaryLabel)))
+                    .frame(width: 4, height: 12)
+            }
+        }
+        // The line beside it states the same ratio in words; a run of 8 dots
+        // announced individually would be noise.
+        .accessibilityHidden(true)
     }
 
     @ViewBuilder

@@ -9,8 +9,19 @@ final class LogViewModel {
     private var locationManager: LocationProviding?
 
     var habits: [Habit] = []
-    var selectedHabitIndex: Int = 0
+    var selectedHabitIndex: Int = 0 {
+        didSet { refreshActivePattern() }
+    }
     var lastLoggedEvent: TemptationEvent?
+
+    /// The pattern the current moment falls inside for the selected habit, if
+    /// any — what turns Insights from a review screen into a heads-up.
+    ///
+    /// Being ready for a temptation means knowing before it lands, and the app
+    /// has no notifications by design, so the only place this can arrive is the
+    /// screen the user already opens. Nil almost all of the time, which is what
+    /// makes it worth reading when it isn't.
+    private(set) var activePattern: PatternFinder.Pattern?
     var showConfirmation: Bool = false
     private var confirmationWorkItem: DispatchWorkItem?
 
@@ -39,6 +50,9 @@ final class LogViewModel {
            let index = habits.firstIndex(where: { $0.id == defaultId }) {
             selectedHabitIndex = index
         }
+        // Property observers do not fire during init, so the assignment above
+        // cannot be relied on to have refreshed anything.
+        refreshActivePattern()
     }
 
     func fetchHabits() {
@@ -55,6 +69,21 @@ final class LogViewModel {
         if !habits.isEmpty && selectedHabitIndex >= habits.count {
             selectedHabitIndex = habits.count - 1
         }
+        refreshActivePattern()
+    }
+
+    /// ponytail: re-mines the selected habit's whole history on every habit
+    /// switch. Fine at the few hundred events a habit log accumulates; cache by
+    /// habit id if a heavy user ever makes the carousel feel sticky.
+    private func refreshActivePattern() {
+        guard let habit = selectedHabit else {
+            activePattern = nil
+            return
+        }
+        let places = (try? modelContext.fetch(FetchDescriptor<Place>())) ?? []
+        activePattern = PatternFinder.active(
+            in: PatternFinder.patterns(in: habit.safeEvents, places: places)
+        )
     }
 
     /// Logs a new temptation event with the default "resisted" outcome.

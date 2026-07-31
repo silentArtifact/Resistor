@@ -55,6 +55,7 @@
 		A1000011000000000000001A /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000011000000000000000A /* HistoryView.swift */; };
 		A1000012000000000000001A /* TipJarViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000012000000000000000A /* TipJarViewModel.swift */; };
 		A1000015000000000000001A /* DataExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000015000000000000000A /* DataExporter.swift */; };
+		A1000015000000000000001B /* PatternFinder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000015000000000000000B /* PatternFinder.swift */; };
 		A47A6A4C85D3401311EDEEC5 /* PlaceNameSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAF424CFFC2794EAA9148F6D /* PlaceNameSheet.swift */; };
 		B2000001000000000000001A /* TestHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000001000000000000000A /* TestHelpers.swift */; };
 		B2000002000000000000001A /* InsightsViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000002000000000000000A /* InsightsViewModelTests.swift */; };
@@ -78,6 +79,7 @@
 		BD76B06DC4D4366E47940AA2 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C1880531AD4D2C420470F188 /* Foundation.framework */; };
 		C1000001000000000000001A /* ContextTag.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000001000000000000000A /* ContextTag.swift */; };
 		C19914FD8F4728B0FA256111 /* PlaceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CD05C62DD4C863645A5DACF /* PlaceTests.swift */; };
+		C19914FD8F4728B0FA256112 /* PatternFinderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CD05C62DD4C863645A5DAD0 /* PatternFinderTests.swift */; };
 		C5AA35ACCC7EE25DC1CEB045 /* Habit.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000B000000000000000A /* Habit.swift */; };
 		CC9B3EE69FC6CED9DA5C375D /* SharedModelContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D34ABD48A949E05238016CBF /* SharedModelContainer.swift */; };
 		D354EB66006655563DFD61FB /* UITestSeed.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7A986130363EAECA937D1B7 /* UITestSeed.swift */; };
@@ -184,6 +186,7 @@
 		8161180E40BC4690B0D6B00C /* ResistorWatch.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = ResistorWatch.entitlements; sourceTree = "<group>"; };
 		821F40704A2FEA56AED6D538 /* ResistorWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ResistorWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8CD05C62DD4C863645A5DACF /* PlaceTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PlaceTests.swift; sourceTree = "<group>"; };
+		8CD05C62DD4C863645A5DAD0 /* PatternFinderTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PatternFinderTests.swift; sourceTree = "<group>"; };
 		8CE4E3C730BCF819722BC72C /* WatchModelContainer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchModelContainer.swift; sourceTree = "<group>"; };
 		912EC19ED1BF0A2FAA78B0EA /* ResistorUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ResistorUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		92336A99675FFE2911DBEE63 /* ShakeDetectorTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ShakeDetectorTests.swift; sourceTree = "<group>"; };
@@ -210,6 +213,7 @@
 		A1000013000000000000000A /* Resistor.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Resistor.entitlements; sourceTree = "<group>"; };
 		A1000014000000000000000A /* TipJar.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = TipJar.storekit; sourceTree = "<group>"; };
 		A1000015000000000000000A /* DataExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataExporter.swift; sourceTree = "<group>"; };
+		A1000015000000000000000B /* PatternFinder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PatternFinder.swift; sourceTree = "<group>"; };
 		B0F43B7161041B07A165E315 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B2000000000000000000000A /* ResistorTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ResistorTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		B2000001000000000000000A /* TestHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestHelpers.swift; sourceTree = "<group>"; };
@@ -465,6 +469,7 @@
 			isa = PBXGroup;
 			children = (
 				A1000015000000000000000A /* DataExporter.swift */,
+				A1000015000000000000000B /* PatternFinder.swift */,
 				43CA41D02F89724100D11E7D /* LocationManager.swift */,
 				E7A986130363EAECA937D1B7 /* UITestSeed.swift */,
 			);
@@ -493,6 +498,7 @@
 				B200000D000000000000000A /* DataExporterTests.swift */,
 				92336A99675FFE2911DBEE63 /* ShakeDetectorTests.swift */,
 				8CD05C62DD4C863645A5DACF /* PlaceTests.swift */,
+				8CD05C62DD4C863645A5DAD0 /* PatternFinderTests.swift */,
 			);
 			path = ResistorTests;
 			sourceTree = "<group>";
@@ -746,6 +752,7 @@
 				A1000011000000000000001A /* HistoryView.swift in Sources */,
 				A1000012000000000000001A /* TipJarViewModel.swift in Sources */,
 				A1000015000000000000001A /* DataExporter.swift in Sources */,
+				A1000015000000000000001B /* PatternFinder.swift in Sources */,
 				D354EB66006655563DFD61FB /* UITestSeed.swift in Sources */,
 				CC9B3EE69FC6CED9DA5C375D /* SharedModelContainer.swift in Sources */,
 				5E290EEDAE694A24601B9B21 /* TemptationLogger.swift in Sources */,
@@ -794,6 +801,7 @@
 				FF615900DA32C1A79BFA88C6 /* ShakeDetector.swift in Sources */,
 				FB44752C7ABC0BE72C3E3204 /* ShakeDetectorTests.swift in Sources */,
 				C19914FD8F4728B0FA256111 /* PlaceTests.swift in Sources */,
+				C19914FD8F4728B0FA256112 /* PatternFinderTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

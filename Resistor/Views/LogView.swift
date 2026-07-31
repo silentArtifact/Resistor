@@ -235,6 +235,12 @@ struct LogView: View {
                 // Current habit card cluster — pager sits directly above the
                 // card it controls so the relationship reads as one unit.
                 if let habit = vm.selectedHabit {
+                    if let pattern = vm.activePattern {
+                        patternHeadsUp(pattern)
+                            .opacity(1.0 - dimAmount)
+                            .padding(.bottom, 16)
+                    }
+
                     if vm.habits.count > 1 {
                         habitCarousel(vm)
                             .opacity(1.0 - dimAmount)
@@ -305,6 +311,55 @@ struct LogView: View {
             }
         }
         .animation(reduceMotion ? .none : .easeInOut(duration: 0.3), value: vm.showConfirmation)
+    }
+
+    /// A quiet line that appears only when the clock is inside one of this
+    /// habit's known patterns.
+    ///
+    /// Being caught off guard is the thing this app is trying to prevent, and
+    /// Insights only helps after the fact — the user has to go and look. This is
+    /// the same finding delivered at the moment it applies, on the screen they
+    /// already open. It states the pattern and stops; no warning, no advice.
+    @ViewBuilder
+    private func patternHeadsUp(_ pattern: PatternFinder.Pattern) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            // calendar.badge.clock, not clock.badge.exclamationmark: the finding
+            // is a weekday and an hour, and the app does not raise alarms.
+            Image(systemName: "calendar.badge.clock")
+                .font(.subheadline)
+                .foregroundStyle(accentColor)
+                .padding(.top, 1)
+
+            VStack(alignment: .leading, spacing: 2) {
+                // A label above the finding rather than "This is a usual time —"
+                // in front of it. The preamble cost the whole first line before
+                // saying anything, and pushed the sentence — the part that has
+                // to be read at a glance — down into a wrapped clause.
+                Text("Usual time")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.secondary)
+
+                Text(pattern.summary)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(
+            // Rounded rect rather than a capsule: a long pattern sentence wraps
+            // to two lines at larger type sizes, and a capsule around two lines
+            // reads as a mistake.
+            RoundedRectangle(cornerRadius: 14).fill(accentColor.opacity(0.10))
+        )
+        .padding(.horizontal, 24)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Usual time. \(pattern.summary)")
     }
 
     @ViewBuilder

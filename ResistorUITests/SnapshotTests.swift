@@ -198,11 +198,21 @@ final class SnapshotTests: XCTestCase {
     /// (8 bars wrapping midnight) so the dense-label case can be judged, then
     /// collapses via the chevron control.
     private func captureTimeOfDayDrilldown(_ app: XCUIApplication, scroll: XCUIElement, sfx: String) {
-        // Bring the Time of Day card into the middle of the screen. It sits
-        // below the Daily Trend chart; one slow swipe from the top reveals it
-        // without pushing it off the top edge, so the expanded chart stays
-        // fully visible in the capture.
-        scroll.swipeUp(velocity: .slow)
+        // Bring the Time of Day card into the middle of the screen. Swipe until
+        // the title is actually on screen rather than a fixed number of times —
+        // the cards above it change height whenever Insights gains a section,
+        // and a hardcoded swipe count silently lands the tap on the wrong card.
+        // Not just "visible": the tap lands 60pt *below* the title, so a title
+        // sitting near the bottom edge puts the tap past the card entirely —
+        // onto the View Map link, which navigates away. Scroll until the title
+        // is in the top 60% of the screen so the whole plot is on screen too.
+        let cardTitle = app.staticTexts["Time of Day"]
+        func titleIsHighOnScreen() -> Bool {
+            cardTitle.exists && cardTitle.isHittable && cardTitle.frame.maxY < app.frame.height * 0.6
+        }
+        for _ in 0..<5 where !titleIsHighOnScreen() {
+            scroll.swipeUp(velocity: .slow)
+        }
 
         // The real expand interaction is a `chartOverlay` spatial-tap hit test
         // on the chart plot. The mirrored accessibility buttons are zero-height

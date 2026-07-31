@@ -92,13 +92,29 @@ enum UITestSeed {
         ]
         context.insert(Place(name: "Home", latitude: spots[0].lat, longitude: spots[0].lon))
 
+        // The planted trigger below is anchored to the weekday and hour the
+        // harness is *running in*, so both screens that consume patterns are
+        // capturable: Insights always has a row to list, and the Log screen's
+        // heads-up — which only appears while the clock sits inside a pattern —
+        // is on screen during the run instead of on some Friday nobody captures.
+        let plantedHour = calendar.component(.hour, from: now)
+        let plantedPeriod = TemptationEvent.timeOfDayPeriod(for: now)
+
+        // The base rotation deliberately skips the planted period, so the
+        // cluster is the only thing feeding it. Uniform base data is uniform on
+        // purpose — without a real cluster the card can only show its empty state.
+        let baseHours = [2, 8, 13, 16, 19, 22].filter {
+            guard let at = calendar.date(bySettingHour: $0, minute: 0, second: 0, of: now) else { return false }
+            return TemptationEvent.timeOfDayPeriod(for: at) != plantedPeriod
+        }
+
         var seedIndex = 0
         for habit in [sugar, phone] {
             // Deterministic-ish daily counts decreasing toward today (progress shape).
             for dayOffset in 0..<21 {
-                let perDay = (dayOffset % 5 == 0) ? 2 : (dayOffset % 3 == 0 ? 1 : 0)
+                let perDay = (dayOffset % 5 == 0) ? 2 : 1
                 for n in 0..<perDay {
-                    let hour = [8, 13, 16, 19, 22][(seedIndex + n) % 5]
+                    let hour = baseHours[(seedIndex + n) % baseHours.count]
                     guard let base = calendar.date(byAdding: .day, value: -dayOffset, to: now),
                           let when = calendar.date(bySettingHour: hour, minute: (seedIndex * 7) % 60, second: 0, of: base)
                     else { continue }
@@ -116,6 +132,32 @@ enum UITestSeed {
                     )
                     context.insert(event)
                     seedIndex += 1
+                }
+            }
+        }
+
+        // The planted trigger itself: Sugar, this weekday at this hour, at Home.
+        //
+        // Ten weeks, not four. `PatternFinder` counts *occasions* — the two logs
+        // forty minutes apart below are deliberately one — so four weeks is four
+        // data points against ~28 and does not clear the significance floor,
+        // leaving the card empty. Ten clears it with margin, and is what a real
+        // weekly trigger looks like anyway. Every occurrence is in a past week,
+        // so nothing is dated in the future no matter when the harness runs.
+        if let anchor = calendar.date(bySettingHour: plantedHour, minute: 0, second: 0, of: now) {
+            for week in 1...10 {
+                guard let slot = calendar.date(byAdding: .weekOfYear, value: -week, to: anchor) else { continue }
+                for n in 0..<2 {
+                    context.insert(TemptationEvent(
+                        habit: sugar,
+                        occurredAt: calendar.date(byAdding: .minute, value: n * 40, to: slot) ?? slot,
+                        intensity: 4,
+                        outcome: n == 0 ? "gave_in" : "resisted",
+                        contextTags: ["Bored"],
+                        latitude: spots[0].lat,
+                        longitude: spots[0].lon,
+                        locationName: spots[0].name
+                    ))
                 }
             }
         }

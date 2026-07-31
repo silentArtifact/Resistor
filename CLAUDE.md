@@ -25,7 +25,8 @@ Resistor/
 │   └── Place.swift                   # @Model — user-named location + distance matching
 ├── Services/
 │   ├── DataExporter.swift            # CSV/JSON export of temptation events
-│   └── LocationManager.swift         # GPS location capture for events
+│   ├── LocationManager.swift         # GPS location capture for events
+│   └── PatternFinder.swift           # Trigger detection — see "Pattern Detection"
 ├── ViewModels/
 │   ├── LogViewModel.swift            # Log screen logic + Core Haptics engine
 │   ├── InsightsViewModel.swift       # Stats, charts, distributions
@@ -197,6 +198,140 @@ CloudKit forbids cascade delete rules. When deleting a habit, manually delete al
 for event in habit.events { modelContext.delete(event) }
 modelContext.delete(habit)
 ```
+
+### Pattern Detection (Insights "Patterns" card)
+
+`Services/PatternFinder.swift` answers the question the rest of Insights can't:
+every other chart reads **one** axis, so a run of Friday evenings hides inside
+two unremarkable bars. It extracts categorical facets — time of day, weekday,
+place (via `Place.groupingName`), each context tag — counts every **pair**, and
+compares the observed count against what independent marginals predict.
+
+**It counts temptations and never outcomes.** No resisted percentage appears on
+the card, and `Pattern` has no outcome field to put there. The card answers
+"what sets me off"; whether the urge was then resisted answers "how am I doing",
+and the two side by side read as a grade on the situation rather than a
+description of it. Progress is still visible, in the right currency: a trigger
+the user is beating **thins out**, and the row says so — "1 of the last 8
+Mondays" where it once read 7 of 8. `testOutcomeDoesNotAffectPatterns` pins it.
+
+**The unit of evidence is an occasion, not an event.** An occasion is every
+event for the habit on the same day inside the same time-of-day period, built by
+`PatternFinder.occasions(of:places:)` (facets unioned across the sitting). Two
+logs forty minutes apart on one Friday evening are one data point. Counting them
+as two independent binomial trials inflates every statistic here, worst for
+exactly the compulsive-logging user the app exists for. `minimumOccasions` (10)
+is therefore counted in occasions too, and so is every displayed count.
+
+Load-bearing decisions; changing any one silently degrades the card:
+
+- **Ranked by size, filtered by significance.** `sortKey` orders on
+  live-before-faded, then occasion count. The p-value only filters and breaks
+  ties. Ranking *by* p-value was wrong for this product: a rare pair has a rare
+  expectation to divide by, so a 4-occasion fluke (p=1.7e-3) outranks a
+  12-occasion trend (p=3.5e-3) — the reverse of what the user is asking.
+  `binomialTail` — P(X ≥ observed) under Binomial(n, expected) — still decides
+  *whether* a pattern is believable. (An earlier version used a Wilson lower
+  bound on the support; it does not fix the ranking, because the expectation is
+  small too. Lift survives only as a floor and is never displayed.)
+- **A faded pattern sinks but stays.** `Recent.isActive` is false when a pattern
+  has no match in its recent window, which drops it below every live one. It is
+  still listed — beating something is worth seeing — but it is history, not
+  something to prepare for.
+- **p ≤ 0.01, not 0.05.** Dozens of candidate pairs are tested at once. At 0.05
+  roughly one in twenty clears the bar on noise alone.
+- **Overlap suppression.** One real cluster satisfies several pairs
+  simultaneously ("Friday · Evening", "Evening · Bored", "Friday · Bored" —
+  identical occasions, identical counts). A greedy pass takes a pattern only if
+  ≥50% of its occasions aren't already covered, or the card lists one finding
+  four times.
+- **Deterministic ties.** Those restatements tie on every statistic, and
+  `Dictionary` iteration order is not stable across launches. `Pattern.sortKey`
+  falls through to dimension rank (day/time before place before tag) then label.
+
+**Mined over all time, reported over a recent window.** A 7-day window holds too
+few occasions for any pair to clear the noise floor, so the card sits *above* the
+range picker on Insights — everything below the picker is range-scoped, this
+isn't, and underneath it the card both looked scoped and contradicted the Peak
+Day / Peak Time cards it sat under. Each row states its own window instead:
+`frequencyDescription` reads "7 of the last 8 Fridays, 10 in all" (weekday slot,
+`recentWeekdaySlots` = 8; day slot for time-only patterns, `recentDaySlots` = 14;
+plain count when the pattern has no recurring slot at all).
+
+**The recency tally is the row's one graphic, and it is drawn from
+`Recent.hits`.** That array is one `Bool` per slot in the window, **oldest
+first** — kept per-slot rather than pre-summed because the ratio alone cannot
+show *direction*, and direction is the only progress this app claims. One 4pt
+mark per slot, filled where the situation occurred, so the mark count *is* the
+window length: eight Fridays draw eight marks, and a trigger being beaten
+visibly empties from the right. `testRecentHitsRunOldestFirst` pins the
+ordering, because a reversed array would report a fading trigger as a worsening
+one — the exact inversion of the claim. Load-bearing details: marks are 4pt wide
+with 3pt gaps (tighter and they merge into a bar instead of staying countable,
+and the empty slots lose the area they need to register at all — which is the
+whole row in the 0-of-8 case); the fill is `.tint`, because Insights has no
+accent plumbing and inherits the root `.tint()`; and a **faded** pattern drops to
+a neutral `secondaryLabel` fill rather than a dimmer accent, so the single thing
+colour means on this row stays "still live". The tally is
+`accessibilityHidden` — the line beside it states the same ratio in words.
+
+**Rows are sentences, not facet lists.** `Pattern.summary` templates on facet
+*type* — "Friday mornings around 11 AM, at Home", "Evenings, when bored" — rather
+than joining display names with middots (`label` still does that, internally, for
+tie-breaks). `typicalHour` names a specific hour only when ≥60% (`hourAgreement`)
+of the cluster's events share that exact clock hour; agreement is measured on the
+exact hour rather than a ±1 window because Evening is four hours wide, so an even
+spread still puts 75% within ±1 of the middle and would falsely claim "around
+7 PM". `Pattern.id` includes the dimension rank so a Place and a context tag that
+share a name stay distinct rows.
+
+**Two surfaces beyond the card.** `PatternFinder.active(in:at:)` matches the
+current moment against the **calendar facets only** — place and context describe
+what an occasion turned out to be, and neither is knowable before the user logs
+(asking for a GPS fix to decide whether to show a line of text is not a trade
+worth making). `LogViewModel.activePattern` feeds a heads-up above the habit card
+on the Log screen — a `calendar.badge.clock` glyph, a small "Usual time" label,
+and the sentence itself: *"Friday mornings around 11 AM, at Home."* The label
+sits **above** the finding rather than in front of it; the earlier *"This is a
+usual time — …"* preamble spent the whole first line before saying anything and
+pushed the sentence — the part that has to be read at a glance — down into a
+wrapped clause. The glyph is calendar-and-clock, not
+`clock.badge.exclamationmark`: the finding is a weekday and an hour, and the app
+does not raise alarms. That is the whole point of the feature — being ready
+before the temptation lands — and with notifications permanently out, the Log
+screen is the only place it can arrive. Tapping a row on Insights pushes `HistoryView(habit:
+pattern:)`, which re-filters with the same `facets(of:)` call, so the list can't
+disagree with the count the row claims.
+
+**Three-facet patterns come from refining an accepted pair, never from mining
+triples directly** — and the reason is the opposite of the intuitive one. Triples
+need *less* data, not more: a triple's expected share is its parent pair's times
+a third probability ≤ 1, so it always clears significance more easily. At 100
+occasions a pair needs 13 matches, a triple 8; at 30, 4 (pinned by
+`testTripleWouldClearAtLowerSupportThanItsParentPair`). Mining them directly
+would re-admit the 3-of-3 coincidence the tail test exists to reject, over a
+candidate pool several times larger.
+
+So `refining` runs *after* a pair has won its slot: it appends a third facet only
+when ≥70% (`refinementRetention`) of that pair's occasions carry it, and the
+resulting triple must still clear every floor on its own. The pair earned the
+evidence; the triple only sharpens how it reads. Consequences worth knowing:
+
+- Refinement **never adds a row**. It relabels an accepted one, so the ranking
+  and the dedup are still decided entirely by the pair pass.
+- A third facet on *half* the cluster is rejected on purpose. It would be a
+  sub-cluster — reporting it shrinks a finding the user already had.
+- It stops at three. A fourth facet is just another pass, but a four-clause
+  sentence stops being something a user can act on.
+
+`UITestSeed` **plants a cluster** — Sugar, at Home, on the weekday and hour the
+harness is *running in*, ten weeks back — and drops that period from the base
+hour rotation. Both details are load-bearing. The base data is uniform by
+construction, so without the plant the harness can only capture the card's empty
+state; and the Log heads-up only renders while the clock is inside a pattern, so
+a fixed Friday-evening cluster would be uncapturable on any other day. Ten weeks,
+not four: at occasion counting, four is four data points against ~28 and does not
+clear the significance floor.
 
 ### Hold-to-Log Effect
 
