@@ -442,6 +442,22 @@ The Log screen's habit card supports both tap and hold-to-log. The hold interact
 
 All visual effects are gated on `!reduceMotion` for accessibility. The glow pulse uses SwiftUI's native animation system (not manual sine computation) for smooth interpolation.
 
+### Shake to Undo
+
+Shaking the phone while the confirmation banner is up undoes the log — the same
+gesture and the same 5s window as the watch, so the two devices don't disagree
+about how a mislog is taken back. On iOS this needs no Core Motion (the watch's
+`ShakeDetector` exists only because watchOS has no shake gesture): UIKit's
+`.motionShake` arrives on the responder chain, and a category override on
+`UIWindow` at the bottom of `LogView.swift` reposts it as a `Notification`.
+
+Two things there are load-bearing. It **calls `super`** — iOS's own
+shake-to-undo for text editing runs through the same path, and swallowing the
+event breaks it in the note and habit-name fields. And it is a **second path,
+not a replacement**: the banner keeps its Undo button, because Reduce Motion and
+motor-accessibility users can't shake and undo has to stay reachable without
+motion.
+
 ## CloudKit Constraints
 
 iCloud sync via SwiftData + CloudKit imposes these restrictions:
