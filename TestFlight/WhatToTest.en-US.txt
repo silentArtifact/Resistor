@@ -1,0 +1,20 @@
+Shake to undo a log.
+
+Log a temptation, then shake the phone while the confirmation banner is still
+up — the log is deleted, same as tapping Undo. The Undo button is still there;
+the shake is a second way to reach it, not a replacement. Shake-to-undo while
+editing a habit name or a note should still undo text, as it always did.
+
+This build also repairs three things on first launch. Check them before logging
+anything new:
+
+- Your habits and your full history should be intact. This is the build that
+  moves the database into shared storage so the widget can read it; the old copy
+  is left in place untouched as a fallback.
+- The default context tags (Stressed, Bored, Alone, On Phone, With Friends)
+  should each appear exactly once on the Log screen, not twice.
+- The app should pick the same default habit every launch rather than changing
+  its mind between launches.
+
+If habits or history look wrong, stop and say so before logging — the previous
+copy of the data is still on the device and recoverable.
