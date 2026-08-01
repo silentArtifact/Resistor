@@ -146,6 +146,28 @@ in Settings; a place is renamed or removed through the same sheet.
 
 Singleton pattern: queried as `@Query private var userSettings: [UserSettings]`, accessed via `userSettings.first`.
 
+**It is a singleton by convention only, and the convention has already broken
+once.** CloudKit forbids `@Attribute(.unique)`, so nothing stops two devices —
+the phone and the watch, which sync through the same container — from each
+creating this record before either has seen the other's. All 13 read sites take
+`.first` on a query with **no sort descriptor**, so with two rows present the app
+answers *differently from launch to launch*. Found on a real device on
+2026-08-01: two rows, one with a `defaultHabitId` pointing at a habit that never
+existed, which read as "my habits are gone" without a byte of data being lost.
+
+`UserSettings.mergeDuplicates` collapses them on every launch from
+`ContentView.initializeSettingsIfNeeded` — every launch, not once, because a
+duplicate can arrive from CloudKit at any point. The survivor is the lowest
+`id`: arbitrary, but stable and identical on every device, so two devices
+repairing at the same moment converge instead of deleting each other's keeper.
+Fields **merge** rather than inherit from the keeper — each takes the most
+explicit value across the duplicates — because the rows hold real choices made
+on whichever device wrote them. `hasCompletedOnboarding` is `true` if *any* row
+says so; the alternative is a stale row throwing the user back into first-run
+over live data.
+
+Don't "simplify" this to keeping `.first` and deleting the rest.
+
 ## Architecture Patterns
 
 ### ViewModel Pattern

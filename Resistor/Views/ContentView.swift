@@ -74,6 +74,12 @@ struct ContentView: View {
         if userSettings.isEmpty {
             let settings = UserSettings()
             modelContext.insert(settings)
+        } else {
+            // Runs every launch, not just once: CloudKit can import another
+            // device's copy at any point, and until there is exactly one row
+            // `userSettings.first` — which all 13 read sites use — is a coin
+            // toss. A duplicate that lands mid-session is repaired next launch.
+            UserSettings.mergeDuplicates(userSettings, habits: habits, in: modelContext)
         }
 
         // Seed default context tags if none exist (covers both fresh installs
