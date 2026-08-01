@@ -199,6 +199,43 @@ final class IntegrationTests: XCTestCase {
         XCTAssertTrue(habit3.safeEvents.isEmpty)
     }
 
+    // MARK: - Duplicate Context Tags
+
+    /// Reported from a real device after an update: every default chip appeared
+    /// twice. `ContentView` seeds the defaults whenever the tag list is empty,
+    /// which is a per-device check racing the CloudKit import.
+    func testMergeDuplicatesCollapsesADoubleSeedButKeepsDistinctTags() throws {
+        let defaults = ["Stressed", "Bored", "Alone", "On Phone", "With Friends"]
+        for name in defaults + defaults { context.insert(ContextTag(name: name)) }
+        context.insert(ContextTag(name: "Driving"))
+        try context.save()
+
+        let all = try context.fetch(FetchDescriptor<ContextTag>())
+        XCTAssertEqual(ContextTag.mergeDuplicates(all, in: context), 5)
+        try context.save()
+
+        let remaining = try context.fetch(FetchDescriptor<ContextTag>())
+        XCTAssertEqual(Set(remaining.map(\.name)), Set(defaults + ["Driving"]))
+        XCTAssertEqual(remaining.count, 6, "One row per name, user-added tag untouched")
+    }
+
+    /// Events store tag *names*, never tag IDs, which is why deduplicating by
+    /// name is lossless — deleting a duplicate row can't orphan an event.
+    func testMergeDuplicatesLeavesTaggedEventsIntact() throws {
+        let habit = TestHelpers.makeHabit()
+        context.insert(habit)
+        let event = TemptationEvent(habit: habit, contextTags: ["Bored"])
+        context.insert(event)
+        [ContextTag(name: "Bored"), ContextTag(name: "Bored")].forEach(context.insert)
+        try context.save()
+
+        ContextTag.mergeDuplicates(try context.fetch(FetchDescriptor<ContextTag>()), in: context)
+        try context.save()
+
+        XCTAssertEqual(try context.fetch(FetchDescriptor<ContextTag>()).count, 1)
+        XCTAssertEqual(event.contextTags, ["Bored"])
+    }
+
     // MARK: - Legacy Store Migration
 
     /// Builds a fake store plus its WAL sidecars in a temp directory, so the

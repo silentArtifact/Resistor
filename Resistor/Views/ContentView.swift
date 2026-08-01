@@ -83,12 +83,17 @@ struct ContentView: View {
         }
 
         // Seed default context tags if none exist (covers both fresh installs
-        // and upgrades from before tag seeding was added)
+        // and upgrades from before tag seeding was added). The emptiness check
+        // is per-device and races the CloudKit import, so a second device seeds
+        // its own five and then receives five more — every default chip twice.
+        // Same repair as the settings singleton above, for the same reason.
         if contextTags.isEmpty {
             let defaults = ["Stressed", "Bored", "Alone", "On Phone", "With Friends"]
             for name in defaults {
                 modelContext.insert(ContextTag(name: name))
             }
+        } else {
+            ContextTag.mergeDuplicates(contextTags, in: modelContext)
         }
 
         try? modelContext.save()

@@ -102,6 +102,19 @@ Enums defined in extensions:
 
 User-defined context tags managed from the Habits & Settings screen. Displayed as selectable chips on the Log screen before logging. Tag names are stored directly in `TemptationEvent.contextTags` as raw strings.
 
+**The five defaults are seeded whenever the list is empty, which races CloudKit**
+— the same shape of bug as the `UserSettings` singleton, and it shipped: a
+device that seeds its own five and *then* receives five more shows every default
+chip twice on the Log screen. `ContextTag.mergeDuplicates` collapses them from
+`ContentView.initializeSettingsIfNeeded`, keeping the lowest `id` per name.
+
+Deduplicating by **name** is lossless here, and this is the one place that's
+true: `TemptationEvent.contextTags` holds raw name strings, never tag IDs, so
+two rows with one name are the same tag stored twice and deleting either leaves
+every event untouched. Contrast `Place`, where two rows sharing a name are a
+deliberate feature. Matching is exact — folding case would silently merge a
+"bored" the user typed into the seeded "Bored".
+
 ### Place
 
 | Field | Type | Notes |
