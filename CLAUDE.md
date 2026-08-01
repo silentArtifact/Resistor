@@ -430,6 +430,51 @@ iCloud sync via SwiftData + CloudKit imposes these restrictions:
 - **No cascading deletes** — implement manually (see above)
 - **Additive-only schema migrations** — cannot rename or remove fields once shipped
 
+### The Production schema is a separate thing you must deploy by hand
+
+**Debug builds talk to the Development CloudKit database; TestFlight and App
+Store builds talk to Production.** They are different schemas. A model change
+that "just works" on your device has not reached testers at all, and the failure
+is *silent* — no crash, no error, the field simply never leaves the phone.
+
+Two things have to be true for a field to sync in TestFlight, and the second is
+the one that bites:
+
+1. **The field must exist in the Development schema.** SwiftData materialises a
+   CloudKit field lazily — the first time a record actually syncs carrying a
+   value for it. An optional attribute that has never been populated on a
+   dev-environment build (`intensity`, `note`) simply does not exist in the
+   schema, so there is nothing to deploy. "Deploy Schema Changes" will not
+   invent it. Either exercise the field on a debug build signed into iCloud, or
+   add it by hand in the CloudKit Console (Development → Record Types → +).
+2. **It must be deployed to Production**, via CloudKit Console → Development →
+   *Deploy Schema Changes…*. Verify the confirm dialog lists exactly what you
+   expect before accepting; it is the last reversible moment.
+
+**This is one-way.** Production record types and fields can never be renamed or
+removed — the same rule as the bullet above, but enforced by Apple's servers
+rather than by discipline. Read the diff, then deploy.
+
+Found on 2026-07-31 by comparing the models against the deployed schema: named
+places (`CD_Place`) did not exist in Production *at all*, and `intensity`,
+`note` and `sortOrder` were missing from both environments. TestFlight users'
+intensity ratings, notes, named locations and habit order were device-local and
+would have been lost on any reinstall or new device. All five record types now
+match the models.
+
+When adding a field by hand, take its type from a sibling SwiftData already
+generated rather than guessing: `Int`/`Int?`/`Bool` → `Int(64)`, `String?` →
+`String`, `Double?` → `Double`, `[String]` → `Bytes`, `Date` → `Date/Time`.
+Naming is `CD_<propertyName>`. Single-field indexes are **not** required for
+sync — `NSPersistentCloudKitContainer` syncs by zone change token, not by
+querying data fields — so the three fields added by hand deliberately have none.
+Indexes can be added later; they cannot be removed.
+
+**Audit the schema before any release that shipped a model change.** Count
+record fields in the Console against the model's stored properties, remembering
+6 metadata fields and a `CD_entityName` are always present (so a 5-property
+model shows 12 fields).
+
 ## Key Design Decisions
 
 | Decision | Choice |
