@@ -911,7 +911,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.resistor.app.watchkitapp.complication;
+				PRODUCT_BUNDLE_IDENTIFIER = com.resistor.app.watchkitapp.ResistorWatchComplication;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
@@ -1310,7 +1310,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.resistor.app.watchkitapp.complication;
+				PRODUCT_BUNDLE_IDENTIFIER = com.resistor.app.watchkitapp.ResistorWatchComplication;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;

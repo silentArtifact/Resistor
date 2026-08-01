@@ -583,8 +583,24 @@ profile's `ProvisionedDevices` **first** — read the artifacts (`security cms -
 <profile> | plutil -p -`), don't reason from what looks likely.
 
 `ResistorWatchComplication/` is a watchOS WidgetKit app extension
-(`com.resistor.app.watchkitapp.complication`) embedded in **ResistorWatch**'s
-PlugIns and wired by the idempotent `scripts/add_watch_complication_target.rb`.
+(`com.resistor.app.watchkitapp.ResistorWatchComplication`) embedded in
+**ResistorWatch**'s PlugIns and wired by the idempotent
+`scripts/add_watch_complication_target.rb`.
+
+**The bundle ID may not end in `.complication`** — and the failure mode is
+invisible locally. The Developer portal refuses to register
+`com.resistor.app.watchkitapp.complication` at all ("An App ID with Identifier
+… is not available"), and Xcode will not mint one either, even under
+`-allowProvisioningUpdates`. Dev builds *look* fine because signing silently
+falls back to the team wildcard profile (`iOS Team Provisioning Profile: *`), but
+a wildcard cannot be used for App Store distribution, so every Xcode Cloud
+**Archive - iOS** failed at Code Signing / "Exporting for App Store Distribution
+failed" — 12 builds between 2026-07-30 and 2026-07-31, all with the archive step
+itself succeeding. Bundle IDs are globally unique and permanently burned once
+deleted, so the string cannot be recovered; the target was renamed to the
+`.ResistorWatchComplication` suffix on 2026-07-31 and the matching App ID
+registered. If you add another embedded target, confirm its bundle ID actually
+registers in the portal rather than trusting a green local build.
 It exists so the watch app is reachable from a watch face — the whole point of
 wrist-fast logging. It is a static launcher glyph only: `StaticConfiguration`,
 one timeline entry, `.never` policy, no entitlements / App Group / SwiftData and

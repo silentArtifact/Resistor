@@ -26,7 +26,12 @@ COMP_TARGET   = "ResistorWatchComplication"
 COMP_DIR      = "ResistorWatchComplication"
 TEAM_ID       = "HBXLU45HR7"
 WATCH_BUNDLE_ID = "com.resistor.app.watchkitapp"
-COMP_BUNDLE_ID  = "#{WATCH_BUNDLE_ID}.complication"
+# NOT "#{WATCH_BUNDLE_ID}.complication": that exact string is unregistrable in
+# the Developer portal ("is not available"), so no App ID can back it, so no
+# distribution profile can be minted for it, so every Xcode Cloud Archive - iOS
+# died at "Exporting for App Store Distribution failed". Locally it silently
+# fell back to the team wildcard profile, which hides the problem in dev builds.
+COMP_BUNDLE_ID  = "#{WATCH_BUNDLE_ID}.#{COMP_TARGET}"
 WATCHOS_DEPLOYMENT_TARGET = "10.0"
 
 project = Xcodeproj::Project.open(PROJECT_PATH)
