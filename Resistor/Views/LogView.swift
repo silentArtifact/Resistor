@@ -311,6 +311,19 @@ struct LogView: View {
             }
         }
         .animation(reduceMotion ? .none : .easeInOut(duration: 0.3), value: vm.showConfirmation)
+        // Shake to undo, matching the watch: same gesture, same 5s window, so
+        // the two devices don't disagree about how a mislog is taken back. It
+        // is a second path to the banner's Undo button, never a replacement —
+        // Reduce Motion and motor-accessibility users can't shake, and undo
+        // has to stay reachable without motion.
+        .onReceive(NotificationCenter.default.publisher(for: .deviceDidShake)) { _ in
+            // Scoped to the banner's window. Outside it there is nothing to take
+            // back, and a shake anywhere else in the app means nothing here.
+            guard vm.showConfirmation else { return }
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            vm.undoLastLog()
+            UIAccessibility.post(notification: .announcement, argument: "Log undone")
+        }
     }
 
     /// A quiet line that appears only when the clock is inside one of this
@@ -852,6 +865,26 @@ private struct FlowLayout: Layout {
 
         return (positions, CGSize(width: maxX, height: y + rowHeight))
     }
+}
+
+/// UIKit delivers a shake to the responder chain; SwiftUI exposes no equivalent,
+/// so this is the whole bridge. Overriding on `UIWindow` rather than hosting a
+/// first-responder view controller means the shake is seen no matter what holds
+/// first responder, and nothing has to fight SwiftUI for focus.
+///
+/// `super` is called deliberately: iOS's own shake-to-undo for text editing runs
+/// through this same path, and swallowing the event would break it in the note
+/// and habit-name fields.
+extension UIWindow {
+    open override func motionEnded(_ motion: UIEvent.EventSubtype, with event: UIEvent?) {
+        super.motionEnded(motion, with: event)
+        guard motion == .motionShake else { return }
+        NotificationCenter.default.post(name: .deviceDidShake, object: nil)
+    }
+}
+
+extension Notification.Name {
+    static let deviceDidShake = Notification.Name("deviceDidShake")
 }
 
 #Preview {
