@@ -468,6 +468,29 @@ iCloud sync via SwiftData + CloudKit imposes these restrictions:
 - **No cascading deletes** — implement manually (see above)
 - **Additive-only schema migrations** — cannot rename or remove fields once shipped
 
+### The store lives in the App Group, and moving there is a migration
+
+`SharedModelContainer.makeContainer()` opens the store inside the
+`group.com.resistor.app` container so the widget can read it. Before the widget
+it lived at SwiftData's default `Library/Application Support/default.store`, and
+**pointing a configuration at a new URL does not move the file** — it opens a
+new, empty one and strands the old.
+
+That has not fired yet, because the App Groups capability still isn't enabled on
+the **Resistor** target (issue #47), so `storeURL` returns nil at runtime and
+the code silently falls back to the old location. Ticking that checkbox is
+therefore a data migration, not a capability change.
+`resolvedStoreURL(groupStore:)` handles it: if the App Group has no store and a
+legacy one exists, it copies the `.store` **and its `-shm`/`-wal` sidecars**
+across, and opens the *legacy* store in place if the copy throws — an app that
+looks empty is indistinguishable from data loss. It copies rather than moves, so
+the original stays recoverable.
+
+The `-wal` is the part that's easy to miss: it holds every transaction since the
+last checkpoint, and on the real device it was 1.8 MB against a 508 KB store.
+Copying the `.store` alone rewinds the app to its last checkpoint — weeks, for
+this app's write pattern.
+
 ### The Production schema is a separate thing you must deploy by hand
 
 **Debug builds talk to the Development CloudKit database; TestFlight and App

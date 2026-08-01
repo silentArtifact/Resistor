@@ -198,4 +198,78 @@ final class IntegrationTests: XCTestCase {
         XCTAssertTrue(habit1.safeEvents.isEmpty)
         XCTAssertTrue(habit3.safeEvents.isEmpty)
     }
+
+    // MARK: - Legacy Store Migration
+
+    /// Builds a fake store plus its WAL sidecars in a temp directory, so the
+    /// migration can be exercised without an App Group container.
+    private func makeFakeStore(at url: URL, contents: String = "store") throws {
+        try contents.write(to: url, atomically: true, encoding: .utf8)
+        try "shm".write(to: URL(fileURLWithPath: url.path + "-shm"), atomically: true, encoding: .utf8)
+        try "wal".write(to: URL(fileURLWithPath: url.path + "-wal"), atomically: true, encoding: .utf8)
+    }
+
+    /// The `-wal` holds every transaction since the last checkpoint — on the
+    /// device that was 1.8 MB against a 508 KB store — so a migration that
+    /// copies only the `.store` silently rewinds the app by weeks.
+    func testMigrateStoreCopiesTheWALSidecarsAndLeavesTheOriginal() throws {
+        let directory = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let legacy = directory.appendingPathComponent("default.store")
+        let destination = directory.appendingPathComponent("Resistor.store")
+        try makeFakeStore(at: legacy)
+
+        try SharedModelContainer.migrateStore(from: legacy, to: destination)
+
+        for suffix in ["", "-shm", "-wal"] {
+            XCTAssertTrue(
+                FileManager.default.fileExists(atPath: destination.path + suffix),
+                "Migration dropped \(suffix.isEmpty ? ".store" : suffix)"
+            )
+            XCTAssertTrue(
+                FileManager.default.fileExists(atPath: legacy.path + suffix),
+                "Migration should copy, not move — the original is the fallback"
+            )
+        }
+    }
+
+    /// An existing store at the destination is never overwritten: that store is
+    /// the live one, and the legacy file beside it is a stale leftover.
+    func testResolvedStoreURLLeavesAnExistingGroupStoreAlone() throws {
+        let directory = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let destination = directory.appendingPathComponent("Resistor.store")
+        try makeFakeStore(at: destination, contents: "live")
+
+        XCTAssertEqual(SharedModelContainer.resolvedStoreURL(groupStore: destination), destination)
+        XCTAssertEqual(try String(contentsOf: destination, encoding: .utf8), "live")
+    }
+
+    /// A failed copy must leave nothing behind at the destination, or the next
+    /// launch opens a store missing its own WAL instead of retrying.
+    func testMigrateStoreCleansUpAfterAFailedCopy() throws {
+        let directory = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let legacy = directory.appendingPathComponent("default.store")
+        try makeFakeStore(at: legacy)
+
+        // Destination inside a file, not a directory, so the copy cannot succeed.
+        let blocker = directory.appendingPathComponent("blocker")
+        try "x".write(to: blocker, atomically: true, encoding: .utf8)
+        let destination = blocker.appendingPathComponent("Resistor.store")
+
+        XCTAssertThrowsError(try SharedModelContainer.migrateStore(from: legacy, to: destination))
+        for suffix in ["", "-shm", "-wal"] {
+            XCTAssertFalse(FileManager.default.fileExists(atPath: destination.path + suffix))
+        }
+    }
 }
