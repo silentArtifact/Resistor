@@ -1,18 +1,20 @@
-Apple Watch: swipe or turn the Crown to change habits.
+Log screen: two layout corrections.
 
-The habit name on the watch no longer has a drop-down. Each habit is its own
-page — swipe up and down, or turn the Digital Crown, to move between them. Dots
-on the right edge show where you are.
+The habit pager (arrows and dots) has moved from above the habit card to below
+it, under the "Tap or hold to log" line — where iOS normally puts page dots.
+
+The card's icon and name were sitting high, with empty space under them, on any
+habit with no description. They're now centred in the card.
 
 Worth checking:
 
-- Swiping with your finger starting on the big coloured button should change the
-  habit and NOT log anything. Watch the "Today: N logged" line to be sure.
-- A quick tap still logs. A three-second hold still ramps up (ring, glow,
-  escalating buzz) and logs on release, and holding longer keeps buzzing.
-- Reorder your habits on the phone (Habits screen, Edit, drag). The watch should
-  show the new order without you relaunching it — give iCloud a few seconds.
-- The watch still starts on your default habit, and a habit you pick on the
-  watch still resets to the default when you relaunch.
+- With more than one habit, the pager reads as belonging to the card below it
+  rather than to whatever is above it. Arrows and dots still work.
+- Make a habit with no description at all. Its icon and name should sit in the
+  middle of the card, not near the top.
+- Swipe between a habit that has a description and one that doesn't. The card
+  must not change size or jump mid-swipe — that's the thing most at risk here.
+- Nothing below the card moved: context chips and "Today: N logged" should sit
+  exactly where they did before.
 
-Nothing changed on the phone in this build.
+Nothing changed on the Apple Watch in this build.

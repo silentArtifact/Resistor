@@ -232,17 +232,10 @@ struct LogView: View {
                 Spacer(minLength: 0)
                     .frame(maxHeight: 96)
 
-                // Current habit card cluster — pager sits directly above the
-                // card it controls so the relationship reads as one unit.
+                // Current habit card cluster.
                 if let habit = vm.selectedHabit {
                     if let pattern = vm.activePattern {
                         patternHeadsUp(pattern)
-                            .opacity(1.0 - dimAmount)
-                            .padding(.bottom, 16)
-                    }
-
-                    if vm.habits.count > 1 {
-                        habitCarousel(vm)
                             .opacity(1.0 - dimAmount)
                             .padding(.bottom, 16)
                     }
@@ -265,6 +258,16 @@ struct LogView: View {
                         .foregroundStyle(.secondary)
                         .padding(.top, 14)
                         .opacity(1.0 - dimAmount)
+
+                    // Pager below the content it pages, per `UIPageControl` and
+                    // `TabView(.page)`. The card and its "tap or hold" caption
+                    // are one unit; the pager navigates between those units, so
+                    // it sits under the pair rather than splitting them.
+                    if vm.habits.count > 1 {
+                        habitCarousel(vm)
+                            .padding(.top, 16)
+                            .opacity(1.0 - dimAmount)
+                    }
 
                     // Context tags (pre-select before logging)
                     if !contextTags.isEmpty {
@@ -415,6 +418,18 @@ struct LogView: View {
         // description gets a card the exact size of one that has a description.
         let rawDescription = habit.habitDescription ?? ""
         let description = rawDescription.isEmpty ? " " : rawDescription
+        // …and that reserve is all below the name, so an undescribed card drew
+        // its icon+name at the top over a dead band. Slide them down half of it.
+        // An `offset` because it moves pixels without touching layout: the card
+        // still measures identically to a described one, which is what
+        // `testHabitCardSizeIsIndependentOfDescription` pins. Rebalancing the
+        // padding or splitting the reserve into a blank line above and below
+        // both change the height (two one-line reserves run 1.7pt over one
+        // two-line reserve) — a point of slop in a nudge is invisible, a point
+        // in the height resizes a page mid-slide.
+        let blankDescriptionShift: CGFloat = rawDescription.isEmpty
+            ? (UIFont.preferredFont(forTextStyle: .body).lineHeight * 2 + 16) / 2
+            : 0
         let cardScale = reduceMotion ? 1.0 : 1.0 + (holdProgress * 0.08)
         let glowPulseIntensity: CGFloat = glowPulsing ? 1.0 : 0.5
         // Resting affordance: a steady habit-color border so the card reads as
@@ -471,6 +486,7 @@ struct LogView: View {
                 .lineLimit(2, reservesSpace: true)
                 .padding(.horizontal)
         }
+        .offset(y: blankDescriptionShift)
         .padding(32)
         .frame(maxWidth: .infinity)
 
