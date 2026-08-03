@@ -26,8 +26,25 @@ jobs:
       # The Resistor scheme embeds the watchOS app (Embed Watch Content), so the
       # iOS test action also builds the watch app and needs the watchOS simulator
       # runtime present (see CLAUDE.md "Build & Development").
+      #
+      # Only download it when it is actually missing. The macos-15 pool is not
+      # uniform: on images that already ship the runtime `-downloadPlatform`
+      # short-circuits ("watchOS is already downloaded as universal") and passes,
+      # but on the ones that don't it tries to install and dies with "Unable to
+      # connect to simulator" (exit 70) — which took main red on 2026-08-03 for
+      # two pushes running, on a workflow nobody had touched. Listing the runtimes
+      # also spins CoreSimulator up before anything needs it. The final grep is
+      # the assertion: if we somehow reach the build without a watchOS runtime,
+      # fail here with a clear reason rather than inside xcodebuild.
       - name: Install watchOS runtime
-        run: xcodebuild -downloadPlatform watchOS
+        run: |
+          xcrun simctl list runtimes
+          if xcrun simctl list runtimes | grep -q watchOS; then
+            echo "watchOS runtime already installed — skipping download"
+          else
+            xcodebuild -downloadPlatform watchOS
+          fi
+          xcrun simctl list runtimes | grep watchOS
 
       - name: Build
         run: |
