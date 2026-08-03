@@ -60,4 +60,17 @@ jobs:
             -project Resistor.xcodeproj \
             -scheme Resistor \
             -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+            -resultBundlePath TestResults.xcresult \
             -quiet
+
+      # `-quiet` prints "** TEST EXECUTE FAILED **" and nothing about *which*
+      # test failed, which makes a red run un-diagnosable without a local repro
+      # that may not reproduce (the UI tests are far slower here than locally).
+      # Name the failures instead of guessing at them.
+      - name: Name the failing tests
+        if: failure()
+        run: |
+          xcrun xcresulttool get test-report summary \
+            --path TestResults.xcresult || true
+          xcrun xcresulttool get test-report tests \
+            --path TestResults.xcresult || true
