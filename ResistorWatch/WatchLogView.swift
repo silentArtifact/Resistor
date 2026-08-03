@@ -28,12 +28,6 @@ struct WatchLogView: View {
     /// same deliberate pause on both devices. Holding longer is allowed and keeps
     /// the haptic going; the ramp just sits at full.
     private static let holdDuration: TimeInterval = 3.0
-    /// A `minimumDuration` no press will ever reach, so the long-press gesture
-    /// never succeeds and only reports pressing/not-pressing. A day, not
-    /// `.infinity` or `.greatestFiniteMagnitude` — those land in SwiftUI's
-    /// deadline arithmetic, and a non-finite deadline is a worse bet than a
-    /// number that is merely absurd.
-    private static let neverCompletes: TimeInterval = 86_400
 
     /// watchOS has no Core Haptics — `CHHapticEngine` is absent from the watchOS
     /// SDK entirely, so the phone's continuous pattern with ramped intensity and
@@ -73,7 +67,6 @@ struct WatchLogView: View {
     /// available for exactly as long as a shake is.
     @State private var canUndo = false
     @State private var shakeDetector = ShakeDetector()
-    @State private var showHabitPicker = false
 
     // MARK: Hold state
     @State private var isHolding = false
@@ -86,11 +79,7 @@ struct WatchLogView: View {
     @State private var glowPulsing = false
 
     var body: some View {
-        ScrollView {
-            content
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 4)
-        }
+        content
         .onAppear {
             if vm == nil {
                 vm = WatchLogStore()
@@ -101,21 +90,13 @@ struct WatchLogView: View {
             // screen, so a log has a fix to attach.
             vm?.requestLocationPermissionIfNeeded()
         }
-        .sheet(isPresented: $showHabitPicker) {
-            if let vm {
-                habitPicker(vm)
-            }
-        }
         .onChange(of: scenePhase) { _, phase in
             // Re-read the count on resume. `onAppear` does not fire again when the
             // app returns from background, so without this a CloudKit import that
             // landed while suspended stays invisible — the count would show the
-            // value from whenever the view was first built.
-            //
-            // ponytail: resume only. An import that lands while the app is already
-            // frontmost still won't show until the next resume; catching that needs
-            // NSPersistentStoreRemoteChange observation. Add it only if a stale
-            // count is actually noticed in use — a watch glance is a resume.
+            // value from whenever the view was first built. Imports that land
+            // while the app is frontmost are caught by the store's
+            // `NSPersistentStoreRemoteChange` observer instead.
             guard phase == .active else {
                 // Dropping the wrist mid-hold would otherwise strand the haptic
                 // timer, buzzing with the app no longer frontmost — and leave the
@@ -137,25 +118,69 @@ struct WatchLogView: View {
     private var content: some View {
         if let vm {
             switch vm.state {
-            case let .loggable(_, name, colorHex, iconName, count):
-                loggable(vm, name: name, colorHex: colorHex, iconName: iconName, count: count)
+            case let .loggable(habitID, name, colorHex, iconName, count):
+                if vm.habitOptions.count > 1 {
+                    // One habit per page, swiped up/down or turned in with the
+                    // Crown — `.verticalPage` wires both, and its page dots are
+                    // the affordance the old chevron-and-sheet was standing in
+                    // for. Pages are in `Habit.displayOrder`, so a drag on the
+                    // phone's Habits screen is the order on the wrist.
+                    TabView(selection: habitSelection(vm, current: habitID)) {
+                        ForEach(vm.habitOptions) { habit in
+                            loggable(
+                                vm,
+                                name: habit.name,
+                                colorHex: habit.colorHex,
+                                iconName: habit.iconName,
+                                count: vm.todayResistedCount(for: habit)
+                            )
+                            .tag(habit.id)
+                        }
+                    }
+                    .tabViewStyle(.verticalPage)
+                } else {
+                    page {
+                        loggable(vm, name: name, colorHex: colorHex, iconName: iconName, count: count)
+                    }
+                }
             case .noHabit:
-                nonLoggable(
-                    symbol: "square.dashed",
-                    title: "No habit to log",
-                    subtitle: "Add a habit on your phone"
-                )
+                page {
+                    nonLoggable(
+                        symbol: "square.dashed",
+                        title: "No habit to log",
+                        subtitle: "Add a habit on your phone"
+                    )
+                }
             case .habitUnavailable:
-                nonLoggable(
-                    symbol: "exclamationmark.triangle",
-                    title: "Habit unavailable",
-                    subtitle: "Set a default habit on your phone"
-                )
+                page {
+                    nonLoggable(
+                        symbol: "exclamationmark.triangle",
+                        title: "Habit unavailable",
+                        subtitle: "Set a default habit on your phone"
+                    )
+                }
             }
         } else {
             // Pre-init frame; render nothing rather than a flash of wrong state.
             Color.clear.frame(height: 1)
         }
+    }
+
+    /// Scrolling wrapper for the single-page states. The pager's own pages are
+    /// deliberately *not* scrollable — a vertical scroll inside a vertically
+    /// paged `TabView` fights it for the same drag and the same Crown.
+    private func page<Inner: View>(@ViewBuilder _ inner: () -> Inner) -> some View {
+        ScrollView {
+            inner()
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 4)
+        }
+    }
+
+    /// Selection is read straight off the resolved state rather than mirrored in
+    /// a `@State`, so the pager can't drift from the habit the button logs to.
+    private func habitSelection(_ vm: WatchLogStore, current: UUID) -> Binding<UUID> {
+        Binding(get: { current }, set: { vm.select(habitID: $0) })
     }
 
     // MARK: - (a)/(b)/(c)/(f) Loggable
@@ -169,40 +194,35 @@ struct WatchLogView: View {
         let dim = reduceMotion ? 0.0 : Double(holdProgress) * 0.5
 
         VStack(spacing: 8) {
-            habitName(vm, name: name)
+            habitName(name: name)
                 .opacity(1 - dim)
 
-            ZStack {
-                logButton(habitColor: habitColor, symbol: symbol)
-                acknowledgement
-            }
-            .frame(maxWidth: .infinity)
-            .frame(width: buttonContainerWidth)
-            // ONE gesture drives tap and hold alike: press starts the ramp,
-            // release logs. There is no completion threshold, so `perform` has no
-            // job — and `minimumDuration` is set far beyond any real press
-            // precisely so it never fires. A long press that *succeeds* ends the
-            // gesture, which would report the press as over while the finger is
-            // still down: the buzz would cut out at 3s instead of continuing
-            // until release, which is the opposite of what's wanted.
-            .onLongPressGesture(
-                minimumDuration: Self.neverCompletes,
-                maximumDistance: 20,
-                perform: {},
-                onPressingChanged: { pressing in
-                    if pressing { startHold() } else { releaseHold() }
+            // A real `Button`, not a gesture. That is the whole reason the pager
+            // works: a custom gesture on the button swallowed every vertical
+            // drag, so a swipe on the disc — the obvious place to put a finger —
+            // both failed to turn the page and logged an event on release. A
+            // Button yields its touch to the enclosing scroll the moment it
+            // pans, and `action` only fires on a release the scroll didn't take.
+            // So "swiped away" and "lifted" stop being indistinguishable, with
+            // no distance arithmetic of our own.
+            //
+            // The ramp rides on `isPressed`, which stays true for as long as the
+            // finger is down — no duration threshold, so holding past the end
+            // keeps buzzing until release, and a flick and a three-second hold
+            // both log.
+            Button(action: performLog) {
+                ZStack {
+                    logButton(habitColor: habitColor, symbol: symbol)
+                    acknowledgement
                 }
-            )
-            // Belt and braces for the primary path: if a very quick tap doesn't
-            // register as a press at all, this still logs it. A tap that fires
-            // both paths is harmless — the `isLogging` debounce swallows the
-            // second.
-            .onTapGesture(perform: performLog)
-            .accessibilityElement(children: .ignore)
-            .accessibilityAddTraits(.isButton)
+                .frame(maxWidth: .infinity)
+                .frame(width: buttonContainerWidth)
+            }
+            .buttonStyle(PressReporting { pressing in
+                if pressing { startHold() } else { endHold() }
+            })
             .accessibilityLabel(buttonAccessibilityLabel(name: name, count: count))
             .accessibilityHint("Logs a resisted temptation.")
-            .accessibilityAction { performLog() }
             // Shake is a motion-only affordance, which is no use to someone who
             // can't shake their wrist reliably — or who would trigger it by
             // accident. Offer the same undo as a VoiceOver action while the window
@@ -220,67 +240,16 @@ struct WatchLogView: View {
         .padding(.horizontal, 4)
     }
 
-    /// The habit's name — and, when there is more than one to log against, the
-    /// control that changes it. A separate tap target above the button rather
-    /// than a swipe across it: the button already owns press-and-hold, and the
-    /// phone's carousel swipe needed a 0.15s arming delay to stop every swipe
-    /// flashing the hold visuals. There is nothing to arm here.
-    @ViewBuilder
-    private func habitName(_ vm: WatchLogStore, name: String) -> some View {
-        let label = Text(name)
+    /// The habit's name. Just a label now — changing habit is the page swipe,
+    /// not a control.
+    private func habitName(name: String) -> some View {
+        Text(name)
             .font(.headline)
             .fontWeight(.semibold)
             .foregroundStyle(.primary)
             .multilineTextAlignment(.center)
             .lineLimit(2)
             .minimumScaleFactor(0.8)
-
-        if vm.habitOptions.count > 1 {
-            Button {
-                showHabitPicker = true
-            } label: {
-                HStack(spacing: 4) {
-                    label
-                    Image(systemName: "chevron.down")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .buttonStyle(.plain)
-            .accessibilityHint("Changes which habit you're logging.")
-        } else {
-            label
-        }
-    }
-
-    /// Full-screen list of the habits the watch can log against. watchOS has no
-    /// room for the phone's carousel, and a `Picker` would need the Crown while
-    /// the screen's one scroll view already wants it.
-    private func habitPicker(_ vm: WatchLogStore) -> some View {
-        let current: UUID? = {
-            if case let .loggable(habitID, _, _, _, _) = vm.state { return habitID }
-            return nil
-        }()
-
-        return List(vm.habitOptions) { habit in
-            Button {
-                vm.select(habitID: habit.id)
-                showHabitPicker = false
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: habit.iconName ?? "circle.fill")
-                        .foregroundStyle(Color(hex: habit.colorHex ?? "#007AFF") ?? .blue)
-                    Text(habit.name)
-                        .lineLimit(2)
-                    Spacer(minLength: 4)
-                    if habit.id == current {
-                        Image(systemName: "checkmark")
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            }
-            .accessibilityAddTraits(habit.id == current ? [.isButton, .isSelected] : .isButton)
-        }
     }
 
     /// The habit-color disc, with the hold effect layered over and behind it.
@@ -447,16 +416,6 @@ struct WatchLogView: View {
         scheduleHapticTick()
     }
 
-    /// Finger lifted — the log happens here, at whatever progress the ramp
-    /// reached. A flick and a full three-second hold both log; the ramp only ever
-    /// changed how it felt getting there.
-    private func releaseHold() {
-        let wasHolding = isHolding
-        endHold()
-        guard wasHolding else { return }
-        performLog()
-    }
-
     /// Tears down the hold without logging. Idempotent: fires on release, on
     /// backgrounding, and on disappear.
     private func endHold() {
@@ -575,6 +534,20 @@ struct WatchLogView: View {
             } else {
                 withAnimation(.easeIn(duration: 0.2)) { ack = nil }
             }
+        }
+    }
+
+    /// Reports the button's press state and draws nothing of its own — the label
+    /// already renders the entire hold effect, and the stock styles would layer
+    /// their own background and press-dimming underneath it.
+    private struct PressReporting: ButtonStyle {
+        let onPressingChanged: (Bool) -> Void
+
+        func makeBody(configuration: Configuration) -> some View {
+            configuration.label
+                .onChange(of: configuration.isPressed) { _, pressing in
+                    onPressingChanged(pressing)
+                }
         }
     }
 

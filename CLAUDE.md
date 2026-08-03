@@ -655,19 +655,48 @@ xcodebuild -project Resistor.xcodeproj \
 ```
 
 The watch app (`ResistorWatch/`) is a single-screen quick-log companion (issue
-#49). **Release logs** — a flick and a 3s hold both write an event, matching the
+#49), one vertical page per habit. **Release logs** — a flick and a 3s hold both write an event, matching the
 phone, where the ramp changes how it feels, not whether it commits. Holding past
 3s keeps buzzing until release.
 
-**Habit switching:** tapping the habit name (a chevron appears once there is more
-than one active habit) opens a full-screen list. Not a swipe across the button —
-that already owns press-and-hold, and the phone's carousel needed a 0.15s arming
-delay to stop every swipe flashing the hold visuals. The pick lives in memory
-only (`WatchLogStore.selectedHabitID`) and resets to the default habit on
-relaunch, exactly like the phone's Log screen; persisting a watch-local override
-would make the two devices disagree about what "the" habit is. Target resolution
-is pick → `UserSettings.defaultHabitId` → first in `Habit.displayOrder`, and a
-pick that gets archived falls back rather than logging to an archived habit.
+**Habit switching is a vertical page swipe or a turn of the Crown**, one habit
+per page, via `TabView` + `.tabViewStyle(.verticalPage)`. Its page dots are the
+affordance. An earlier version put a chevron on the habit name that opened a
+full-screen list, on the reasoning that the button already owned press-and-hold;
+a tap to open a sheet to pick a habit is three interactions for the one thing a
+wrist-fast app should make cheapest.
+
+**The log control has to be a `Button`, not a gesture, and that is the whole
+reason paging works.** A custom press gesture on the disc swallows every vertical
+drag: the swipe neither turns the page *nor* is distinguishable from a lift, so
+the release logs an event — verified, it does exactly that. A `Button` yields its
+touch to the enclosing scroll the moment it pans and fires `action` only on a
+release the scroll didn't take, which is precisely the distinction, for free. The
+hold ramp rides on `ButtonStyle.Configuration.isPressed` (`PressReporting`), which
+stays true for as long as the finger is down — so there is still no duration
+threshold, holding past 3s still buzzes until release, and a flick and a full
+hold both log. Don't reintroduce `onLongPressGesture`/`DragGesture` here, and
+don't try to fix the accidental log with a distance threshold of your own; that
+was tried first and the pager still never saw the drag.
+
+Pages are in `Habit.displayOrder`, so a drag on the phone's Habits screen is the
+order on the wrist. The pick lives in memory only
+(`WatchLogStore.selectedHabitID`) and resets to the default habit on relaunch,
+exactly like the phone's Log screen; persisting a watch-local override would make
+the two devices disagree about what "the" habit is. Target resolution is pick →
+`UserSettings.defaultHabitId` → first in `Habit.displayOrder`, and a pick that
+gets archived falls back rather than logging to an archived habit.
+
+Pager pages are deliberately **not** scrollable — a vertical scroll inside a
+vertically paged `TabView` fights it for the same drag and the same Crown. Only
+the single-habit and no-habit states keep the `ScrollView`.
+
+**The store refreshes on `NSPersistentStoreRemoteChange`, not just on resume.** A
+reorder on the phone reaches the watch as a silent CloudKit import; without the
+observer in `WatchLogStore.init` the pager keeps rendering the order it fetched
+at launch, so the user reorders on the phone, looks at the wrist, and sees the
+old order. `scenePhase` still refreshes on resume for imports that landed while
+the app was suspended.
 
 **Location:** the watch logs coordinates like the phone, via the *same*
 `Resistor/Services/LocationManager.swift` (CoreLocation and `CLGeocoder` both
@@ -683,17 +712,12 @@ prompts on first launch. `Place` naming is unaffected: nothing is written onto
 the event, so a watch-logged coordinate resolves to a named place on the phone
 retroactively.
 
-Two watch-specific traps, both load-bearing:
+One watch-specific trap, load-bearing:
 
 - **`CHHapticEngine` does not exist in the watchOS SDK.** The phone's continuous
   ramped pattern is approximated by a repeated discrete `WKHapticType.click` at a
   tightening gap. Don't try to port `LogViewModel`'s Core Haptics code; it cannot
   compile there.
-- **The hold gesture's `minimumDuration` is 86,400s on purpose.** A long press
-  that *succeeds* ends the gesture and reports the press as over while the finger
-  is still down, cutting the haptic off mid-hold. Setting it beyond any real press
-  means only `onPressingChanged` fires and `perform` is dead by design. Don't
-  "fix" it to 3s.
 
 Shake-to-undo (`ShakeDetector.swift`) deletes the last logged event within a 5s
 window, via Core Motion — watchOS has no shake gesture API. The accelerometer runs
