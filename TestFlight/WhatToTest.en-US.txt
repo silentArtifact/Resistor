@@ -1,20 +1,18 @@
-Shake to undo a log.
+Apple Watch: swipe or turn the Crown to change habits.
 
-Log a temptation, then shake the phone while the confirmation banner is still
-up — the log is deleted, same as tapping Undo. The Undo button is still there;
-the shake is a second way to reach it, not a replacement. Shake-to-undo while
-editing a habit name or a note should still undo text, as it always did.
+The habit name on the watch no longer has a drop-down. Each habit is its own
+page — swipe up and down, or turn the Digital Crown, to move between them. Dots
+on the right edge show where you are.
 
-This build also repairs three things on first launch. Check them before logging
-anything new:
+Worth checking:
 
-- Your habits and your full history should be intact. This is the build that
-  moves the database into shared storage so the widget can read it; the old copy
-  is left in place untouched as a fallback.
-- The default context tags (Stressed, Bored, Alone, On Phone, With Friends)
-  should each appear exactly once on the Log screen, not twice.
-- The app should pick the same default habit every launch rather than changing
-  its mind between launches.
+- Swiping with your finger starting on the big coloured button should change the
+  habit and NOT log anything. Watch the "Today: N logged" line to be sure.
+- A quick tap still logs. A three-second hold still ramps up (ring, glow,
+  escalating buzz) and logs on release, and holding longer keeps buzzing.
+- Reorder your habits on the phone (Habits screen, Edit, drag). The watch should
+  show the new order without you relaunching it — give iCloud a few seconds.
+- The watch still starts on your default habit, and a habit you pick on the
+  watch still resets to the default when you relaunch.
 
-If habits or history look wrong, stop and say so before logging — the previous
-copy of the data is still on the device and recoverable.
+Nothing changed on the phone in this build.

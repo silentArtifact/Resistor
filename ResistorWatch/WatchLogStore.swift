@@ -1,4 +1,5 @@
 import Foundation
+import CoreData
 import SwiftData
 import Observation
 
@@ -51,6 +52,8 @@ final class WatchLogStore {
     /// target on this checkout. Same `LocationProviding` the phone uses.
     private let locationManager = LocationManager()
 
+    private var remoteChangeObserver: NSObjectProtocol?
+
     init() {
         if let container = try? WatchModelContainer.makeContainer() {
             self.modelContext = ModelContext(container)
@@ -58,6 +61,25 @@ final class WatchLogStore {
             self.modelContext = nil
         }
         refresh()
+
+        // A drag on the phone's Habits screen rewrites every `sortOrder` and
+        // reaches the watch as a CloudKit import, which lands in the store
+        // silently. Without this the pager keeps rendering the order it fetched
+        // at launch until the next resume — the user reorders on the phone,
+        // looks at the wrist, and sees the old order.
+        remoteChangeObserver = NotificationCenter.default.addObserver(
+            forName: .NSPersistentStoreRemoteChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.refresh()
+        }
+    }
+
+    deinit {
+        if let remoteChangeObserver {
+            NotificationCenter.default.removeObserver(remoteChangeObserver)
+        }
     }
 
     /// Asks for when-in-use location once, so a wrist log can carry a fix like a
@@ -85,13 +107,14 @@ final class WatchLogStore {
             return
         }
 
-        habitOptions = activeHabits(in: context)
+        let active = activeHabits(in: context)
+        habitOptions = active
 
-        guard let habit = resolveTargetHabit(in: context) else {
+        guard let habit = resolveTargetHabit(among: active, in: context) else {
             // Distinguish (e) from (d): if a default was configured but is gone
             // and there's truly nothing to fall back to, it's "habit
             // unavailable"; otherwise there simply is no habit yet.
-            if hasConfiguredButMissingDefault(in: context) {
+            if let defaultID = defaultHabitId(in: context), !active.contains(where: { $0.id == defaultID }) {
                 state = .habitUnavailable
             } else {
                 state = .noHabit
@@ -99,7 +122,7 @@ final class WatchLogStore {
             return
         }
 
-        let count = todayResistedCount(for: habit, in: context)
+        let count = todayResistedCount(for: habit)
         state = .loggable(
             habitID: habit.id,
             name: habit.name,
@@ -178,8 +201,7 @@ final class WatchLogStore {
     /// if it's still live, else `UserSettings.defaultHabitId` if that points at a
     /// live non-archived habit, else the first non-archived habit in display
     /// order. Returns `nil` only when no non-archived habit exists at all.
-    private func resolveTargetHabit(in context: ModelContext) -> Habit? {
-        let active = activeHabits(in: context)
+    private func resolveTargetHabit(among active: [Habit], in context: ModelContext) -> Habit? {
         guard !active.isEmpty else { return nil }
 
         if let selectedHabitID,
@@ -210,19 +232,12 @@ final class WatchLogStore {
         return (try? context.fetch(descriptor))?.first?.defaultHabitId
     }
 
-    /// True when a default habit id was configured but no longer resolves to a
-    /// live non-archived habit. Used to choose state (e) over (d).
-    private func hasConfiguredButMissingDefault(in context: ModelContext) -> Bool {
-        guard let defaultID = defaultHabitId(in: context) else { return false }
-        return !activeHabits(in: context).contains { $0.id == defaultID }
-    }
-
     // MARK: - Count
 
     /// Today's *resisted* event count for `habit`, using the same calendar-day
     /// definition as `Habit.todayEventsCount` (events in the current calendar
     /// day) but filtered to the resisted outcome only.
-    func todayResistedCount(for habit: Habit, in context: ModelContext) -> Int? {
+    func todayResistedCount(for habit: Habit) -> Int? {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
         // Habit.safeEvents is the same source the phone counts from.
