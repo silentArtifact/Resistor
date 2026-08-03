@@ -151,14 +151,6 @@ struct WatchLogView: View {
                         subtitle: "Add a habit on your phone"
                     )
                 }
-            case .habitUnavailable:
-                page {
-                    nonLoggable(
-                        symbol: "exclamationmark.triangle",
-                        title: "Habit unavailable",
-                        subtitle: "Set a default habit on your phone"
-                    )
-                }
             }
         } else {
             // Pre-init frame; render nothing rather than a flash of wrong state.

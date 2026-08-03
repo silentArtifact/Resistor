@@ -42,16 +42,13 @@ final class LogViewModel {
         !habits.isEmpty
     }
 
-    init(modelContext: ModelContext, defaultHabitId: UUID? = nil, locationManager: LocationProviding? = nil) {
+    /// Opens on the *first* habit in `Habit.displayOrder` — index 0. There is no
+    /// separate default-habit setting: the user's drag order on the Habits screen
+    /// is the default, so one list is the only thing to keep in sync.
+    init(modelContext: ModelContext, locationManager: LocationProviding? = nil) {
         self.modelContext = modelContext
         self.locationManager = locationManager
         fetchHabits()
-        if let defaultId = defaultHabitId,
-           let index = habits.firstIndex(where: { $0.id == defaultId }) {
-            selectedHabitIndex = index
-        }
-        // Property observers do not fire during init, so the assignment above
-        // cannot be relied on to have refreshed anything.
         refreshActivePattern()
     }
 

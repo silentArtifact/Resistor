@@ -13,6 +13,10 @@ struct HabitsView: View {
     @State private var showExportSheet = false
     @State private var exportURL: URL?
     @State private var newTagName: String = ""
+    /// Owned rather than read from `\.editMode`, because `EditButton` installs
+    /// that inside the `NavigationStack` — below this view's own environment —
+    /// so the rows could never tell whether the grip hint should stand down.
+    @State private var isEditing = false
 
     /// The user-configured accent color, falling back to the system tint.
     private var accentColor: Color {
@@ -20,6 +24,13 @@ struct HabitsView: View {
             return color
         }
         return UserSettings.defaultAccentColor
+    }
+
+    /// Reordering only means something with two or more habits to order — and
+    /// the first one in that order *is* the habit the Log screen and the watch
+    /// open on, so the drag is the whole default-habit mechanism.
+    private var canReorder: Bool {
+        (viewModel?.activeHabits.count ?? 0) > 1
     }
 
     var body: some View {
@@ -35,9 +46,9 @@ struct HabitsView: View {
             .toolbar {
                 // Drag-to-reorder needs edit mode; only worth offering once
                 // there's more than one active habit to move.
-                if (viewModel?.activeHabits.count ?? 0) > 1 {
+                if canReorder {
                     ToolbarItem(placement: .topBarLeading) {
-                        EditButton()
+                        Button(isEditing ? "Done" : "Edit") { isEditing.toggle() }
                     }
                 }
 
@@ -129,6 +140,7 @@ struct HabitsView: View {
             tipJarSection
         }
         .listStyle(.insetGrouped)
+        .environment(\.editMode, .constant(isEditing ? .active : .inactive))
         .overlay {
             if vm.habits.isEmpty {
                 emptyHabitsView(vm)
@@ -147,22 +159,9 @@ struct HabitsView: View {
 
             // Info
             VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 6) {
-                    Text(habit.name)
-                        .font(.body)
-                        .fontWeight(.medium)
-
-                    if userSettings.first?.defaultHabitId == habit.id {
-                        Text("Default")
-                            .font(.caption2)
-                            .fontWeight(.medium)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(accentColor.opacity(0.15))
-                            .foregroundStyle(accentColor)
-                            .cornerRadius(4)
-                    }
-                }
+                Text(habit.name)
+                    .font(.body)
+                    .fontWeight(.medium)
 
                 if let description = habit.habitDescription, !description.isEmpty {
                     Text(description)
@@ -184,6 +183,23 @@ struct HabitsView: View {
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
             }
+
+            // Reorder affordance. Out of edit mode the list gives no hint that
+            // the order is the user's to set — and the order decides which habit
+            // both the Log screen and the watch open on. In edit mode the system
+            // draws its own grip, so this stands down rather than doubling it.
+            // Tappable so it isn't a dead affordance: a drag here does nothing
+            // until the list is editing.
+            if canReorder && !isEditing && !isArchived {
+                Image(systemName: "line.3.horizontal")
+                    .font(.body)
+                    .foregroundStyle(.tertiary)
+                    .padding(.leading, 8)
+                    .onTapGesture { isEditing = true }
+                    // The row is one combined element; the Edit button is the
+                    // VoiceOver path to reordering.
+                    .accessibilityHidden(true)
+            }
         }
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
@@ -191,18 +207,6 @@ struct HabitsView: View {
         .contentShape(Rectangle())
         .onTapGesture {
             vm.prepareEditHabit(habit)
-        }
-        .contextMenu {
-            if !isArchived {
-                Button {
-                    setDefaultHabit(habit)
-                } label: {
-                    Label(
-                        userSettings.first?.defaultHabitId == habit.id ? "Remove as Default" : "Set as Default",
-                        systemImage: "star"
-                    )
-                }
-            }
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             Button(role: .destructive) {
@@ -227,16 +231,6 @@ struct HabitsView: View {
                 .tint(.orange)
             }
         }
-    }
-
-    private func setDefaultHabit(_ habit: Habit) {
-        guard let settings = userSettings.first else { return }
-        if settings.defaultHabitId == habit.id {
-            settings.defaultHabitId = nil
-        } else {
-            settings.defaultHabitId = habit.id
-        }
-        try? modelContext.save()
     }
 
     @ViewBuilder

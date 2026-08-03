@@ -96,13 +96,13 @@ final class IntegrationTests: XCTestCase {
         let created = onboardingVM.createFirstHabit()
         XCTAssertTrue(created)
 
-        // Step 2: Fetch the default habit ID from settings
+        // Step 2: Onboarding is complete; the created habit is the only one, so
+        // it is first in display order and the Log screen opens on it.
         let settings = try context.fetch(FetchDescriptor<UserSettings>())
-        let defaultHabitId = settings.first?.defaultHabitId
-        XCTAssertNotNil(defaultHabitId)
+        XCTAssertTrue(settings.first?.hasCompletedOnboarding == true)
 
         // Step 3: Log a temptation via LogViewModel
-        let logVM = LogViewModel(modelContext: context, defaultHabitId: defaultHabitId)
+        let logVM = LogViewModel(modelContext: context)
         XCTAssertEqual(logVM.habits.count, 1)
         XCTAssertEqual(logVM.selectedHabit?.name, "Smoking")
 
@@ -187,7 +187,10 @@ final class IntegrationTests: XCTestCase {
         context.insert(habit3)
         try context.save()
 
-        let logVM = LogViewModel(modelContext: context, defaultHabitId: habit2.id)
+        let logVM = LogViewModel(modelContext: context)
+        // The carousel opens on the first habit; select the second explicitly,
+        // which is what a swipe on the Log screen does.
+        logVM.selectedHabitIndex = try XCTUnwrap(logVM.habits.firstIndex { $0.id == habit2.id })
         XCTAssertEqual(logVM.selectedHabit?.name, "Drinking")
 
         logVM.logTemptation()

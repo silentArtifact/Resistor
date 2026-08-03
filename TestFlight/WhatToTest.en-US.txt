@@ -1,20 +1,28 @@
-Log screen: two layout corrections.
+The default habit is now just the top of your habits list.
 
-The habit pager (arrows and dots) has moved from above the habit card to below
-it, under the "Tap or hold to log" line — where iOS normally puts page dots.
+The "Default" badge is gone, and so is "Set as Default" in the row's context
+menu. Instead, whichever habit sits first on the Habits screen is the one the
+Log screen and the Apple Watch open on. You change it by dragging.
 
-The card's icon and name were sitting high, with empty space under them, on any
-habit with no description. They're now centred in the card.
+Each habit row now shows a small grip icon on the right when you have two or
+more habits, so it's visible that the order is yours to set. Tapping it turns on
+edit mode; the toolbar "Edit" button still does the same thing.
+
+Whatever you had set as your default before is not carried over — the habit that
+opens is now purely a matter of list order, so check the order is what you want.
 
 Worth checking:
 
-- With more than one habit, the pager reads as belonging to the card below it
-  rather than to whatever is above it. Arrows and dots still work.
-- Make a habit with no description at all. Its icon and name should sit in the
-  middle of the card, not near the top.
-- Swipe between a habit that has a description and one that doesn't. The card
-  must not change size or jump mid-swipe — that's the thing most at risk here.
-- Nothing below the card moved: context chips and "Today: N logged" should sit
-  exactly where they did before.
-
-Nothing changed on the Apple Watch in this build.
+- With two or more habits, drag one to the top on the Habits screen, then go to
+  the Log tab. It should open on the habit you just moved to the top.
+- Same check on the Apple Watch: after the phone syncs, the watch should open on
+  the same habit the phone does. This is the part most at risk.
+- With exactly one habit, the grip icon and the "Edit" button should both be
+  absent — there's nothing to reorder.
+- The grip icon should disappear while you're in edit mode (the system draws its
+  own there). You shouldn't ever see two grips on one row.
+- Tapping a habit row still opens its editor, in and out of edit mode.
+- Archive the top habit. Log and the watch should move to the next one down
+  rather than showing an error.
+- VoiceOver: the grip is deliberately skipped; reordering is reachable through
+  the "Edit" button.

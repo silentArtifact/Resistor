@@ -4,9 +4,12 @@ import SwiftData
 import Observation
 
 /// The resolved render state for the watch Quick-Log screen. Mirrors the UX
-/// spec's states (a)/(d)/(e)/(f) — a loggable target with a known count, a
-/// loggable target whose count read failed, no habit at all, or a configured
-/// default that is no longer valid with no fallback.
+/// spec's states (a)/(d)/(f) — a loggable target with a known count, a loggable
+/// target whose count read failed, or no habit at all.
+///
+/// There is no "configured default is gone" state: with the default-habit
+/// setting removed, the target is simply the first non-archived habit in display
+/// order, so "no habit to log" is the only way resolution can fail.
 enum WatchLogState: Equatable {
     /// (a)/(f) Loggable. A valid target habit is resolved and named. `count` is
     /// `nil` when the count read failed (render "Count unavailable", never a
@@ -14,15 +17,12 @@ enum WatchLogState: Equatable {
     case loggable(habitID: UUID, name: String, colorHex: String?, iconName: String?, count: Int?)
     /// (d) No habit exists to log against.
     case noHabit
-    /// (e) A default was set but is now archived/deleted and no other
-    /// non-archived habit exists to fall back to.
-    case habitUnavailable
 }
 
 /// The single data path for the watch Quick-Log screen. Owns the watch-side
-/// `ModelContext`, resolves the target habit (default → else sole/first
-/// non-archived habit, deterministic order), reads today's resisted count, and
-/// performs the log via the shared `TemptationLogger`.
+/// `ModelContext`, resolves the target habit (watch pick → else first
+/// non-archived habit in the phone's display order), reads today's resisted
+/// count, and performs the log via the shared `TemptationLogger`.
 ///
 /// Kept as a small reusable provider (not inlined in the View) so a future
 /// complication is just a new presentation over the same `state` /
@@ -110,15 +110,8 @@ final class WatchLogStore {
         let active = activeHabits(in: context)
         habitOptions = active
 
-        guard let habit = resolveTargetHabit(among: active, in: context) else {
-            // Distinguish (e) from (d): if a default was configured but is gone
-            // and there's truly nothing to fall back to, it's "habit
-            // unavailable"; otherwise there simply is no habit yet.
-            if let defaultID = defaultHabitId(in: context), !active.contains(where: { $0.id == defaultID }) {
-                state = .habitUnavailable
-            } else {
-                state = .noHabit
-            }
+        guard let habit = resolveTargetHabit(among: active) else {
+            state = .noHabit
             return
         }
 
@@ -198,22 +191,17 @@ final class WatchLogStore {
     // MARK: - Target resolution
 
     /// Resolves the target habit: whatever was picked on the watch this session
-    /// if it's still live, else `UserSettings.defaultHabitId` if that points at a
-    /// live non-archived habit, else the first non-archived habit in display
-    /// order. Returns `nil` only when no non-archived habit exists at all.
-    private func resolveTargetHabit(among active: [Habit], in context: ModelContext) -> Habit? {
-        guard !active.isEmpty else { return nil }
-
+    /// if it's still live, else the first non-archived habit in the phone's
+    /// display order. Returns `nil` only when no non-archived habit exists.
+    ///
+    /// First-in-display-order *is* the default habit — the user sets it by
+    /// dragging on the phone's Habits screen, so the watch and the phone's Log
+    /// screen open on the same habit without a second setting to keep in sync.
+    private func resolveTargetHabit(among active: [Habit]) -> Habit? {
         if let selectedHabitID,
            let picked = active.first(where: { $0.id == selectedHabitID }) {
             return picked
         }
-
-        if let defaultID = defaultHabitId(in: context),
-           let match = active.first(where: { $0.id == defaultID }) {
-            return match
-        }
-        // Deterministic fallback so the watch always names a stable target.
         return active.first
     }
 
@@ -225,11 +213,6 @@ final class WatchLogStore {
             sortBy: Habit.displayOrder
         )
         return (try? context.fetch(descriptor)) ?? []
-    }
-
-    private func defaultHabitId(in context: ModelContext) -> UUID? {
-        let descriptor = FetchDescriptor<UserSettings>()
-        return (try? context.fetch(descriptor))?.first?.defaultHabitId
     }
 
     // MARK: - Count

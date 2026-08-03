@@ -347,6 +347,41 @@ final class SnapshotTests: XCTestCase {
         XCTAssertEqual(bare.frame.height, describedSize.height, accuracy: 0.5)
     }
 
+    /// The habit order *is* the default-habit setting: whatever sits first in the
+    /// Habits list is what the Log screen opens on. Pins both halves of that —
+    /// that "Edit" really puts the list into edit mode (the reorder grips are
+    /// drawn by UIKit off an `editMode` this view owns itself, rather than the one
+    /// `EditButton` installs inside the `NavigationStack`, so a broken binding
+    /// would show grips and reorder nothing), and that dragging actually moves
+    /// which habit the Log screen opens on.
+    func testHabitOrderDecidesWhichHabitLogOpensOn() {
+        let app = XCUIApplication()
+        app.launchArguments += ["-uiTestMode"]
+        app.launch()
+
+        // Seeded order is Sugar, then Doomscrolling.
+        XCTAssertTrue(app.buttons["Log temptation for Sugar"].waitForExistence(timeout: 5),
+                      "Log screen should open on the first habit")
+
+        app.buttons["Habits"].tap()
+        XCTAssertTrue(app.navigationBars["Habits"].waitForExistence(timeout: 5))
+        app.navigationBars["Habits"].buttons["Edit"].tap()
+
+        // UIKit draws these off the edit mode this view owns; they exist only if
+        // the binding reached the List.
+        let sugarGrip = app.buttons["Reorder Sugar"]
+        let doomGrip = app.buttons["Reorder Doomscrolling"]
+        XCTAssertTrue(sugarGrip.exists, "no reorder grip — edit mode did not activate")
+        XCTAssertTrue(doomGrip.exists, "no reorder grip — edit mode did not activate")
+
+        doomGrip.press(forDuration: 0.6, thenDragTo: sugarGrip)
+        app.navigationBars["Habits"].buttons["Done"].tap()
+
+        app.buttons["Log"].tap()
+        XCTAssertTrue(app.buttons["Log temptation for Doomscrolling"].waitForExistence(timeout: 5),
+                      "after reordering, Log opens on the new first habit")
+    }
+
     private func snapshot(_ app: XCUIApplication, name: String) {
         let screenshot = XCUIScreen.main.screenshot()
         let attachment = XCTAttachment(screenshot: screenshot)

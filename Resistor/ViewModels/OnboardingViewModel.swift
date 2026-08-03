@@ -36,15 +36,12 @@ final class OnboardingViewModel {
         let settingsDescriptor = FetchDescriptor<UserSettings>()
         do {
             let existingSettings = try modelContext.fetch(settingsDescriptor)
+            // No default habit is recorded: the first habit in `displayOrder` is
+            // the default, and this is the only habit there is.
             if let settings = existingSettings.first {
                 settings.hasCompletedOnboarding = true
-                settings.defaultHabitId = newHabit.id
             } else {
-                let newSettings = UserSettings(
-                    defaultHabitId: newHabit.id,
-                    hasCompletedOnboarding: true
-                )
-                modelContext.insert(newSettings)
+                modelContext.insert(UserSettings(hasCompletedOnboarding: true))
             }
 
             try modelContext.save()

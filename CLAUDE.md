@@ -64,15 +64,34 @@ All four entities use the `@Model` macro. CloudKit compatibility constraints app
 
 Computed: `todayEventsCount`, `thisWeekEventsCount`, `activeEventsCount`.
 
-**Ordering is `Habit.displayOrder`, not `createdAt`.** Every habit list — the Log
-carousel, the Habits screen, the widget's picker, the watch's picker and fallback
-target — sorts by `[sortOrder, createdAt, id]`, so one drag on the Habits screen
-reorders all four. Reorder is edit-mode `.onMove` → `HabitsViewModel.moveHabits`,
+**Ordering is `Habit.displayOrder`, not `createdAt`, and the first habit in it is
+the default habit.** Every habit list — the Log carousel, the Habits screen, the
+widget's picker, the watch's picker and target — sorts by `[sortOrder, createdAt,
+id]`, so one drag on the Habits screen reorders all four *and* changes which habit
+the phone's Log screen and the watch open on. There is no separate default-habit
+setting: `UserSettings.defaultHabitId` was orphaned on 2026-08-03 (issue #60)
+because two user-settable orderings could disagree — the list showed one habit
+first and the app opened on another, and the "Default" badge was the only clue.
+Reorder is edit-mode `.onMove` → `HabitsViewModel.moveHabits`,
 which rewrites the whole active list to a dense 0..n-1 rather than nudging one
 row, so repeated drags can't drift into ties. Until a first drag every habit is 0
 and the `createdAt` tiebreak reproduces the pre-`sortOrder` order exactly — which
 is also why a *new* habit must take `Habit.nextSortOrder(in:)` at creation
-(all three creation sites do), or it would default to 0 and jump to the top.
+(all three creation sites do), or it would default to 0 and jump to the top — and
+now that first place *is* the default habit, that would also silently retarget the
+Log screen and the watch.
+
+**The grip glyph on a habit row is the only hint the order is the user's.** Out of
+edit mode a `List` gives none, and the order now decides what the app opens on, so
+each row carries a `line.3.horizontal` in `.tertiary` when there are 2+ active
+habits — tappable (it turns edit mode on), because a drag on it does nothing until
+the list is editing. It stands down in edit mode so it doesn't double the system's
+own grip. `HabitsView` therefore owns its `isEditing` state and installs
+`\.editMode` itself rather than using `EditButton`: `EditButton` writes to the
+`editMode` the `NavigationStack` installs *below* `HabitsView`'s own environment,
+so the rows could never read it to know when to stand down.
+`testHabitOrderDecidesWhichHabitLogOpensOn` pins both halves — that "Edit" really
+reaches UIKit (the grips exist), and that a drag moves which habit Log opens on.
 
 ### TemptationEvent
 
@@ -152,7 +171,7 @@ in Settings; a place is renamed or removed through the same sheet.
 | Field | Type | Notes |
 |-------|------|-------|
 | `id` | `UUID` | No `@Attribute(.unique)` (CloudKit) |
-| `defaultHabitId` | `UUID?` | Which habit to show first on Log screen |
+| `defaultHabitId` | `UUID?` | **Orphaned.** Nothing reads it — the first habit in `Habit.displayOrder` is the default. Still merged by `mergeDuplicates` |
 | `showContextPrompt` | `Bool` | **Orphaned.** Gated the post-log context sheet, which no longer exists. Nothing reads or sets it — see Sheet Dismissal |
 | `accentColorHex` | `String?` | User-configurable accent color hex. Nil = system blue. |
 | `hasCompletedOnboarding` | `Bool` | Gates onboarding flow |
@@ -233,6 +252,13 @@ from the models:**
 All three are live in the Production CloudKit schema (deployed 2026-07-31), so
 restoring capture for any of them needs UI only — no migration, no schema deploy.
 Don't delete them to "clean up": Production record fields can never be removed.
+
+**`UserSettings.defaultHabitId` joined them on 2026-08-03** (issue #60), for a
+different reason — not an orphaned sheet, a deliberately removed feature. Its
+merge in `mergeDuplicates` is kept rather than deleted, on the same reasoning as
+`showContextPrompt`'s: the field cannot leave Production, and a merge that resolves
+the more plausible of two values costs nothing while a deleted one would have to be
+rewritten if the setting ever comes back.
 
 ### Color Handling
 
@@ -684,8 +710,10 @@ order on the wrist. The pick lives in memory only
 (`WatchLogStore.selectedHabitID`) and resets to the default habit on relaunch,
 exactly like the phone's Log screen; persisting a watch-local override would make
 the two devices disagree about what "the" habit is. Target resolution is pick →
-`UserSettings.defaultHabitId` → first in `Habit.displayOrder`, and a pick that
-gets archived falls back rather than logging to an archived habit.
+first in `Habit.displayOrder`, and a pick that gets archived falls back rather than
+logging to an archived habit. There is no "habit unavailable" state any more: it
+covered a *stored* target that had gone stale, and with `defaultHabitId` orphaned
+nothing is stored — archiving the target just promotes the next habit.
 
 Pager pages are deliberately **not** scrollable — a vertical scroll inside a
 vertically paged `TabView` fights it for the same drag and the same Crown. Only
@@ -864,7 +892,6 @@ Current as of 2026-08-03. Everything previously listed here (#35 icon, #37
 accessibility, #47 widget, #48 haptics, #49 watch) is closed.
 
 - #53 — Log screen: surface multiple habits (scrollable list) to use the empty space
-- #60 — Default habit: make it the top of the reordered list, or drop it
 - #61 — Log screen: habit card content is top-justified, not centered
 - #62 — Log screen: habit pager sits above the card, should be below
 - #63 — Habit editor: expand icon and color choices (icon search)
