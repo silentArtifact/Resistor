@@ -46,7 +46,7 @@ final class InsightsViewModel {
     func fetchHabits() {
         let descriptor = FetchDescriptor<Habit>(
             predicate: #Predicate { !$0.isArchived },
-            sortBy: [SortDescriptor(\.createdAt)]
+            sortBy: Habit.displayOrder
         )
         do {
             habits = try modelContext.fetch(descriptor)

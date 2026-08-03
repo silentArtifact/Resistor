@@ -1,39 +1,25 @@
-The default habit is now just the top of your habits list.
+Two fixes: the Insights habit picker now follows the order you set, and habit
+descriptions on the Log screen are no longer cut off.
 
-The "Default" badge is gone, and so is "Set as Default" in the row's context
-menu. Instead, whichever habit sits first on the Habits screen is the one the
-Log screen and the Apple Watch open on. You change it by dragging.
+The Insights picker was the last habit list still sorting oldest-first, so
+reordering on the Habits screen had no effect there and Insights opened on
+whichever habit you created first.
 
-Each habit row now shows a small grip icon on the right when you have two or
-more habits, so it's visible that the order is yours to set. Tapping it turns on
-edit mode; the toolbar "Edit" button still does the same thing.
-
-Whatever you had set as your default before is not carried over — the habit that
-opens is now purely a matter of list order, so check the order is what you want.
+On the Log screen, every habit card reserved two lines for a description whether
+or not the habit had one — so a habit without a description showed its icon and
+name pushed up above an empty band, and a description longer than two lines was
+truncated with no other place to read it. Cards are now the height of the longest
+description you've actually written, and descriptions are capped at 120
+characters when you type them rather than cut off where they're shown.
 
 Worth checking:
 
-- With two or more habits, drag one to the top on the Habits screen, then go to
-  the Log tab. It should open on the habit you just moved to the top.
-- Same check on the Apple Watch: after the phone syncs, the watch should open on
-  the same habit the phone does. This is the part most at risk.
-- With exactly one habit, the grip icon and the "Edit" button should both be
-  absent — there's nothing to reorder.
-- The grip icon should disappear while you're in edit mode (the system draws its
-  own there). You shouldn't ever see two grips on one row.
-- Tapping a habit row still opens its editor, in and out of edit mode.
-- Archive the top habit. Log and the watch should move to the next one down
-  rather than showing an error.
-- VoiceOver: the grip is deliberately skipped; reordering is reachable through
-  the "Edit" button.
-
-Also in this build, and never described to you: the previous build's two Log
-screen layout fixes. Its release notes came out as "Merge pull request #66 …"
-because of a bug in how these notes were assembled, now fixed. So if you skipped
-them:
-
-- The habit pager (arrows and dots) moved from above the habit card to below it,
-  under the "Tap or hold to log" line.
-- A habit with no description had its icon and name sitting high with empty space
-  underneath; they're now centred in the card. Swiping between a habit with a
-  description and one without should not resize the card or make it jump.
+- With two or more habits, drag one to the top on the Habits screen, then open
+  Insights. The picker should list them in that order and open on the habit you
+  moved to the top.
+- Add a habit with no description. Its card should be compact, with the icon and
+  name centered — no empty space underneath.
+- Give one habit a long description. Every card should grow to the same height,
+  and swiping between them shouldn't make the screen jump.
+- In the habit editor, try typing past 120 characters of description. It should
+  stop accepting input rather than silently truncating later.
