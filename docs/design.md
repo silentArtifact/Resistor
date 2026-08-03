@@ -93,9 +93,9 @@ Edge cases:
 1. User opens app, lands on Log screen.
 2. Currently selected habit visible as a card.
 3. Swipe left/right to switch habits if needed.
-4. Tap (or hold) "Log Temptation".
+4. Tap (or hold) the habit card — the card itself is the affordance.
 5. Event created with timestamp, habit reference, and **outcome defaulting to `resisted`** (the common case: the user logs the moment they were tempted and overcame the urge). Logging stays a single tap — there is **no** up-front outcome decision.
-6. Optional outcome/intensity/context sheets present per existing sheet-sequencing rules (these remain "Skip"-able and never block the log).
+6. Any context tag chips selected *before* the tap are attached at log time (Flow 4). **No post-log sheet presents** — nothing interrupts between the tap and the banner.
 7. Confirmation banner slides down offering **"Gave in"** and **"Undo"**, auto-hides after 5s (the dwell window for an in-the-moment correction; see Flow 1a).
 
 Edge cases:
@@ -314,8 +314,9 @@ Fixed product decisions for v1 (the watch ships deliberately small):
 
 **Which habit does the watch log to?** v1 logs to the user's **default habit**
 (`UserSettings.defaultHabitId`), falling back to the single habit if only one
-exists. On-watch habit *switching* (a carousel/picker on the wrist) is **Later**
-(see Scope). This keeps v1 to one screen and one tap. If the user has multiple
+exists. On-watch habit *switching* was **Later** here and has since shipped as a
+vertical pager (Screens → WATCH → Habit Paging); the default habit is now the
+page the watch *opens* on. If the user has multiple
 habits and no default set, the watch logs to a deterministic first habit and
 names it on screen so the target is never ambiguous (it never logs to an
 unnamed/"current" habit silently).
@@ -560,12 +561,23 @@ Copy notes:
 
 ### S1: Log Screen (default tab)
 
-- Habit card carousel (swipe or arrow buttons)
-- Large "Log Temptation" button
+- Habit card carousel (swipe, arrow buttons, or page dots). **The card is the log
+  affordance** — hinted "Tap or hold to log". There is no separate log button
+- Pattern heads-up above the card, when the clock is inside a known pattern (see
+  Pattern Heads-Up below)
+- Context tag chips, selected *before* logging (see Flow 4)
 - Today's count for selected habit
-- Outcome sheet (half-sheet): intensity 1-5, "I Resisted" / "I Gave In" / "Skip"
-- Context sheet (half-sheet): tag grid + note field, "Skip" / "Save"
 - Confirmation banner overlay — offers "Gave in" and "Undo" (see Outcome Capture use cases below)
+
+**There are no post-log sheets.** The outcome → context sheet sequence was
+removed when logging moved to default-to-resisted with after-the-fact banner
+correction, and context became inline chips chosen before the tap. One
+consequence is worth recording because it is easy to miss: **`intensity` now has
+no capture UI anywhere.** It is read-only in the History event detail, and the
+Insights "Intensity Trend" card can therefore only render against data planted
+by `UITestSeed` — on a real device the field is always nil. The property is still
+on `TemptationEvent` and still deployed to the Production CloudKit schema, so
+re-adding capture needs no migration.
 
 #### Outcome Capture (use cases)
 
@@ -580,7 +592,7 @@ and History already display outcome. Today nothing ever writes anything but
 As someone who just resisted an urge, I want logging to be one tap so that I capture
 the moment without friction, and have its outcome recorded as resisted.
 Acceptance criteria:
-- Tapping (or holding) "Log Temptation" creates exactly one `TemptationEvent` whose
+- Tapping (or holding) the habit card creates exactly one `TemptationEvent` whose
   `outcome` is `"resisted"`.
 - No outcome decision is presented before or during the log; the log completes in a
   single tap.
@@ -746,16 +758,257 @@ they can re-log; after dismissal, History (Surface C) is the correction path.
 See "Outcome Correction (use cases)" under History for the after-the-fact surface
 (UC-O4).
 
+#### Pattern Heads-Up (interaction and visual spec)
+
+The second surface of the Patterns feature (spec'd under S2), delivered at the
+moment it applies rather than after the fact. Insights only helps once the user
+goes and looks; being caught off guard is the thing this app exists to prevent,
+and with notifications permanently out, the Log screen is the only place a
+timely finding can arrive.
+
+**UC-P7 — Know a usual time is now, before logging.**
+As someone who gets caught off guard, I want to be told when the clock is inside
+one of this habit's known patterns so that I am ready rather than surprised.
+Acceptance criteria:
+- The line appears only while the current moment matches a pattern for the
+  selected habit, and disappears when it does not.
+- Matching uses the **calendar facets only** — weekday and time of day.
+- A pattern with no calendar facet ("At Home, when bored") never raises it.
+- The line states the finding and stops: no warning, no advice, no action.
+
+**Why calendar facets only.** Place and context describe what an occasion turned
+out to be; neither is knowable before the user logs, and asking for a GPS fix to
+decide whether to show a line of text is not a trade worth making.
+
+**Layout.** Above the habit card. `HStack(alignment: .top, spacing: 10)`:
+`calendar.badge.clock` in the accent colour, then a two-line `VStack(spacing: 2)`
+— "Usual time" (`.caption` / `.semibold` / `.secondary`) above
+`Pattern.summary` (`.subheadline` / `.medium`). 14pt horizontal, 10pt vertical
+padding on a `RoundedRectangle(cornerRadius: 14)` filled with the accent at 10%.
+
+Three load-bearing choices:
+
+- **The label sits above the finding, not in front of it.** The earlier *"This is
+  a usual time — …"* preamble spent the whole first line before saying anything
+  and pushed the sentence — the part that has to be read at a glance — down into
+  a wrapped clause.
+- **`calendar.badge.clock`, not `clock.badge.exclamationmark`.** The finding is a
+  weekday and an hour, and the app does not raise alarms.
+- **Rounded rect, not a capsule.** A long sentence wraps to two lines at larger
+  type sizes, and a capsule around two lines reads as a mistake.
+
+**Accessibility.** Single element; label "Usual time. {summary}".
+
 ### S2: Insights Screen
 
+Cards in render order. **Two cards are deliberately not scoped by the time range
+picker** — Patterns (mined over full history, each row states its own window) and
+Summary (reports whole weeks and months, labelled "All time"). Everything else
+between them reads the selected range.
+
 - Habit selector pills (horizontal scroll)
-- Summary stats: this period vs previous, peak time, peak day
-- Outcome breakdown (stacked bar + resisted %)
-- Daily trend chart (bar chart)
-- Time of day chart (bar chart) — four periods; a selected period expands in place
+- **Patterns** — multi-axis trigger findings. Sits *above* the picker because it
+  is not scoped by it (see Patterns Card below)
+- **Time range picker** — segmented, "7 Days" / "30 Days"
+- **Summary stats** — 2×2 grid: "This Week"/"This Month" (count), "vs Previous"
+  (change), "Peak Time", "Peak Day". No Top Location card: the Top Locations
+  chart below already names the same place and two more behind it
+- **Outcomes** — stacked bar + "{n}% resisted"
+- **Daily Trend** — bar chart
+- **Time of Day** — bar chart, four periods; a selected period expands in place
   to hourly bars (see Time-of-Day Drill-Down below)
-- Day of week chart (bar chart)
+- **Day of Week** — bar chart
+- **Top Locations** — only when location data exists. A hand-built list (name +
+  count on its own full-width line, bar underneath), not a `Chart` with a
+  category axis: place names are long enough ("Financial District, San
+  Francisco") that Charts drew the labels inside the plot on top of their own bars
+- **Intensity Trend** — only when intensity has been recorded; "Avg {x.x}"
+  accessory
+- **Summary** — whole weeks and months from full history; "All time" accessory
+- "View Map" navigation link
 - "View History" navigation link
+
+#### Patterns Card (use cases)
+
+Every other card on this screen reads **one axis at a time**, so a run of Friday
+evenings hides inside two unremarkable bars — "Friday" looks ordinary on the Day
+of Week chart, "Evening" looks ordinary on the Time of Day chart, and the fact
+that nearly every Friday evening is an event appears on neither. The Patterns
+card is the only card that reads several axes at once, and that is its entire
+justification for existing.
+
+Implemented in `Services/PatternFinder.swift`; surfaced by
+`InsightsViewModel.cachedPatterns`.
+
+**UC-P1 — Surface a cluster no single-axis chart can show.**
+As someone reviewing my logs, I want combinations of time, day, place, and
+context that come up more often than chance so that I learn what actually sets
+me off.
+Acceptance criteria:
+- Findings combine two or three facets drawn from time of day, weekday, place
+  (via `Place.groupingName`), and context tag.
+- A combination appears only when its observed frequency beats what the
+  independent rates of its parts predict, at p ≤ 0.01 (`binomialTail`).
+- At most 4 findings are listed, ranked by **cluster size**, not by p-value.
+- No finding restates one already listed: a candidate is dropped unless ≥50% of
+  its occasions are not already covered by an accepted finding.
+
+**UC-P2 — Count occasions, never raw events.**
+As someone who sometimes logs several times in one bad hour, I want a run of
+logs from a single sitting to count once so that my worst evenings don't
+manufacture patterns.
+Acceptance criteria:
+- An occasion is every event for the habit on the same day inside the same
+  time-of-day period; its facets are the union across the sitting.
+- Two logs forty minutes apart on one Friday evening are one data point.
+- Every threshold and every displayed count is in occasions, including the
+  minimum-data floor.
+
+**UC-P3 — Tell "not enough data" apart from "nothing clusters".**
+As a new user, I want to know whether the card is empty because I haven't logged
+enough or because my temptations genuinely don't cluster.
+Acceptance criteria:
+- Below the floor, the card counts up toward it so the wait has a visible end.
+- At or above the floor with nothing significant, the card says so plainly.
+- Neither state is an error, and neither is styled as one.
+
+**UC-P4 — See whether a trigger is thinning out.**
+As someone working on a trigger, I want to see whether it is receding, because a
+lifetime total only ever grows.
+Acceptance criteria:
+- Each row states a **rate over a recent window**, not a lifetime total: "7 of
+  the last 8 Fridays, 10 in all".
+- Weekday patterns measure over the last 8 occurrences of that weekday;
+  time-only patterns over the last 14 days; a pattern with neither has no
+  recurring slot and falls back to a plain count.
+- A pattern with zero matches in its window sinks below every live one but stays
+  listed — beating something is worth seeing.
+- Direction, not just ratio, is visible: the row carries a per-slot tally read
+  oldest-to-newest, so a trigger being beaten visibly empties from the right.
+
+**UC-P5 — Drill into the events behind a finding.**
+As someone who doubts a finding, I want to see the events it is built from.
+Acceptance criteria:
+- Tapping a row pushes History filtered to events whose facets are a superset of
+  the pattern's.
+- The filter is re-derived with the same `PatternFinder.facets(of:)` call the
+  mining used, so the list cannot disagree with the count the row claims.
+- The pushed screen is titled with the finding's own sentence.
+- This is the card's only interaction; nothing else on a row is tappable.
+
+**UC-P6 — The card is not scoped by the time range picker.**
+As someone switching to "7 Days", I want the patterns to keep saying what they
+said, because a week holds too few occasions for anything to clear the noise
+floor.
+Acceptance criteria:
+- Patterns are mined over the habit's **full history**, regardless of the picker.
+- The card sits above the picker, so nothing implies the picker scopes it.
+- Each row states its own window, so mining deep does not mean showing stale.
+- Changing the range leaves the card unchanged.
+
+**Non-goal — no outcome figure, permanently.** The card carries no resisted
+percentage, and `Pattern` has no outcome field to put one in. This card answers
+*what sets me off*; whether the urge was then resisted answers *how am I doing*,
+and the two side by side read as a grade on the situation rather than a
+description of it. Progress still shows here, in the right currency: a trigger
+the user is beating thins out and the row says so. Pinned by
+`testOutcomeDoesNotAffectPatterns`.
+
+#### Patterns Card (interaction and visual spec)
+
+**Placement.** First card below the habit selector, above the time range picker.
+Below the picker it read as though the picker scoped it, and it directly
+contradicted the Peak Day / Peak Time cards it sat under.
+
+**Container.** `SectionCard(title: "Patterns")`.
+
+**Empty states** (`.caption`, `.secondary`, no icon, no error styling):
+
+| Condition | String |
+|---|---|
+| Occasions < 10 | "Not enough yet — {n} of about 10 separate times logged." |
+| Occasions ≥ 10, no findings | "No situation stands out yet. Temptations are spread evenly across times, days, and places." |
+
+**Row anatomy** — two lines, `VStack(spacing: 7)`, 11pt vertical padding:
+
+- **Line 1:** the finding as a sentence, `.body` / `.medium`, `.primary`. Set at
+  body weight because at `.subheadline` the card's own title outranked its
+  content. Trailing `chevron.right`, `.caption`, `.tertiary`.
+- **Line 2:** recency tally, then `frequencyDescription`, `.footnote`,
+  `.secondary`, 9pt apart.
+
+Rows are separated by `Divider()` with zero spacing, not by gaps — these are
+discrete findings in rank order, and undivided they read as one paragraph of
+wrapped text.
+
+**Findings are sentences, not facet lists.** `Pattern.summary` templates on facet
+*type* — "Friday mornings around 11 AM, at Home", "Evenings, when bored" — rather
+than joining names with middots. A specific hour is named only when ≥60% of the
+cluster's events share that exact clock hour; agreement is measured on the exact
+hour rather than a ±1 window because Evening is four hours wide, so an even
+spread still puts 75% within ±1 of the middle and would falsely claim "around
+7 PM".
+
+**Recency tally.** One 4×12pt `Capsule` per slot in the window, 3pt gaps, read
+left to right as **oldest to newest**. Filled where the situation occurred,
+`Color(.quaternaryLabel)` where it did not. The mark count *is* the window
+length — eight Fridays draw eight marks — so the tally is the evidence itself
+rather than a gauge of it. Load-bearing: 4-and-3 rather than 3-and-2, because
+tighter they merge into a bar instead of staying countable, and the empty slots
+lose the area they need to register at all — which is the whole row in the
+0-of-8 case.
+
+**Fill colour.** `.tint` — Insights has no accent plumbing and inherits the
+root `.tint()`.
+
+**Faded state** (`recent.matched == 0`): the summary drops to `.secondary` and
+the tally fill drops to a neutral `Color(.secondaryLabel)` rather than a dimmer
+accent, so the one thing colour means on this row stays "still live".
+
+**Navigation.** The whole row is a `NavigationLink` (`.buttonStyle(.plain)`,
+`.contentShape(Rectangle())`) to `HistoryView(habit:pattern:)`. This is History's
+only other entry point and stays within the max-one-level-deep rule.
+
+**Accessibility.** The row is a single element (`children: .ignore`); label is
+"{summary}. {frequencyDescription}"; hint "Shows the matching events". The tally
+is `accessibilityHidden` — the line beside it states the same ratio in words, and
+eight dots announced individually would be noise. `frequencyDescription` is one
+phrasing for both screen and VoiceOver, carrying no "×" or "·" that would need
+substituting for speech.
+
+**Thresholds** (`PatternFinder` constants; changing any one silently degrades the
+card):
+
+| Constant | Value | Why |
+|---|---|---|
+| `minimumOccasions` | 10 | Below this every pair is noise. In occasions, so ten logs from two evenings is two data points |
+| `minimumSupport` | 3 | Two coincidences are not a pattern |
+| `minimumLift` | 1.3 | Effect-size floor; a solid 1.05× is true and useless. Filters only — never displayed |
+| `maximumPValue` | 0.01 | Dozens of pairs tested at once; at 0.05 roughly one in twenty clears on noise alone |
+| `overlapAllowance` | 0.5 | One cluster satisfies several pairs; below half it is a rephrasing, not a second finding |
+| `refinementRetention` | 0.7 | A third facet on half the cluster would be a sub-cluster — reporting it shrinks a finding the user already had |
+| `maximumResults` | 4 | — |
+| `recentWeekdaySlots` | 8 | Long enough to be a rate, short enough that beating a trigger visibly moves it |
+| `recentDaySlots` | 14 | Same, for time-only patterns |
+| `hourAgreement` | 0.6 | Comfortably above the 25% an even spread across a four-hour period produces |
+
+**Ranking is by size, filtered by significance.** `Pattern.sortKey` orders on
+live-before-faded, then occasion count; the p-value only filters and breaks ties.
+Ranking *by* p-value was wrong for this product: a rare pair has a rare
+expectation to divide by, so a 4-occasion fluke (p = 1.7e-3) outranks a
+12-occasion trend (p = 3.5e-3) — the reverse of what the user is asking. Ties
+fall through to dimension rank then label, because restatements of one cluster
+tie on every statistic and `Dictionary` iteration order is not stable across
+launches.
+
+**Three-facet findings come from refining an accepted pair, never from mining
+triples.** The reason is the opposite of the intuitive one: a triple's expected
+share is its parent pair's times a third probability ≤ 1, so it clears
+significance *more* easily — at 100 occasions a pair needs 13 matches, a triple
+8. Mining triples directly would re-admit the small-sample coincidence the tail
+test exists to reject, over a much larger candidate pool. Refinement therefore
+runs *after* a pair has won its slot and only relabels it; it never adds a row,
+and it stops at three because a four-clause sentence stops being actionable.
 
 #### Time-of-Day Drill-Down (use cases)
 
@@ -1474,15 +1727,27 @@ CloudKit container the phone uses (`iCloud.com.resistor.app`); parity comes from
 Fixed product decisions (not open for design re-litigation):
 - **Single-screen, single-tap.** One large log control for one habit. A tap fires
   the shared logger; no outcome/intensity/context capture on the watch.
-- **Logs to the default habit.** The watch targets `UserSettings.defaultHabitId`
+- **Opens on the default habit.** The watch targets `UserSettings.defaultHabitId`
   (falling back to the sole habit, then a deterministic first habit, always named
-  on screen). On-watch habit switching is out of v1 (Later).
+  on screen).
 - **Taptic confirmation + brief neutral acknowledgment.** The success haptic is
   the primary confirmation; any on-screen acknowledgment is clinical (e.g.
   "Logged"), never celebratory.
-- **No notifications, no complication, no undo, no correction on the watch.**
-  Correction (Gave in) and deletion (undo) happen in the phone app. Complication
-  is Later.
+- **No notifications and no outcome correction on the watch.** Correction (Gave
+  in) happens in the phone app.
+
+**Shipped since this section was written** (2026-08-03), so read the paragraphs
+below against these rather than the other way round:
+
+- **On-watch habit switching**, listed here as "Later", ships as a vertical
+  pager — see Habit Paging below.
+- **Undo** ships, as a wrist shake within 5s of a log (`ShakeDetector`, Core
+  Motion — watchOS has no shake gesture API), with a VoiceOver action alongside
+  it because a motion-only affordance is no use to someone who cannot shake
+  reliably.
+- **A complication** ships, as a static launcher glyph only — no live data,
+  since showing any would mean moving the watch store into an App Group so the
+  extension process could read it.
 
 #### Watch Quick-Log (use cases)
 
@@ -1602,24 +1867,60 @@ the end).
 
 ##### Single screen, no navigation
 
-The watch app is exactly one screen — no `NavigationStack`, no tabs, no Digital
-Crown scroll target in v1 (there is nothing to scroll; the whole control fits one
-watch face). The screen is the log control plus its surrounding identity text.
-This honors the "single-screen, single-tap" fixed product decision and keeps the
-wrist interaction to: raise wrist → one tap → done.
+The watch app is one screen deep — no `NavigationStack`, no tab bar. The screen
+is the log control plus its surrounding identity text. This honors the
+"single-screen, single-tap" fixed product decision and keeps the wrist
+interaction to: raise wrist → one tap → done.
 
 - **No `ScrollView`.** All content fits within the safe area at Default Dynamic
   Type. At the largest watch Dynamic Type sizes the content may exceed one screen;
   wrap the whole layout in a `ScrollView` *only as an overflow safety net* (it
   does not scroll at normal sizes), so large-text users can still reach the count
   line below the button. This mirrors the watch HIG pattern of a non-scrolling
-  primary control that becomes scrollable only when text forces it.
-- **Digital Crown:** unused in v1 — no rotation target, no focus value. (A future
-  on-watch habit switcher, "Later", is the natural Crown owner; do not wire it
-  now.)
+  primary control that becomes scrollable only when text forces it. **This holds
+  only for the single-habit and no-habit states** — a page in the habit pager is
+  never scrollable, because a vertical scroll inside a vertically paged
+  `TabView` fights it for the same drag and the same Crown.
+- **Digital Crown:** turns the habit pager (see Habit Paging). This section
+  previously reserved the Crown as the natural owner of a future habit switcher
+  and said not to wire it; the switcher shipped, and it owns the Crown.
 - **Safe area:** use the system default; do not fight the watch's curved-corner
   inset. Let SwiftUI's default `.scenePadding()`-equivalent margins apply. The
   log button is centered, so the curved corners never clip it.
+
+##### Habit Paging
+
+One habit per page, `TabView` + `.tabViewStyle(.verticalPage)`: swipe up/down or
+turn the Crown, with the system page dots on the trailing edge as the affordance.
+Pages follow `Habit.displayOrder`, so a drag on the phone's Habits screen is the
+order on the wrist. Only present when more than one active habit exists.
+
+An earlier build put a chevron on the habit name that opened a full-screen list.
+That is three interactions — tap, read, tap — to change the one thing a
+wrist-fast app should make cheapest.
+
+**The log control must be a `Button`, not a gesture, and that is what makes
+paging work at all.** A custom press gesture on the disc swallows every vertical
+drag: the swipe neither turns the page *nor* becomes distinguishable from a
+lift, so the release logs an event. Verified in the simulator — it does exactly
+that. A `Button` yields its touch to the enclosing scroll the moment it pans and
+fires its action only on a release the scroll did not take, which is precisely
+the distinction, for free. The hold ramp therefore rides on
+`ButtonStyle.Configuration.isPressed`, which stays true for as long as the finger
+is down — so there is still no duration threshold, a flick and a three-second
+hold both log, and holding past the ramp keeps buzzing until release. Do not
+reintroduce a press gesture here, and do not try to fix the accidental log with a
+drag-distance threshold; that was tried first and the pager still never saw the
+drag.
+
+**Selection is session-only.** The pick lives in memory (`selectedHabitID`) and
+resets to the default habit on relaunch, exactly like the phone's Log screen.
+Persisting a watch-local override would make the two devices disagree about what
+"the" habit is.
+
+**Accessibility.** The pager is a standard `TabView`, so VoiceOver page
+navigation is the system's. The log control is a real `Button`, which is what
+carries the label and hint.
 
 ##### Layout — the primary tap target
 
@@ -2112,10 +2413,10 @@ Dark mode is the default. Light mode must also work.
 
 | Gesture | Location | Action | Threshold |
 |---------|----------|--------|-----------|
-| Tap | Log button | Create event, open outcome sheet | — |
-| Tap | Intensity circle | Select intensity | — |
-| Tap | Outcome button | Set outcome, dismiss sheet | — |
-| Tap | Context tag | Toggle tag selection | — |
+| Tap | Habit card | Create event (outcome `resisted`), show confirmation banner | — |
+| Tap | Context tag chip | Toggle tag selection, **before** logging | — |
+| Tap | Banner "Gave in" | Flip the last event's outcome to `gave_in` | — |
+| Tap | Banner "Undo" | Delete the last event | — |
 | Horizontal drag | Habit card | Swipe between habits | 50pt commit, 30pt min start |
 | Swipe trailing | Habit row | Archive/Delete | System default |
 | Swipe trailing | Event row | Delete | System default |
@@ -2139,9 +2440,9 @@ Dark mode is the default. Light mode must also work.
 
 ### Haptic Feedback
 
-Single haptic: log temptation only. `UIImpactFeedbackGenerator`, `.medium` style, on button tap before sheet.
+Single haptic: log temptation only. `UIImpactFeedbackGenerator`, `.medium` style, fired on the log tap itself.
 
-No haptics on navigation, sheets, or secondary actions.
+No haptics on navigation, sheets, or secondary actions — including the banner's "Gave in" and "Undo".
 
 **Watch (separate Taptic stack, unaffected by phone haptics bug #48):** success
 log only — `WKInterfaceDevice.current().play(.success)`, fired solely on a
@@ -2154,32 +2455,32 @@ ported — `CHHapticEngine` is absent from the watchOS SDK.
 
 ### Sheet Presentation
 
-| Sheet | Detent | Purpose |
-|-------|--------|---------|
-| Outcome | `.medium` | Intensity + resisted/gave in |
-| Context | `.medium` | Tags + note |
-| Add/Edit Habit | Full | Form with color/icon picker |
-| Event Detail | `.medium` | Read-only event info |
+Every surviving sheet is user-initiated and stands alone. **No sheet is presented
+as a consequence of logging.**
 
-### Sheet Sequencing (Outcome -> Context)
+| Sheet | Detent | Presented from | Purpose |
+|-------|--------|----------------|---------|
+| Add/Edit Habit | Full | Log toolbar, Habits toolbar, either empty state | Form with color/icon picker |
+| Event Detail | `.medium`, `.large` | History row | Event info; outcome editable, rest read-only |
+| Place Name | `.medium` | Event Map pin, Event Detail location row | Name/rename/remove the spot |
+| Export (`ShareSheet`) | System | Habits → Data → "Export Data" | System share sheet |
 
-```
-Tap "Log Temptation"
-  -> Reset all sheet state
-  -> Event created immediately (timestamp accuracy)
-  -> Outcome sheet (.medium)
-    -> User picks intensity + outcome, OR "Skip"
-    -> onDismiss:
-      -> If context prompt enabled -> context sheet (.medium)
-        -> User selects tags/note, OR "Skip"
-        -> onDismiss -> confirmation banner
-      -> If context prompt disabled -> confirmation banner
-```
+### Sheet Dismissal
 
-Rules:
-- Use `onDismiss` callbacks. Never `DispatchQueue.main.asyncAfter`.
-- Event exists immediately regardless of sheet interactions.
-- Confirmation banner fires only after ALL sheets dismiss.
+The outcome → context sequence this section used to specify **no longer exists.**
+Logging defaults to `resisted` and corrects from the confirmation banner
+(S1 → Outcome Capture), and context is chosen as inline chips before the tap
+(Flow 4), so nothing presents between the tap and the banner.
+
+The rule that outlived the flow, and still applies to every sheet above:
+
+- **Use `onDismiss` callbacks. Never `DispatchQueue.main.asyncAfter`.** Live
+  referent: the Log screen's Add Habit sheet re-fetches habits in `onDismiss`
+  (`LogView.swift`). Timing a follow-up action by guessing how long a dismissal
+  animation takes is how the confirmation banner ended up presenting behind a
+  sheet in the first place.
+- The event exists the moment the card is tapped, independent of any UI that
+  follows. Timestamp accuracy is the reason, and it still holds.
 
 ### Animations
 
@@ -2213,7 +2514,7 @@ Rules:
 
 ### Confirmation Banner
 
-- Triggers after all sheets dismiss
+- Triggers immediately on log — nothing presents between the tap and the banner
 - **State 1 (just logged):** left = green `checkmark.circle.fill` + "Logged"; right =
   **Gave in** (orange, semibold) · vertical hairline divider · **Undo** (secondary).
   Gave in is the inner control, Undo is at the trailing edge.
@@ -2266,43 +2567,72 @@ Rules:
 **Navigation:** Log, Insights, Habits
 
 **Log Screen:**
-- "Log Temptation" button
-- "Today: {n} logged"
-- "{n} of {total}" carousel counter
+- Title: "Log"; toolbar add button VoiceOver "Add Habit"
+- Empty: "No habits to track" / "Create a habit to start logging temptations." / "Add Habit"
+- Habit card hint: "Tap or hold to log" (`hand.tap`). **There is no "Log Temptation" button** — the card itself is the affordance
+- "Today: {n} logged"; VoiceOver "{n} logged today for {habit}"
+- Inline context chips header: "Add context (optional)"
+- Pattern heads-up: "Usual time" + generated summary (see Pattern Heads-Up under S1)
+- Carousel: page **dots**, not a visible counter. VoiceOver only — "Habit {i} of {n}", "Previous habit", "Next habit"
+- Habit card VoiceOver: "Log temptation for {habit}"; custom actions "Next habit" / "Previous habit"
 - Banner State 1: status word "Logged"; controls "Gave in" (action, lowercase) and "Undo"
 - Banner State 2 (after Gave in): status word "Gave In" (outcome name, title-case); control "Undo"
 - Distinction is deliberate: "Gave in" = the button you tap (an action); "Gave In" = the recorded outcome it produces. Both are correct per the canonical strings.
-- Empty: "No habits to track" / "Create a habit to start logging temptations." / "Add Habit"
+- Banner hints: "Changes this log's outcome to gave in." / "Deletes this log."
+- Announcements: "Outcome changed to gave in", "Log undone"
+- Quick-add habit sheet (from toolbar or empty state): "New Habit", "Habit name", "Description (optional)", "Color", "Icon", "Cancel", "Save"
 
-**Outcome Sheet:**
-- "How did it go?"
-- "Did you resist or give in to the temptation?"
-- "How strong was the urge?" / "Mild" / "Overwhelming"
-- "I Resisted" / "I Gave In" / "Skip"
-
-**Context Sheet:**
-- "Add context (optional)"
-- "Note (optional)" / "Add a note..."
-- "Skip" / "Save"
+**Outcome / Context sheets:** removed. These blocks previously listed "How did it
+go?", "How strong was the urge?", "I Resisted" / "I Gave In" / "Skip", "Note
+(optional)" and "Add a note…" — none of those strings exist in the codebase. The
+flow they belonged to was replaced by default-to-resisted with banner correction
+(S1 → Outcome Capture) and pre-log context chips (Flow 4). Note capture went with
+them: `TemptationEvent.note` is *displayed* in History rows, the event detail and
+the export, but written by no view — `LogViewModel.updateEventContext(contextTags:note:)`
+survives with unit tests and **no production caller**.
 
 **Context Tags:**
 User-defined. Managed via the `ContextTag` SwiftData model. Users create and delete tags from the Habits & Settings screen. Tags are displayed as selectable chips on the Log screen (pre-select before logging) using a flow layout. Default seed tags for new installs: Stressed, Bored, Alone, On Phone, With Friends. Location-based tags (At Store, At Work, At Home) were removed because GPS location tracking already captures where events occur.
 
 **Insights:**
-- "No habits to analyze" / "No data yet"
-- "Outcomes", "Daily Trend", "Time of Day", "Day of Week"
-- "This Week", "This Month", "vs Previous", "temptations"
-- "Peak Time", "Peak Day", "of day", "of week"
-- "View History"
+- Empty (no habits): "No habits to analyze" / "Add a habit and log some temptations to see your patterns here."
+- Empty (no events): "No data yet" / "Log some temptations to see your patterns and trends."
+- Time range picker: "7 Days" / "30 Days" (accessibility label "Time Range")
+- Card titles: "Patterns", "Outcomes", "Daily Trend", "Time of Day", "Day of Week", "Top Locations", "Intensity Trend", "Summary"
+- Time of Day title while a period is expanded: "Time of Day · {Period}"
+- Stat cards: "This Week" / "This Month" with subtitle "temptations"; "vs Previous" with subtitle "+{n}%" / "-{n}%" / "no change"; "Peak Time"; "Peak Day"
+- **"Peak Time" and "Peak Day" carry no subtitle.** "of day" and "of week" restated the title in smaller type; `StatCard.subtitle` is optional for exactly this. "temptations" and "+{n}%" stay — those are a unit and a figure.
+- Outcomes accessory: "{n}% resisted"; empty: "No events in this period"
+- Intensity Trend accessory: "Avg {x.x}"
+- Summary accessory: "All time"; columns "Period", "Events", "Resisted", "Intensity"; "—" where a column has no value
+- "View Map", "View History"
+
+**Patterns card (Insights):**
+- Card title: "Patterns"
+- Finding row: `Pattern.summary`, generated — "Friday mornings around 11 AM, at Home", "Evenings, when bored", "Saturdays, at Work, when Stressed"
+- Frequency line: "{n} of the last {m} {Fridays|days}, {total} in all" — the ", {total} in all" clause is dropped when the recent count is the whole total; a pattern with no recurring slot falls back to "{n} time" / "{n} times"
+- Empty (below floor): "Not enough yet — {n} of about 10 separate times logged."
+- Empty (no findings): "No situation stands out yet. Temptations are spread evenly across times, days, and places."
+- VoiceOver row: "{summary}. {frequency}" / hint "Shows the matching events"
+- Pushed History title: the finding's own sentence
+
+**Pattern heads-up (Log screen):**
+- "Usual time" (label), then `Pattern.summary`
+- VoiceOver: "Usual time. {summary}"
 
 **Habits:**
-- "Active Habits", "Archived"
-- "Habit name", "Description (optional)", "Color", "Icon", "Preview"
-- "New Habit", "Edit Habit", "Cancel", "Save"
-- "Show context prompt after logging", "Accent Color"
-- "Set as Default" / "Remove as Default"
-- "Export Data", "Delete All Data"
-- Delete alert: "Delete all data?" / "This removes all habits, events, and settings. This cannot be undone." / "Delete Everything"
+- Title: "Habits"; toolbar add button VoiceOver "Add Habit"
+- Empty: "No habits yet" / "Create a habit to start tracking your temptations." / "Add Habit"
+- Section headers: "Active Habits", "Archived", "Settings", "Context Tags", "Data", "Tip Jar"
+- Habit row: "Default" badge; "{n}" + "logged"
+- Row actions: "Delete", "Archive", "Unarchive"; "Set as Default" / "Remove as Default"
+- Delete habit alert: "Delete Habit?" / "This will permanently delete this habit and all its logged events. This cannot be undone." / "Cancel" / "Delete"
+- Settings: "Accent Color". **No context-prompt toggle** — `UserSettings.showContextPrompt` still exists on the model and is merged by `mergeDuplicates`, but nothing reads or sets it (context is now inline chips on the Log screen)
+- Context Tags: tags listed by name, swipe to delete; new-tag field placeholder "Add a tag"
+- Data: "Export Data", "Delete All Data"
+- Delete-all alert: "Delete all data?" / "This removes all habits, events, and settings. This cannot be undone." / "Cancel" / "Delete Everything"
+- Tip Jar: header "Tip Jar"; "Leave a Tip" + `product.displayPrice`; footer "Tips help support development. Completely optional."; after purchase "Thank you."
+- Habit form sheet: "New Habit" / "Edit Habit"; "Habit name", "Description (optional)"; sections "Color", "Icon", "Preview"; "Cancel" / "Save"
 
 **Onboarding:**
 
@@ -2486,7 +2816,7 @@ Guidelines, not gates. No CI to enforce.
 - Every interactive element has a label
 - VoiceOver must complete every flow
 - Habit cards, stat cards, chart containers grouped as single accessible elements
-- Custom labels for: log button ("Log temptation for [habit name]"), carousel arrows, intensity circles, outcome buttons
+- Custom labels for: habit card ("Log temptation for [habit name]"), carousel arrows and page dots ("Habit {i} of {n}"), banner controls ("Gave in" / "Undo last log"), pattern rows and heads-up
 
 #### Onboarding Intro (VoiceOver and Dynamic Type)
 
@@ -2694,7 +3024,7 @@ Development (local builds) -> TestFlight (Matt + friends) -> App Store (public, 
 ### TestFlight Plan
 
 First build (0.1.0) must have:
-- Create habit, log temptation with outcome/intensity
+- Create habit, log temptation, correct outcome to "gave in" from the banner
 - View insights, charts
 - Manage habits
 - iCloud sync
@@ -2758,7 +3088,7 @@ On success: "Thank you." text. On failure/cancel: no message. No nag screens.
 ### Warning Signals
 
 - Logging stops after a few days (too much friction)
-- All outcomes "unknown" (outcome sheet perceived as mandatory)
+- Logs never corrected to "gave in" (the banner's correction window read as unreachable, or the 5s dwell too short)
 - Insights never opened
 - App deleted within a week
 
@@ -2828,6 +3158,116 @@ on the watch (the permanent notifications ban holds).
 - Weekly/monthly summary view
 - Import data (complement to export)
 - Siri Shortcut ("Hey Siri, log a temptation")
+- Sleep as a temptation-rate signal (HealthKit) — full brief below
+
+### Brief: Sleep as a Temptation-Rate Signal (HealthKit)
+
+**The question this brief settles:** can HealthKit sleep data feed trigger
+identification, or is it really a "failed to resist" coefficient — which the
+Patterns card excludes by its own rule?
+
+**It loads on both axes, and the temptation axis is real.** Sleep loss is not
+only a weakened brake. [Greer, Goldstein & Walker (2013, *Nat Comms*)](https://www.nature.com/articles/ncomms3259)
+found sleep deprivation *decreases* activity in frontal and insular appetitive-
+evaluation regions while *amplifying* the amygdala, with a measured **increase in
+desire** scaled to each participant's severity of sleep loss;
+[a 2019 *J Neurosci* follow-up](https://www.jneurosci.org/content/39/5/888)
+localized it to an amygdala–hypothalamic circuit. Less brake *and* more gas — and
+"wanting" is the thing Resistor logs. So the signal is not out of scope on the
+outcome-axis argument alone. **Caveat to keep:** the human wanting-evidence is
+food-reward; the drug-seeking version is animal work. Cross-domain generalization
+is an inference, not a finding.
+
+On magnitude and which measure to use: [Guarana et al. (2021, *Sleep Medicine
+Reviews*, 61 studies)](https://pubmed.ncbi.nlm.nih.gov/34157493/) puts sleep
+**quality** at r = .35 within-person against r = .20 for **duration** — quality
+beats duration roughly 2:1, and the within-person effect is the larger one, which
+is exactly the comparison this app can make (the user against their own baseline,
+never against a population).
+
+**Verdict: this is not a facet. Do not add it to `facets(of:)`.** The reason is
+data shape, and it holds regardless of which axis the effect loads on.
+
+Every existing facet is an **occasion property** — it exists only on occasions
+that happened. Weekday and time-of-day get away with being counted because their
+calendar distribution is known and uniform: every week has exactly one Friday,
+which is why `recentWeekdaySlots` works — the slot *is* the denominator, and
+slots exist whether or not anything was logged. Place and context tag are pure
+co-occurrence within logged occasions and need no external denominator at all.
+
+Sleep is neither. It is a **per-day covariate defined on every day, including
+days with zero logs.** As a facet, its marginal becomes "the fraction of my
+*occasions* that followed poor sleep," which cannot separate:
+
+- poor sleep produces more temptations, from
+- I sleep poorly often, so most occasions follow poor sleep
+
+Anyone sleeping badly four nights a week earns a significant "Poor sleep ·
+Evening" pair on noise alone, and `binomialTail` will not catch it because the
+expectation is built from the same biased marginal. That is a confidently wrong
+finding, which is worse than no finding.
+
+**The in-scope design is a rate comparison, on the temptation axis.** Temptations
+per poor-sleep day against temptations per good-sleep day — a Poisson rate ratio,
+not a binomial tail, and a separate card rather than a fifth facet. The
+denominator arrives free: HealthKit reports last night's sleep whether or not the
+user logged anything, so zero-log days are counted. Copy shape: *"2.1× more
+temptations logged on days after short sleep"* — the same descriptive register as
+"Friday evenings," stating a rate, not a verdict.
+
+**Permanently out: the resist-rate version.** *"You resist 40% less after poor
+sleep"* is the outcome axis. The Patterns card counts temptations and never
+outcomes for precisely this reason — a success rate attached to a situation reads
+as a grade on the situation rather than a description of it. No exception here.
+
+**Permanently out: prescription.** Reverse causation is unresolvable from this
+data; the EMA literature finds the sleep↔craving link bidirectional, and craving
+disrupts sleep at least as readily as the converse. *"You log more on days after
+short sleep"* is true under either direction. *"Sleep better and you'll resist
+more"* is not supported by anything in the literature reviewed, and would be the
+app giving advice, which it does not do.
+
+**Constraint — App Store Review Guideline 5.1.3(ii)**, verbatim:
+
+> "Apps must not write false or inaccurate data into HealthKit or any other
+> medical research or health management apps, and may not store personal health
+> information in iCloud."
+
+Calibrated, because the plain reading overstates it: "personal health
+information" is never defined in the guidelines; the exact question (does this
+forbid `NSPersistentCloudKitContainer` for a health tracker?) was
+[asked on Apple's forums and drew zero replies](https://developer.apple.com/forums/thread/653141);
+the one Apple engineer to address health data in SwiftData/CloudKit
+[argued redundancy, not prohibition](https://developer.apple.com/forums/thread/749027)
+("HealthKit data is already available on all a user's logged-in devices … there
+should be no need for you to store & sync a copy of it"); and Apple stores Health
+data in iCloud themselves. What is settled: **do not copy HealthKit samples into
+the store** — guideline-adjacent and pointless. What is undefined: a *derived*
+value on an event. Resistor's existing CloudKit sync of `TemptationEvent` is not
+implicated by any evidence found.
+
+**Architecture: query-time only, on the `Place` precedent.** Nothing is written
+onto `TemptationEvent`; one `HKStatisticsCollectionQuery` covers the analysis
+window; the read is passed in the way `places` already is. This is lossless and
+retroactive by construction, needs no schema change and no Production CloudKit
+deploy, keeps zero health data in iCloud — and so the undefined half of 5.1.3
+never has to be resolved. It is also less code than adding a field.
+
+**Scope this pass:** nightly sleep-duration bucket, rate ratio against zero-log
+days, one descriptive card on Insights, iPhone + Apple Watch sleep samples,
+explicit opt-in HealthKit read authorization, and a stated minimum-days floor
+before the card appears at all. **Out/Later:** steps and active energy as a
+second covariate (good iPhone-only coverage, weaker evidence); HRV (r = .09
+across [123 studies](https://pubmed.ncbi.nlm.nih.gov/28057463/) — too small to
+carry a feature); cycle phase; `HKStateOfMind` (iOS 18); diet quality (**not
+readable** — HealthKit's dietary types stay empty unless the user runs a
+third-party logger, so the strongest nutrition finding has no data path); watch
+and widget surfaces; any prescriptive or advisory copy.
+
+**Constraint-clean:** no notifications. The literature's payoff shape for this
+signal is the just-in-time prompt, which the permanent ban forecloses. The
+finding surfaces where every other pattern does — the Insights card, and the Log
+screen heads-up if it ever earns one.
 
 ### Not Planned (Permanently Out of Scope)
 
@@ -2860,7 +3300,8 @@ Summary of all design decisions made during the design phase.
 | Export format | JSON only | Simpler than CSV + JSON |
 | Context tags | User-defined, multiple allowed | Single tag too limiting; hardcoded set too rigid |
 | Intensity default | Nil (not 3) | Nil = didn't engage, preserves data integrity |
-| Banner timing | After all sheets dismiss, 4s with undo | Was hidden behind sheets; undo prevents accidental logs |
+| Banner timing | Immediately on log (superseded: "after all sheets dismiss"), 5s with undo | Undo prevents accidental logs. The original rule existed because the banner was hidden behind the outcome/context sheets; those were removed, so nothing now sits between the tap and the banner |
+| Outcome/context sheets | Removed | Replaced by default-to-resisted + banner correction and pre-log context chips. Casualties: `intensity` and `note` lost their only capture UI, and `UserSettings.showContextPrompt` lost its only reader |
 | Default habit | User-settable via context menu | Core for fast logging |
 | Time zones | Store UTC, display local | Standard practice |
 | Time-of-day drill-down | Tap a period to expand to hourly bars in place | Sparse data makes 24 bars up front noise; detail on demand only |
@@ -2894,10 +3335,29 @@ Summary of all design decisions made during the design phase.
 | Quick-log widget store-unavailable | Keeps the tap (write enqueues + syncs later), replaces the count with `Count unavailable` / `ellipsis`, keeps habit tint | UC-W5 requires offline writes to persist; only the count *display* is unavailable, so the card stays loggable and never shows a false `0` |
 | Quick-log widget haptics / motion / announcements | None — platform-limited in a widget extension | Widgets can't fire haptics, animate timeline reloads, or post `UIAccessibility` announcements; the count change on reload is the only feedback |
 | Watch app purpose | Single-screen, single-tap resisted log from the wrist (the wrist-native twin of the widget) | The wrist is the lowest-friction surface for the core action; no phone needed in the urge moment |
-| Watch logged habit | Logs to the default habit (`UserSettings.defaultHabitId`), fallback to sole/first habit, always named on screen | Keeps v1 to one screen and one tap; on-watch switching is deferred to Later |
+| Watch logged habit | Opens on the default habit (`UserSettings.defaultHabitId`), fallback to sole/first habit, always named on screen | The target is never ambiguous. Switching, deferred to Later in v1, now ships as a vertical pager |
 | Watch action | One tap writes one `resisted` event (intensity nil, no tags) via shared `TemptationLogger.logResisted` | Mirrors the in-app and widget single-tap default (UC-O1 / UC-W1); identical event shape, no schema change |
 | Watch confirmation | Taptic Engine success haptic + neutral on-screen "Logged"; no notification, no banner/undo | The watch is a separate haptic stack (unaffected by phone haptics bug #48); correction/undo live on the phone |
 | Watch data parity | CloudKit sync of the same container (`iCloud.com.resistor.app`), **not** App Group | App Groups do not bridge iPhone↔Watch (separate devices); cross-device parity must come from CloudKit. Primary feasibility dependency for v1 |
 | Watch v1 acceptance frame | "Log on watch → appears on phone **after CloudKit sync**" (not instant, no live phone link required) | Logging must not depend on WatchConnectivity reachability; the watch logs independently and syncs later |
 | Watch vs notifications ban | No collision; the watch is a passive log surface with no push/alert/reminder/streak | The ban is on interruptive notifications; the watch never alerts, schedules, or nudges |
-| Watch scope (out/later) | Complication, on-watch habit switching, outcome/intensity capture, undo/correction, fully phone-less independent install — all deferred | v1 ships the smallest useful wrist surface: one tap, one habit, one haptic, synced |
+| Watch scope (out/later) | v1 deferred all of: complication, on-watch habit switching, outcome/intensity capture, undo/correction, phone-less independent install. **Since shipped:** a launcher-only complication, habit paging, and shake-to-undo. Still deferred: outcome/intensity capture, correction, phone-less install | v1 shipped the smallest useful wrist surface: one tap, one habit, one haptic, synced. The three that followed each kept that shape rather than widening it |
+| Patterns card exists at all | One card that reads several axes at once | Every other Insights chart reads one axis, so a run of Friday evenings hides inside two unremarkable bars |
+| Patterns card outcome figure | None, permanently; `Pattern` has no outcome field | The card answers "what sets me off"; a resisted % answers "how am I doing", and the two together grade the situation instead of describing it |
+| Patterns unit of evidence | Occasion (same day + same time-of-day period), not event | Two logs forty minutes apart are one sitting; counting them as independent trials inflates every statistic, worst for the compulsive-logging user the app exists for |
+| Patterns ranking | By cluster size; p-value filters and breaks ties only | Ranking by p-value puts a 4-occasion fluke above a 12-occasion trend, because a rare pair has a rare expectation to divide by |
+| Patterns significance floor | p ≤ 0.01, not 0.05 | Dozens of candidate pairs tested at once; at 0.05 roughly one in twenty clears on noise alone |
+| Patterns scope vs range picker | Mined over full history; card sits above the picker | A 7-day window holds too few occasions to clear the noise floor; each row states its own window instead |
+| Faded pattern handling | Sinks below all live ones, stays listed, loses accent | Beating a trigger is worth seeing, but it is history rather than something to prepare for |
+| Progress representation | Per-slot recency tally, oldest-first, one mark per slot | A ratio cannot show direction, and direction is the only progress this app claims; a reversed array would report a fading trigger as a worsening one |
+| Three-facet findings | Refine an accepted pair; never mine triples directly | A triple's expected share is its parent pair's × a third probability ≤ 1, so it clears significance *more* easily — direct mining re-admits the coincidence the tail test rejects |
+| Pattern row interaction | Whole row pushes filtered History; nothing else tappable | Re-filtering with the same `facets(of:)` call means the list cannot disagree with the count the row claims |
+| Heads-up matching facets | Calendar facets only (weekday, time of day) | Place and context are not knowable before the user logs; requesting a GPS fix to decide whether to show a line of text is not a worthwhile trade |
+| Heads-up vs notifications ban | No collision; it is passive content on a screen the user opened | The ban is on interruptive alerts; with notifications out, the Log screen is the only place a timely finding can arrive |
+| Sleep signal axis | Temptation rate only; resist rate permanently out | Sleep loss raises appetitive drive, not just lowers inhibition (Greer/Walker 2013), so it is a legitimate trigger signal; a resist rate against a situation grades the situation, which the Patterns card exists to avoid |
+| Sleep as a `PatternFinder` facet | No — separate rate-comparison card | Facets are occasion properties; sleep is a per-day covariate defined on zero-log days too, so a facet marginal cannot separate "poor sleep causes temptations" from "I sleep badly often" |
+| Sleep statistic | Poisson rate ratio over days, not `binomialTail` over occasions | The denominator must include days with no logs; HealthKit supplies sleep for every night regardless of logging |
+| Sleep measure | Quality where available, duration as fallback | Quality outperforms duration ~2:1 within-person (r = .35 vs .20, Guarana 2021); duration is all an iPhone-only user has |
+| Sleep data persistence | Query-time only; nothing written onto `TemptationEvent` | Same precedent as `Place` — lossless, retroactive, no schema change; also keeps health data out of iCloud, so guideline 5.1.3(ii)'s undefined half never needs resolving |
+| Sleep copy register | Descriptive only ("2.1× more temptations on days after short sleep") | Reverse causation is unresolvable (the sleep↔craving link is bidirectional); a descriptive claim survives either direction, a prescriptive one does not — and the app does not give advice |
+| HRV / diet quality as signals | Out | HRV↔self-regulation is r = .09 across 123 studies — too small to carry a feature; HealthKit's dietary types are empty in practice unless the user runs a third-party logger |
