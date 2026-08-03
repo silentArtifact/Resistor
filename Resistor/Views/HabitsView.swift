@@ -434,9 +434,11 @@ struct HabitsView: View {
                         set: { vm.habitName = $0 }
                     ))
 
+                    // Capped so it can't outrun the Log card, which is the only
+                    // place a description is read and can't scroll.
                     TextField("Description (optional)", text: Binding(
                         get: { vm.habitDescription },
-                        set: { vm.habitDescription = $0 }
+                        set: { vm.habitDescription = String($0.prefix(Habit.descriptionCharacterLimit)) }
                     ), axis: .vertical)
                     .lineLimit(2...4)
                 }

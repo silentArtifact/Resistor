@@ -2357,7 +2357,7 @@ All interactive elements meet 44x44pt minimum tap target.
 
 ### Component Catalog
 
-**Habit Card:** Icon (48pt, habit color) + name + optional description. Background: habit color @ 15% opacity. Corner radius 20pt.
+**Habit Card:** Icon (48pt, habit color) + name + optional description. Background: habit color @ 15% opacity. Corner radius 20pt. The card is a swipeable page, so every card is the height of the tallest description the user has written — with no descriptions at all there is no space reserved for one and the icon and name sit centered. The card is the only place a description is read, and it can't scroll, so descriptions are capped at 120 characters on input (about four lines at default Dynamic Type) rather than truncated where they're shown.
 
 **Primary Button (Log Temptation):** White text on accent color. Full width, 16pt corner radius, 20pt vertical padding.
 

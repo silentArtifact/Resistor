@@ -408,26 +408,64 @@ struct LogView: View {
         }
     }
 
+    /// Icon, name and (if there is one) description, laid out identically for
+    /// the visible card and for the hidden copies that size it. `glowing` is
+    /// false for those copies so their subtree doesn't depend on `holdProgress`
+    /// and SwiftUI can leave them alone for the length of a hold.
+    @ViewBuilder
+    private func cardContent(_ habit: Habit, glowing: Bool) -> some View {
+        let habitColor = Color(hex: habit.colorHex ?? "#007AFF") ?? .blue
+
+        VStack(spacing: 16) {
+            // Icon — gets its own glow during hold. Boxed to a fixed height
+            // because SF Symbols don't share a bounding box at a given point
+            // size: `sun.max.fill`'s rays make it 3pt taller than `circle.fill`,
+            // enough on its own to give two habits differently-sized cards. The
+            // box is a constant rather than a scaled value because
+            // `.system(size:)` is itself fixed and ignores Dynamic Type. Nothing
+            // clips — a taller symbol just overflows into the stack spacing.
+            Image(systemName: habit.iconName ?? "circle.fill")
+                .font(.system(size: 48))
+                .frame(height: 56)
+                .foregroundStyle(habitColor)
+                .shadow(
+                    color: habitColor.opacity(glowing && isHolding ? holdProgress * 0.8 : 0),
+                    radius: glowing && isHolding ? 6 + holdProgress * 14 : 0
+                )
+
+            // Name — one line always. A long name scales down rather than
+            // wrapping, so it can't add height (see the description note).
+            Text(habit.name)
+                .font(.title)
+                .fontWeight(.bold)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+
+            // Description — omitted entirely when there isn't one, so an
+            // undescribed habit contributes no height here at all. The line cap
+            // is a backstop for descriptions written before the input cap
+            // existed, or wrapped further by a large Dynamic Type size.
+            //
+            // `fixedSize` because a Text is compressible: the enclosing column
+            // will hand it less height than it asked for and let it truncate
+            // rather than shrink its own spacers, so without this a two-line
+            // description rendered as one truncated line. The old fixed
+            // `lineLimit(2, reservesSpace: true)` happened to resist that by
+            // pinning a minimum; a plain line cap doesn't.
+            if let description = habit.habitDescription, !description.isEmpty {
+                Text(description)
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(Habit.descriptionLineLimit)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal)
+            }
+        }
+    }
+
     private func habitCard(_ habit: Habit, vm: LogViewModel) -> some View {
         let habitColor = Color(hex: habit.colorHex ?? "#007AFF") ?? .blue
-        // An empty string measures short even under `lineLimit(_:reservesSpace:)`
-        // — it reserved ~10pt where two lines want ~41. A single space carries
-        // real line metrics and renders as nothing, so a habit with no
-        // description gets a card the exact size of one that has a description.
-        let rawDescription = habit.habitDescription ?? ""
-        let description = rawDescription.isEmpty ? " " : rawDescription
-        // …and that reserve is all below the name, so an undescribed card drew
-        // its icon+name at the top over a dead band. Slide them down half of it.
-        // An `offset` because it moves pixels without touching layout: the card
-        // still measures identically to a described one, which is what
-        // `testHabitCardSizeIsIndependentOfDescription` pins. Rebalancing the
-        // padding or splitting the reserve into a blank line above and below
-        // both change the height (two one-line reserves run 1.7pt over one
-        // two-line reserve) — a point of slop in a nudge is invisible, a point
-        // in the height resizes a page mid-slide.
-        let blankDescriptionShift: CGFloat = rawDescription.isEmpty
-            ? (UIFont.preferredFont(forTextStyle: .body).lineHeight * 2 + 16) / 2
-            : 0
         let cardScale = reduceMotion ? 1.0 : 1.0 + (holdProgress * 0.08)
         let glowPulseIntensity: CGFloat = glowPulsing ? 1.0 : 0.5
         // Resting affordance: a steady habit-color border so the card reads as
@@ -444,47 +482,26 @@ struct LogView: View {
         // bindings type-checks each sub-expression independently; the resulting
         // view tree is identical.
 
-        // Inner content — icon, name, optional description.
-        let content = VStack(spacing: 16) {
-            // Icon — gets its own glow during hold. Boxed to a fixed height
-            // because SF Symbols don't share a bounding box at a given point
-            // size: `sun.max.fill`'s rays make it 3pt taller than `circle.fill`,
-            // enough on its own to give two habits differently-sized cards. The
-            // box is a constant rather than a scaled value because
-            // `.system(size:)` is itself fixed and ignores Dynamic Type. Nothing
-            // clips — a taller symbol just overflows into the stack spacing.
-            Image(systemName: habit.iconName ?? "circle.fill")
-                .font(.system(size: 48))
-                .frame(height: 56)
-                .foregroundStyle(habitColor)
-                .shadow(
-                    color: habitColor.opacity(isHolding ? holdProgress * 0.8 : 0),
-                    radius: isHolding ? 6 + holdProgress * 14 : 0
-                )
+        // Inner content — icon, name, optional description. Every card still has
+        // to be the same size (it's a swipeable page; a per-habit height would
+        // resize the page mid-slide and shove the column below it around), so
+        // the stack lays out *every* habit's content at once, hidden, and draws
+        // the real one centered over it. Height is therefore the tallest card
+        // the user actually has, not a fixed two-line reserve: with no
+        // descriptions there's no dead band under the name and the icon sits
+        // centered, and a described habit gets the room its own text needs.
+        // Centered rather than nudged down by half the slack — a ZStack does it
+        // for free and can't drift out of step with the reserve the way a
+        // hand-computed offset did.
+        let content = ZStack {
+            ForEach(vm.habits, id: \.id) { other in
+                cardContent(other, glowing: false)
+                    .hidden()
+                    .accessibilityHidden(true)
+            }
 
-            // Name — one line always. A long name scales down rather than
-            // wrapping, so it can't add height (see the description note).
-            Text(habit.name)
-                .font(.title)
-                .fontWeight(.bold)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-
-            // Description — always rendered and always two lines tall, even when
-            // absent or one line, because every habit card must be the same size:
-            // the card is a swipeable page, and a per-habit height would resize
-            // the page mid-slide and shove the rest of the column around. Height
-            // comes from the reserved line count, so it still tracks Dynamic Type
-            // instead of being pinned to a magic number. Cost: a description over
-            // two lines truncates.
-            Text(description)
-                .font(.body)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .lineLimit(2, reservesSpace: true)
-                .padding(.horizontal)
+            cardContent(habit, glowing: true)
         }
-        .offset(y: blankDescriptionShift)
         .padding(32)
         .frame(maxWidth: .infinity)
 
@@ -763,8 +780,13 @@ private struct AddHabitFromLogSheet: View {
             Form {
                 Section {
                     TextField("Habit name", text: $name)
-                    TextField("Description (optional)", text: $description, axis: .vertical)
-                        .lineLimit(2...4)
+                    // Capped so it can't outrun the Log card, which is the only
+                    // place a description is read and can't scroll.
+                    TextField("Description (optional)", text: Binding(
+                        get: { description },
+                        set: { description = String($0.prefix(Habit.descriptionCharacterLimit)) }
+                    ), axis: .vertical)
+                    .lineLimit(2...4)
                 }
 
                 Section("Color") {

@@ -312,39 +312,81 @@ final class SnapshotTests: XCTestCase {
         if cancel.exists { cancel.tap() }
     }
 
-    /// Captures a full-screen screenshot and attaches it under `name`.
     /// The Log card is a swipeable page, so its size must not depend on which
     /// habit it shows — a card that resizes mid-slide shoves the rest of the
-    /// column around. A habit with no description used to render a shorter card
-    /// (the description Text was omitted entirely); it now reserves its lines.
-    /// Creates a description-less habit and asserts its card matches a described
-    /// one. Lives here rather than in its own file because the UITest target has
-    /// an explicit file list, not a synchronized folder group.
-    func testHabitCardSizeIsIndependentOfDescription() {
+    /// column around. Every card therefore takes its height from the tallest
+    /// description any habit has, laid out hidden behind the visible one.
+    ///
+    /// Two halves, and the second is what stops the old fixed two-line reserve
+    /// coming back: a description-less habit's card must match a described one
+    /// (uniformity), *and* adding a habit whose description runs longer than any
+    /// existing one must grow every card (the height follows the real text, so
+    /// an app with no descriptions has no dead band and a long one isn't cut
+    /// off). Lives here rather than in its own file because the UITest target
+    /// has an explicit file list, not a synchronized folder group.
+    func testHabitCardSizeFollowsTheLongestDescription() {
         let app = XCUIApplication()
         app.launchArguments += ["-uiTestMode"]
         app.launch()
 
         let described = app.buttons["Log temptation for Sugar"]
         XCTAssertTrue(described.waitForExistence(timeout: 5), "seeded habit card not found")
-        let describedSize = described.frame.size
+        let seededSize = described.frame.size
 
+        addHabit(app, name: "Bare", description: nil)
+        let bare = app.buttons["Log temptation for Bare"]
+        showCard(app, bare, "new habit card not reachable")
+
+        XCTAssertEqual(bare.frame.width, seededSize.width, accuracy: 0.5)
+        XCTAssertEqual(bare.frame.height, seededSize.height, accuracy: 0.5,
+                       "a habit with no description must not get a shorter card")
+
+        // Longer than either seeded description, so it has to lengthen the card.
+        addHabit(app, name: "Wordy", description: String(repeating: "long enough ", count: 10))
+        let wordy = app.buttons["Log temptation for Wordy"]
+        showCard(app, wordy, "long-description card not reachable")
+        // Read now — paging away leaves `wordy` out of the tree entirely, and
+        // `frame` on a missing element fails rather than returning a stale value.
+        let wordyHeight = wordy.frame.height
+
+        XCTAssertGreaterThan(wordyHeight, seededSize.height,
+                             "the card must grow to fit a description longer than the reserve")
+        showCard(app, bare, "bare card not reachable after adding a longer description")
+        XCTAssertEqual(bare.frame.height, wordyHeight, accuracy: 0.5,
+                       "every card must match the tallest one")
+    }
+
+    /// Creates a habit from the Log screen's add sheet.
+    private func addHabit(_ app: XCUIApplication, name: String, description: String?) {
         app.buttons["addHabitButtonLog"].tap()
         let nameField = app.textFields["Habit name"]
         XCTAssertTrue(nameField.waitForExistence(timeout: 5), "add-habit sheet did not appear")
         nameField.tap()
-        nameField.typeText("Bare")
-        app.buttons["Save"].tap()
+        nameField.typeText(name)
 
-        // New habits take the next sortOrder, so the new one is last in the carousel.
-        let bare = app.buttons["Log temptation for Bare"]
-        for _ in 0..<3 where !bare.exists {
+        if let description {
+            // `axis: .vertical` can surface as either, depending on the runtime.
+            let field = app.textFields["Description (optional)"]
+            let descriptionField = field.exists ? field : app.textViews["Description (optional)"]
+            XCTAssertTrue(descriptionField.waitForExistence(timeout: 2), "description field not found")
+            descriptionField.tap()
+            descriptionField.typeText(description)
+        }
+
+        app.buttons["Save"].tap()
+    }
+
+    /// Pages the carousel until `card` is the one on screen. New habits take the
+    /// next sortOrder, so they land at the end. Waits rather than testing
+    /// `.exists` before each tap: right after a sheet dismisses, the card behind
+    /// it isn't in the tree yet, and an instantaneous check sends the pager off
+    /// on a lap it didn't need.
+    private func showCard(_ app: XCUIApplication, _ card: XCUIElement, _ message: String) {
+        for _ in 0..<8 {
+            if card.waitForExistence(timeout: 1) { return }
             app.buttons["Next habit"].tap()
         }
-        XCTAssertTrue(bare.waitForExistence(timeout: 2), "new habit card not reachable")
-
-        XCTAssertEqual(bare.frame.width, describedSize.width, accuracy: 0.5)
-        XCTAssertEqual(bare.frame.height, describedSize.height, accuracy: 0.5)
+        XCTFail(message)
     }
 
     /// "Edit" really puts the habits list into edit mode. `HabitsView` owns its

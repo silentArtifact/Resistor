@@ -52,6 +52,19 @@ extension Habit {
         SortDescriptor(\Habit.id, order: .forward)
     ]
 
+    /// How many lines the Log card gives a description before truncating, and
+    /// the input cap that keeps a description inside them.
+    ///
+    /// The Log card is the only place a description is read (the editor is
+    /// somewhere the user goes deliberately), and that column doesn't scroll —
+    /// so the card can't just grow to fit any amount of text, and truncating
+    /// there makes the tail of a long description unreadable anywhere. Capping
+    /// input at roughly what fits is the honest trade: 120 characters is about
+    /// four lines at default Dynamic Type, so a description written under the
+    /// cap is shown whole. The two constants move together.
+    static let descriptionLineLimit = 4
+    static let descriptionCharacterLimit = 120
+
     /// The `sortOrder` a newly created habit should take so it lands at the end
     /// of the list rather than jumping to the top of a reordered one.
     static func nextSortOrder(in context: ModelContext) -> Int {
