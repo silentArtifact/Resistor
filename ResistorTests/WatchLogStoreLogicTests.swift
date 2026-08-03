@@ -47,34 +47,18 @@ final class WatchLogStoreLogicTests: XCTestCase {
         return (try? context.fetch(descriptor)) ?? []
     }
 
-    private func defaultHabitId() -> UUID? {
-        let descriptor = FetchDescriptor<UserSettings>()
-        return (try? context.fetch(descriptor))?.first?.defaultHabitId
-    }
-
     /// The habit picked on the watch this session, mirroring
     /// `WatchLogStore.selectedHabitID` (in-memory, cleared on relaunch).
     private var selectedHabitID: UUID?
 
-    /// Verbatim copy of `WatchLogStore.resolveTargetHabit(in:)`.
+    /// Verbatim copy of `WatchLogStore.resolveTargetHabit(among:)`.
     private func resolveTargetHabit() -> Habit? {
         let active = activeHabits()
-        guard !active.isEmpty else { return nil }
         if let selectedHabitID,
            let picked = active.first(where: { $0.id == selectedHabitID }) {
             return picked
         }
-        if let defaultID = defaultHabitId(),
-           let match = active.first(where: { $0.id == defaultID }) {
-            return match
-        }
         return active.first
-    }
-
-    /// Verbatim copy of `WatchLogStore.hasConfiguredButMissingDefault(in:)`.
-    private func hasConfiguredButMissingDefault() -> Bool {
-        guard let defaultID = defaultHabitId() else { return false }
-        return !activeHabits().contains { $0.id == defaultID }
     }
 
     /// Verbatim copy of `WatchLogStore.todayResistedCount(for:in:)`.
@@ -87,40 +71,20 @@ final class WatchLogStoreLogicTests: XCTestCase {
         }.count
     }
 
-    private func makeSettings(defaultHabitId: UUID?) -> UserSettings {
-        let s = UserSettings()
-        s.defaultHabitId = defaultHabitId
-        return s
-    }
+    // MARK: - UC-WATCH-7: target resolution (first in display order)
 
-    // MARK: - UC-WATCH-7: target resolution (default → deterministic first)
-
-    /// With a valid configured default that points at a live non-archived habit,
-    /// that habit is the target even when it isn't first in createdAt order.
-    func testResolvePrefersConfiguredDefault() throws {
-        let first = TestHelpers.makeHabit(name: "First", createdAt: Date(timeIntervalSince1970: 100))
-        let second = TestHelpers.makeHabit(name: "Second", createdAt: Date(timeIntervalSince1970: 200))
-        context.insert(first)
-        context.insert(second)
-        context.insert(makeSettings(defaultHabitId: second.id))
-        try context.save()
-
-        let target = try XCTUnwrap(resolveTargetHabit())
-        XCTAssertEqual(target.id, second.id, "configured default wins over createdAt order")
-    }
-
-    /// With no default configured, resolution falls back to the deterministic
-    /// first non-archived habit (earliest createdAt).
-    func testResolveFallsBackToFirstNonArchivedByCreatedAt() throws {
+    /// The target is the first non-archived habit in display order — which, with
+    /// no drag yet, is the earliest `createdAt`. There is no default-habit
+    /// setting to prefer over it; the phone's drag order *is* the default.
+    func testResolveTargetsFirstNonArchivedInDisplayOrder() throws {
         let later = TestHelpers.makeHabit(name: "Later", createdAt: Date(timeIntervalSince1970: 300))
         let earlier = TestHelpers.makeHabit(name: "Earlier", createdAt: Date(timeIntervalSince1970: 100))
         context.insert(later)
         context.insert(earlier)
-        // No UserSettings at all.
         try context.save()
 
         let target = try XCTUnwrap(resolveTargetHabit())
-        XCTAssertEqual(target.id, earlier.id, "earliest createdAt is the deterministic fallback")
+        XCTAssertEqual(target.id, earlier.id, "earliest createdAt is first in display order")
     }
 
     /// Resolution is stable/deterministic across repeated reads (no random order).
@@ -137,18 +101,17 @@ final class WatchLogStoreLogicTests: XCTestCase {
         }
     }
 
-    /// An archived default is NOT the target; resolution falls back to the first
-    /// live non-archived habit instead (never logs to an archived habit).
-    func testArchivedDefaultFallsBackToLiveHabit() throws {
-        let archivedDefault = TestHelpers.makeHabit(name: "Archived", isArchived: true, createdAt: Date(timeIntervalSince1970: 100))
+    /// An archived habit is never the target even when it would sort first — the
+    /// watch skips to the first *live* habit rather than logging to an archive.
+    func testArchivedFirstHabitIsSkipped() throws {
+        let archived = TestHelpers.makeHabit(name: "Archived", isArchived: true, createdAt: Date(timeIntervalSince1970: 100))
         let live = TestHelpers.makeHabit(name: "Live", createdAt: Date(timeIntervalSince1970: 200))
-        context.insert(archivedDefault)
+        context.insert(archived)
         context.insert(live)
-        context.insert(makeSettings(defaultHabitId: archivedDefault.id))
         try context.save()
 
         let target = try XCTUnwrap(resolveTargetHabit())
-        XCTAssertEqual(target.id, live.id, "archived default is skipped; live habit is target")
+        XCTAssertEqual(target.id, live.id, "archived habit is skipped; live habit is target")
         XCTAssertFalse(target.isArchived)
     }
 
@@ -166,18 +129,16 @@ final class WatchLogStoreLogicTests: XCTestCase {
 
     // MARK: - Watch habit switching
 
-    /// A habit picked on the watch beats the configured default — the whole
-    /// point of the picker is logging against something other than the default
-    /// without reaching for the phone.
-    func testSelectionBeatsConfiguredDefault() throws {
-        let defaultHabit = TestHelpers.makeHabit(name: "Default", createdAt: Date(timeIntervalSince1970: 100))
+    /// A habit picked on the watch beats first-in-order — the whole point of the
+    /// pager is logging against something else without reaching for the phone.
+    func testSelectionBeatsFirstInDisplayOrder() throws {
+        let first = TestHelpers.makeHabit(name: "First", createdAt: Date(timeIntervalSince1970: 100))
         let other = TestHelpers.makeHabit(name: "Other", createdAt: Date(timeIntervalSince1970: 200))
-        context.insert(defaultHabit)
+        context.insert(first)
         context.insert(other)
-        context.insert(makeSettings(defaultHabitId: defaultHabit.id))
         try context.save()
 
-        XCTAssertEqual(resolveTargetHabit()?.id, defaultHabit.id, "default before any pick")
+        XCTAssertEqual(resolveTargetHabit()?.id, first.id, "first in order before any pick")
 
         selectedHabitID = other.id
         XCTAssertEqual(resolveTargetHabit()?.id, other.id, "watch pick wins")
@@ -185,12 +146,11 @@ final class WatchLogStoreLogicTests: XCTestCase {
 
     /// A picked habit that is later archived stops being the target — the watch
     /// falls back rather than logging to an archived habit.
-    func testArchivedSelectionFallsBackToDefault() throws {
-        let defaultHabit = TestHelpers.makeHabit(name: "Default", createdAt: Date(timeIntervalSince1970: 100))
+    func testArchivedSelectionFallsBackToFirstInDisplayOrder() throws {
+        let first = TestHelpers.makeHabit(name: "First", createdAt: Date(timeIntervalSince1970: 100))
         let picked = TestHelpers.makeHabit(name: "Picked", createdAt: Date(timeIntervalSince1970: 200))
-        context.insert(defaultHabit)
+        context.insert(first)
         context.insert(picked)
-        context.insert(makeSettings(defaultHabitId: defaultHabit.id))
         try context.save()
 
         selectedHabitID = picked.id
@@ -199,7 +159,7 @@ final class WatchLogStoreLogicTests: XCTestCase {
         picked.isArchived = true
         try context.save()
 
-        XCTAssertEqual(resolveTargetHabit()?.id, defaultHabit.id,
+        XCTAssertEqual(resolveTargetHabit()?.id, first.id,
                        "archived pick is dropped, not logged against")
     }
 
@@ -228,11 +188,11 @@ final class WatchLogStoreLogicTests: XCTestCase {
     // MARK: - UC-WATCH-5: non-loggable states resolve, never a false target
 
     /// No habits at all → no target resolves → state (d) noHabit (the View shows
-    /// the non-loggable branch and a tap cannot log).
+    /// the non-loggable branch and a tap cannot log). With no default-habit
+    /// setting, this is the *only* way resolution can fail.
     func testNoHabitsResolvesToNoTarget() throws {
         // Empty store.
         XCTAssertNil(resolveTargetHabit(), "no habits → no resolvable target")
-        XCTAssertFalse(hasConfiguredButMissingDefault(), "no default configured → state (d), not (e)")
     }
 
     /// All habits archived → no target resolves (UC-WATCH-5: habit unavailable,
@@ -243,33 +203,6 @@ final class WatchLogStoreLogicTests: XCTestCase {
         try context.save()
 
         XCTAssertNil(resolveTargetHabit(), "all archived → no resolvable target")
-    }
-
-    /// A configured default that is now gone with NO fallback distinguishes state
-    /// (e) habitUnavailable from (d) noHabit.
-    func testConfiguredDefaultMissingWithNoFallbackIsHabitUnavailable() throws {
-        let goneID = UUID() // never inserted
-        context.insert(makeSettings(defaultHabitId: goneID))
-        try context.save()
-
-        XCTAssertNil(resolveTargetHabit(), "default points nowhere and no other habit exists")
-        XCTAssertTrue(hasConfiguredButMissingDefault(),
-                      "configured-but-missing default → state (e) habitUnavailable, not (d)")
-    }
-
-    /// A configured default that was archived, with another live habit present,
-    /// resolves to the live habit (does NOT become habitUnavailable) — matches the
-    /// watch's resolve-then-fallback ordering.
-    func testArchivedDefaultWithFallbackIsLoggableNotUnavailable() throws {
-        let archived = TestHelpers.makeHabit(name: "Archived", isArchived: true, createdAt: Date(timeIntervalSince1970: 100))
-        let live = TestHelpers.makeHabit(name: "Live", createdAt: Date(timeIntervalSince1970: 200))
-        context.insert(archived)
-        context.insert(live)
-        context.insert(makeSettings(defaultHabitId: archived.id))
-        try context.save()
-
-        XCTAssertNotNil(resolveTargetHabit(), "a live fallback exists → loggable, not unavailable")
-        XCTAssertEqual(resolveTargetHabit()?.id, live.id)
     }
 
     // MARK: - UC-WATCH-3: today's resisted count (calendar-day, resisted-only)

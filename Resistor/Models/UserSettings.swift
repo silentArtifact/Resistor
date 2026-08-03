@@ -5,6 +5,11 @@ import SwiftUI
 @Model
 final class UserSettings {
     var id: UUID = UUID()
+    /// Orphaned (issue #60): nothing reads this. The default habit is the first
+    /// one in `Habit.displayOrder`, so the drag order the user can already see
+    /// *is* the setting — two orderings could disagree, and did. Kept because a
+    /// Production CloudKit field can never be removed, and still merged below so
+    /// the value survives intact if the setting is ever brought back.
     var defaultHabitId: UUID?
     var showContextPrompt: Bool = true
     var accentColorHex: String?
@@ -64,10 +69,12 @@ extension UserSettings {
         keeper.showContextPrompt = !ordered.contains { !$0.showContextPrompt }
         keeper.accentColorHex = ordered.compactMap(\.accentColorHex).first
 
-        // Prefer a default habit that actually resolves. Falling back to the
-        // first non-nil id rather than to nil matters during a CloudKit import,
-        // when the settings rows can arrive before the habits they point at —
-        // nilling it there would silently discard the user's choice.
+        // Prefer a default habit that actually resolves. Nothing reads this any
+        // more (see the property), but the merge is kept so a revived setting
+        // wouldn't inherit whichever of two rows happened to win. Falling back to
+        // the first non-nil id rather than to nil matters during a CloudKit
+        // import, when the settings rows can arrive before the habits they point
+        // at — nilling it there would silently discard the user's choice.
         let habitIds = Set(habits.map(\.id))
         let candidates = ordered.compactMap(\.defaultHabitId)
         keeper.defaultHabitId = candidates.first { habitIds.contains($0) } ?? candidates.first

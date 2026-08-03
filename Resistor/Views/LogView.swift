@@ -168,7 +168,6 @@ struct LogView: View {
             if viewModel == nil {
                 viewModel = LogViewModel(
                     modelContext: modelContext,
-                    defaultHabitId: userSettings.first?.defaultHabitId,
                     locationManager: locationManager
                 )
             } else {
@@ -185,7 +184,6 @@ struct LogView: View {
             if viewModel == nil {
                 let vm = LogViewModel(
                     modelContext: modelContext,
-                    defaultHabitId: userSettings.first?.defaultHabitId,
                     locationManager: locationManager
                 )
                 vm.prepareHaptics()

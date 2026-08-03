@@ -58,7 +58,10 @@ enum UITestSeed {
             context.insert(ContextTag(name: name))
         }
 
-        // Two habits so the Log carousel shows "1 of 2".
+        // Two habits so the Log carousel shows "1 of 2". Sugar is inserted first
+        // and so sorts first in `Habit.displayOrder` (equal sortOrder, earlier
+        // createdAt) — which is what makes it the habit the Log screen opens on,
+        // and therefore the one whose planted pattern is on screen for capture.
         let sugar = Habit(
             name: "Sugar",
             habitDescription: "Reaching for sweets when stressed or bored.",
@@ -73,7 +76,6 @@ enum UITestSeed {
         )
         context.insert(sugar)
         context.insert(phone)
-        settings.defaultHabitId = sugar.id
 
         // A spread of events across the last ~3 weeks so Insights charts and
         // History have real shape: varied outcomes, intensities, contexts, hours.

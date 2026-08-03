@@ -312,14 +312,15 @@ Fixed product decisions for v1 (the watch ships deliberately small):
    CloudKit. Once synced, it appears in the phone's Insights and History like any
    other event.
 
-**Which habit does the watch log to?** v1 logs to the user's **default habit**
-(`UserSettings.defaultHabitId`), falling back to the single habit if only one
-exists. On-watch habit *switching* was **Later** here and has since shipped as a
-vertical pager (Screens → WATCH → Habit Paging); the default habit is now the
-page the watch *opens* on. If the user has multiple
-habits and no default set, the watch logs to a deterministic first habit and
-names it on screen so the target is never ambiguous (it never logs to an
-unnamed/"current" habit silently).
+**Which habit does the watch log to?** The **first non-archived habit in
+`Habit.displayOrder`** — i.e. the top of the user's own drag order on the phone's
+Habits screen. There is no separate default-habit setting: `defaultHabitId` was
+removed as a reader in favour of the order the user can already see and change,
+so the phone's Log screen and the watch open on the same habit with one list to
+keep in sync. On-watch habit *switching* was **Later** here and has since shipped
+as a vertical pager (Screens → WATCH → Habit Paging); first-in-order is the page
+the watch *opens* on. The target is always named on screen, so it is never
+ambiguous (it never logs to an unnamed/"current" habit silently).
 
 Edge cases:
 - **Phone not present / not reachable.** The watch logs independently into its
@@ -331,12 +332,12 @@ Edge cases:
 - **No habits configured.** The watch cannot create a habit (habit creation stays
   on the phone). It shows a neutral non-loggable state directing the user to add a
   habit on the phone; a tap does not write a stray event.
-- **Default habit archived or deleted.** The watch's target no longer resolves to
-  a live, non-archived habit; it shows a non-loggable "habit unavailable" state
-  (parallel to the widget's needs-reconfiguration state) and a tap does not log.
-  If another non-archived habit exists, v1 may fall back to the deterministic
-  first habit (named on screen); choosing fall-back vs. blocking is a ux-designer
-  call so long as the watch never logs to an unnamed target.
+- **Target habit archived or deleted.** ~~"Habit unavailable" state.~~ **Gone
+  with the default-habit setting.** The target is whatever sits first in display
+  order, so archiving it just promotes the next habit — there is no such thing as
+  a configured target that no longer resolves. Only "no habits at all" remains,
+  which is the state above. A watch-side pick that gets archived falls back the
+  same way, never logging to an archived habit.
 - **Local store unreadable on watch.** If the watch's local SwiftData store
   cannot be opened (e.g. first launch mid-sync), the count is unknown; the watch
   shows a count-unavailable state. As with the widget, a tap must not silently
@@ -1202,7 +1203,7 @@ emoji.
 - Active habits list with swipe actions (archive, delete)
 - Archived habits list with swipe actions (unarchive, delete)
 - Add/edit habit form (name, description, color, icon, preview)
-- Context menu: set/remove as default habit
+- Drag-to-reorder the active list; the top habit is the one Log and the watch open on
 - Settings: context prompt toggle, accent color picker
 - Data: export, delete all data
 - (Future: tip jar)
@@ -1727,9 +1728,8 @@ CloudKit container the phone uses (`iCloud.com.resistor.app`); parity comes from
 Fixed product decisions (not open for design re-litigation):
 - **Single-screen, single-tap.** One large log control for one habit. A tap fires
   the shared logger; no outcome/intensity/context capture on the watch.
-- **Opens on the default habit.** The watch targets `UserSettings.defaultHabitId`
-  (falling back to the sole habit, then a deterministic first habit, always named
-  on screen).
+- **Opens on the first habit in `Habit.displayOrder`** — the top of the user's
+  drag order on the phone, always named on screen. Not a separate setting.
 - **Taptic confirmation + brief neutral acknowledgment.** The success haptic is
   the primary confirmation; any on-screen acknowledgment is clinical (e.g.
   "Logged"), never celebratory.
@@ -1848,8 +1848,7 @@ sizing are a ux-designer/implementer detail for the small watch canvas.
 | Post-log acknowledgment | `Logged` (matches the phone banner's State-1 status word; neutral, not celebratory) |
 | No-habit state — primary | `No habit to log` |
 | No-habit state — secondary | `Add a habit on your phone` |
-| Habit-unavailable state — primary | `Habit unavailable` |
-| Habit-unavailable state — secondary | `Set a default habit on your phone` |
+| ~~Habit-unavailable state~~ | **Removed** with the default-habit setting — no configured target can go stale, so the state is unreachable |
 | Count-unavailable state | `Count unavailable` |
 | Forbidden | No "Great job", "Streak", "You resisted!", success/celebration copy, or emoji anywhere on the watch |
 
@@ -2084,24 +2083,15 @@ tap does nothing (no button, no log, no haptic).
 - No habit-color anywhere (there is no habit). The de-emphasized secondary glyph
   signals non-loggable.
 
-###### State (e): Habit unavailable (default/target habit archived or deleted)
+###### State (e): Habit unavailable — **removed**
 
-The stored target no longer resolves to a live, non-archived habit, **and** the
-watch has no other non-archived habit to fall back to (if one *does* exist, v1
-falls back to the deterministic first habit and renders state (a) with that
-habit's name — it never silently blocks when a valid target exists; it also never
-logs to an unnamed target). When there is genuinely no valid target:
-
-- **Replace the button** with `Image(systemName: "exclamationmark.triangle")`,
-  `.font(.system(size: 36))`, `.foregroundStyle(.secondary)` (**not** `.red` — this
-  is a setup condition, not a destructive error; `.secondary` keeps it calm and
-  clinical, matching the widget's needs-reconfiguration glyph). Not a `Button`.
-- Primary text: `Text("Habit unavailable")`, `.font(.headline)`,
-  `.foregroundStyle(.primary)`, centered, `.lineLimit(2)`.
-- Secondary text: `Text("Set a default habit on your phone")`, `.font(.footnote)`,
-  `.foregroundStyle(.secondary)`, centered, `.lineLimit(2)`.
-- Do **not** show the dead habit's name or color — the binding is stale; showing
-  it would imply it still logs there.
+This state existed to cover a *stored* target (`UserSettings.defaultHabitId`) that
+no longer resolved to a live habit. With the default-habit setting dropped, the
+target is simply the first non-archived habit in `Habit.displayOrder`, so
+archiving or deleting it promotes the next one — there is nothing left that can go
+stale. `WatchLogState.habitUnavailable` and its view branch are gone; state (d)
+"no habit to log" is the only non-loggable case. Don't reintroduce it without a
+stored target to justify it.
 
 ###### State (f): Count unavailable (local store unreadable)
 
@@ -2242,11 +2232,11 @@ mid-sync), so today's count is unknown. The watch **must never show a false `0`*
     VoiceOver user hears confirmation without seeing the fade. (watchOS supports
     `UIAccessibility.post`; unlike the widget extension, the watch app *can* post
     announcements.)
-- **VoiceOver — non-loggable states (d, e):** the whole screen is **one combined
+- **VoiceOver — non-loggable state (d):** the whole screen is **one combined
   element** (`.accessibilityElement(children: .combine)`), **no `.isButton`
   trait**, so a non-visual user is never told they can log when they cannot.
   - State (d) label: `"No habit to log. Add a habit on your phone."`
-  - State (e) label: `"Habit unavailable. Set a default habit on your phone."`
+  - (State (e) removed — see above.)
   - No "logs" hint (a tap does nothing). No on-activate log.
 - **VoiceOver — count line** when read separately (state a): the count is folded
   into the button's combined label (above), so it is **not** a second focus stop —
@@ -2624,8 +2614,8 @@ User-defined. Managed via the `ContextTag` SwiftData model. Users create and del
 - Title: "Habits"; toolbar add button VoiceOver "Add Habit"
 - Empty: "No habits yet" / "Create a habit to start tracking your temptations." / "Add Habit"
 - Section headers: "Active Habits", "Archived", "Settings", "Context Tags", "Data", "Tip Jar"
-- Habit row: "Default" badge; "{n}" + "logged"
-- Row actions: "Delete", "Archive", "Unarchive"; "Set as Default" / "Remove as Default"
+- Habit row: "{n}" + "logged"; a `line.3.horizontal` grip glyph when there are 2+ active habits. **No "Default" badge** — the top of the list *is* the default
+- Row actions: "Delete", "Archive", "Unarchive"; toolbar "Edit" / "Done" for drag-to-reorder
 - Delete habit alert: "Delete Habit?" / "This will permanently delete this habit and all its logged events. This cannot be undone." / "Cancel" / "Delete"
 - Settings: "Accent Color". **No context-prompt toggle** — `UserSettings.showContextPrompt` still exists on the model and is merged by `mergeDuplicates`, but nothing reads or sets it (context is now inline chips on the Log screen)
 - Context Tags: tags listed by name, swipe to delete; new-tag field placeholder "Add a tag"
@@ -2760,7 +2750,7 @@ Neither target exists yet.
 - Next/previous wrapping
 - Out-of-bounds index handling
 - Fetching excludes archived habits
-- Default habit ID
+- Opens on the first habit in `Habit.displayOrder`; a reorder moves it
 
 **P3: Insights Calculations**
 - Total events in range (week, month)
@@ -3139,12 +3129,12 @@ configurable single-habit model is the chosen design).
 
 **Watch Quick-Log (watchOS App)** — A standalone watchOS app whose single job is
 the fastest possible one-tap log of a resisted temptation from the wrist, no phone
-needed. Logs to the user's default habit, shows today's resisted count at rest,
+needed. Logs to the first habit in display order, shows today's resisted count at rest,
 confirms with a Taptic Engine haptic. Reuses the shared
 `TemptationLogger.logResisted(...)`; data parity with the phone comes from
 **CloudKit sync of the same container, not the App Group** (App Groups do not
 bridge separate devices). Full brief: User Flows → Flow 6 and Screens → WATCH.
-**Scope this pass: single-screen, single-tap log to the default habit + today's
+**Scope this pass: single-screen, single-tap log to the first habit in order + today's
 count + success haptic + CloudKit-synced store.** **Out/Later:** a complication,
 on-watch habit switching, outcome/intensity capture on the watch, undo/correction
 on the watch, and a fully phone-less independent install (App Store watch-only
@@ -3302,7 +3292,7 @@ Summary of all design decisions made during the design phase.
 | Intensity default | Nil (not 3) | Nil = didn't engage, preserves data integrity |
 | Banner timing | Immediately on log (superseded: "after all sheets dismiss"), 5s with undo | Undo prevents accidental logs. The original rule existed because the banner was hidden behind the outcome/context sheets; those were removed, so nothing now sits between the tap and the banner |
 | Outcome/context sheets | Removed | Replaced by default-to-resisted + banner correction and pre-log context chips. Casualties: `intensity` and `note` lost their only capture UI, and `UserSettings.showContextPrompt` lost its only reader |
-| Default habit | User-settable via context menu | Core for fast logging |
+| Default habit | **The first habit in `Habit.displayOrder`** — set by dragging on the Habits screen, not by a separate setting (superseded: "user-settable via context menu" + a "Default" badge) | Two orderings the user could set (a drag order *and* a default flag) meant the list could show one habit first and open on another. One list, one meaning, one thing to discover — and `UserSettings.defaultHabitId` joins `showContextPrompt` as an orphaned-but-undeletable Production field |
 | Time zones | Store UTC, display local | Standard practice |
 | Time-of-day drill-down | Tap a period to expand to hourly bars in place | Sparse data makes 24 bars up front noise; detail on demand only |
 | Drill-down granularity floor | Hourly for first pass; half-hour deferred | Hourly is enough to locate a spike; finer resolution is "later" |
@@ -3335,7 +3325,7 @@ Summary of all design decisions made during the design phase.
 | Quick-log widget store-unavailable | Keeps the tap (write enqueues + syncs later), replaces the count with `Count unavailable` / `ellipsis`, keeps habit tint | UC-W5 requires offline writes to persist; only the count *display* is unavailable, so the card stays loggable and never shows a false `0` |
 | Quick-log widget haptics / motion / announcements | None — platform-limited in a widget extension | Widgets can't fire haptics, animate timeline reloads, or post `UIAccessibility` announcements; the count change on reload is the only feedback |
 | Watch app purpose | Single-screen, single-tap resisted log from the wrist (the wrist-native twin of the widget) | The wrist is the lowest-friction surface for the core action; no phone needed in the urge moment |
-| Watch logged habit | Opens on the default habit (`UserSettings.defaultHabitId`), fallback to sole/first habit, always named on screen | The target is never ambiguous. Switching, deferred to Later in v1, now ships as a vertical pager |
+| Watch logged habit | Opens on the first non-archived habit in `Habit.displayOrder`, always named on screen | The target is never ambiguous, and it is the *same* habit the phone's Log screen opens on without a second setting to sync. Switching, deferred to Later in v1, now ships as a vertical pager |
 | Watch action | One tap writes one `resisted` event (intensity nil, no tags) via shared `TemptationLogger.logResisted` | Mirrors the in-app and widget single-tap default (UC-O1 / UC-W1); identical event shape, no schema change |
 | Watch confirmation | Taptic Engine success haptic + neutral on-screen "Logged"; no notification, no banner/undo | The watch is a separate haptic stack (unaffected by phone haptics bug #48); correction/undo live on the phone |
 | Watch data parity | CloudKit sync of the same container (`iCloud.com.resistor.app`), **not** App Group | App Groups do not bridge iPhone↔Watch (separate devices); cross-device parity must come from CloudKit. Primary feasibility dependency for v1 |

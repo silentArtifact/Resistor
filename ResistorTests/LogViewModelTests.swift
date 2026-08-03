@@ -33,27 +33,34 @@ final class LogViewModelTests: XCTestCase {
         XCTAssertEqual(vm.habits.first?.name, "Active")
     }
 
-    func testInitWithDefaultHabitIdSelectsCorrectHabit() throws {
+    /// The Log screen opens on the first habit in `Habit.displayOrder` — there is
+    /// no separate default-habit setting, the user's drag order *is* the default.
+    func testInitOpensOnFirstHabitInDisplayOrder() throws {
         let habit1 = TestHelpers.makeHabit(name: "First", createdAt: Date.distantPast)
         let habit2 = TestHelpers.makeHabit(name: "Second", createdAt: Date())
         context.insert(habit1)
         context.insert(habit2)
         try context.save()
 
-        let vm = LogViewModel(modelContext: context, defaultHabitId: habit2.id)
-
-        XCTAssertEqual(vm.selectedHabit?.name, "Second")
+        XCTAssertEqual(LogViewModel(modelContext: context).selectedHabit?.name, "First")
     }
 
-    func testInitWithInvalidDefaultHabitIdDefaultsToFirst() throws {
-        let habit = TestHelpers.makeHabit(name: "Only")
-        context.insert(habit)
+    /// A drag on the Habits screen rewrites `sortOrder`, and that moves which
+    /// habit the Log screen opens on — the whole point of dropping the setting.
+    func testReorderingChangesWhichHabitOpens() throws {
+        let habit1 = TestHelpers.makeHabit(name: "First", createdAt: Date.distantPast)
+        let habit2 = TestHelpers.makeHabit(name: "Second", createdAt: Date())
+        context.insert(habit1)
+        context.insert(habit2)
         try context.save()
 
-        let vm = LogViewModel(modelContext: context, defaultHabitId: UUID())
+        habit2.sortOrder = 0
+        habit1.sortOrder = 1
+        try context.save()
 
+        let vm = LogViewModel(modelContext: context)
         XCTAssertEqual(vm.selectedHabitIndex, 0)
-        XCTAssertEqual(vm.selectedHabit?.name, "Only")
+        XCTAssertEqual(vm.selectedHabit?.name, "Second")
     }
 
     func testInitWithNoHabits() throws {

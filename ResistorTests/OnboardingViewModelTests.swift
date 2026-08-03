@@ -67,16 +67,18 @@ final class OnboardingViewModelTests: XCTestCase {
         XCTAssertTrue(settings.first!.hasCompletedOnboarding)
     }
 
-    func testCreateFirstHabitSetsDefaultHabitId() throws {
+    /// Onboarding records no default habit — the habit it creates is the only one
+    /// and therefore already first in `Habit.displayOrder`, which is what the Log
+    /// screen opens on.
+    func testCreateFirstHabitRecordsNoDefaultHabitId() throws {
         let vm = OnboardingViewModel(modelContext: context)
         vm.habitName = "Test"
 
         _ = vm.createFirstHabit()
 
-        let habits = try context.fetch(FetchDescriptor<Habit>())
         let settings = try context.fetch(FetchDescriptor<UserSettings>())
-
-        XCTAssertEqual(settings.first?.defaultHabitId, habits.first?.id)
+        XCTAssertNil(settings.first?.defaultHabitId)
+        XCTAssertEqual(LogViewModel(modelContext: context).selectedHabit?.name, "Test")
     }
 
     func testCreateFirstHabitConvertsEmptyDescriptionToNil() throws {
