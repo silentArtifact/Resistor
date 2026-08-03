@@ -368,17 +368,21 @@ final class SnapshotTests: XCTestCase {
         app.navigationBars["Habits"].buttons["Edit"].tap()
 
         // UIKit draws these off the edit mode this view owns; they exist only if
-        // the binding reached the List.
+        // the binding reached the List. Waited for rather than checked with
+        // `.exists`, which samples once and so races the rows' layout on a runner
+        // slower than a local simulator.
         let sugarGrip = app.buttons["Reorder Sugar"]
         let doomGrip = app.buttons["Reorder Doomscrolling"]
-        XCTAssertTrue(sugarGrip.exists, "no reorder grip — edit mode did not activate")
-        XCTAssertTrue(doomGrip.exists, "no reorder grip — edit mode did not activate")
+        XCTAssertTrue(sugarGrip.waitForExistence(timeout: 5),
+                      "no reorder grip — edit mode did not activate")
+        XCTAssertTrue(doomGrip.waitForExistence(timeout: 5),
+                      "no reorder grip — edit mode did not activate")
 
         doomGrip.press(forDuration: 0.6, thenDragTo: sugarGrip)
         app.navigationBars["Habits"].buttons["Done"].tap()
 
         app.buttons["Log"].tap()
-        XCTAssertTrue(app.buttons["Log temptation for Doomscrolling"].waitForExistence(timeout: 5),
+        XCTAssertTrue(app.buttons["Log temptation for Doomscrolling"].waitForExistence(timeout: 10),
                       "after reordering, Log opens on the new first habit")
     }
 

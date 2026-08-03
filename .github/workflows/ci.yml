@@ -70,7 +70,5 @@ jobs:
       - name: Name the failing tests
         if: failure()
         run: |
-          xcrun xcresulttool get test-report summary \
-            --path TestResults.xcresult || true
-          xcrun xcresulttool get test-report tests \
+          xcrun xcresulttool get test-results summary \
             --path TestResults.xcresult || true
