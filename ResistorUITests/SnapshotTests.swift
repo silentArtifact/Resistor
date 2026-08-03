@@ -347,43 +347,42 @@ final class SnapshotTests: XCTestCase {
         XCTAssertEqual(bare.frame.height, describedSize.height, accuracy: 0.5)
     }
 
-    /// The habit order *is* the default-habit setting: whatever sits first in the
-    /// Habits list is what the Log screen opens on. Pins both halves of that —
-    /// that "Edit" really puts the list into edit mode (the reorder grips are
-    /// drawn by UIKit off an `editMode` this view owns itself, rather than the one
-    /// `EditButton` installs inside the `NavigationStack`, so a broken binding
-    /// would show grips and reorder nothing), and that dragging actually moves
-    /// which habit the Log screen opens on.
-    func testHabitOrderDecidesWhichHabitLogOpensOn() {
+    /// "Edit" really puts the habits list into edit mode. `HabitsView` owns its
+    /// own `isEditing` and installs `\.editMode` itself, because `EditButton`
+    /// writes to the one the `NavigationStack` installs *below* `HabitsView` —
+    /// where the rows can't read it to know when to hide their grip hint. Nothing
+    /// else covers that binding, and if it broke the hint would show while
+    /// dragging reordered nothing.
+    ///
+    /// Deliberately stops at "the grips exist". Whether a drag then rewrites
+    /// `sortOrder`, and whether that moves the habit Log opens on, is pinned
+    /// deterministically by `testMoveHabitsRewritesSortOrderDensely`,
+    /// `testMoveHabitsPersists` and `testReorderingChangesWhichHabitOpens`. An
+    /// earlier version of this test dragged one row onto another and asserted the
+    /// Log screen followed; it passed locally and on one CI run, then failed on
+    /// the next. All that half added over those unit tests was confirmation that
+    /// UIKit delivers a synthesized drag to `.onMove` — Apple's code, via the one
+    /// gesture XCUITest is least reliable at.
+    func testEditModeActivatesReorderGrips() {
         let app = XCUIApplication()
         app.launchArguments += ["-uiTestMode"]
         app.launch()
 
         // Seeded order is Sugar, then Doomscrolling.
         XCTAssertTrue(app.buttons["Log temptation for Sugar"].waitForExistence(timeout: 5),
-                      "Log screen should open on the first habit")
+                      "Log screen should open on the first habit in display order")
 
         app.buttons["Habits"].tap()
         XCTAssertTrue(app.navigationBars["Habits"].waitForExistence(timeout: 5))
         app.navigationBars["Habits"].buttons["Edit"].tap()
 
-        // UIKit draws these off the edit mode this view owns; they exist only if
-        // the binding reached the List. Waited for rather than checked with
-        // `.exists`, which samples once and so races the rows' layout on a runner
-        // slower than a local simulator.
-        let sugarGrip = app.buttons["Reorder Sugar"]
-        let doomGrip = app.buttons["Reorder Doomscrolling"]
-        XCTAssertTrue(sugarGrip.waitForExistence(timeout: 5),
-                      "no reorder grip — edit mode did not activate")
-        XCTAssertTrue(doomGrip.waitForExistence(timeout: 5),
-                      "no reorder grip — edit mode did not activate")
-
-        doomGrip.press(forDuration: 0.6, thenDragTo: sugarGrip)
-        app.navigationBars["Habits"].buttons["Done"].tap()
-
-        app.buttons["Log"].tap()
-        XCTAssertTrue(app.buttons["Log temptation for Doomscrolling"].waitForExistence(timeout: 10),
-                      "after reordering, Log opens on the new first habit")
+        // UIKit draws these off the edit mode this view owns, so they exist only
+        // if the binding reached the List. Waited for rather than checked with
+        // `.exists`, which samples once and races the rows' layout on a slow runner.
+        XCTAssertTrue(app.buttons["Reorder Sugar"].waitForExistence(timeout: 10),
+                      "no reorder grip — edit mode did not reach the List")
+        XCTAssertTrue(app.buttons["Reorder Doomscrolling"].waitForExistence(timeout: 10),
+                      "no reorder grip — edit mode did not reach the List")
     }
 
     private func snapshot(_ app: XCUIApplication, name: String) {
