@@ -314,8 +314,9 @@ Fixed product decisions for v1 (the watch ships deliberately small):
 
 **Which habit does the watch log to?** v1 logs to the user's **default habit**
 (`UserSettings.defaultHabitId`), falling back to the single habit if only one
-exists. On-watch habit *switching* (a carousel/picker on the wrist) is **Later**
-(see Scope). This keeps v1 to one screen and one tap. If the user has multiple
+exists. On-watch habit *switching* was **Later** here and has since shipped as a
+vertical pager (Screens → WATCH → Habit Paging); the default habit is now the
+page the watch *opens* on. If the user has multiple
 habits and no default set, the watch logs to a deterministic first habit and
 names it on screen so the target is never ambiguous (it never logs to an
 unnamed/"current" habit silently).
@@ -1726,15 +1727,27 @@ CloudKit container the phone uses (`iCloud.com.resistor.app`); parity comes from
 Fixed product decisions (not open for design re-litigation):
 - **Single-screen, single-tap.** One large log control for one habit. A tap fires
   the shared logger; no outcome/intensity/context capture on the watch.
-- **Logs to the default habit.** The watch targets `UserSettings.defaultHabitId`
+- **Opens on the default habit.** The watch targets `UserSettings.defaultHabitId`
   (falling back to the sole habit, then a deterministic first habit, always named
-  on screen). On-watch habit switching is out of v1 (Later).
+  on screen).
 - **Taptic confirmation + brief neutral acknowledgment.** The success haptic is
   the primary confirmation; any on-screen acknowledgment is clinical (e.g.
   "Logged"), never celebratory.
-- **No notifications, no complication, no undo, no correction on the watch.**
-  Correction (Gave in) and deletion (undo) happen in the phone app. Complication
-  is Later.
+- **No notifications and no outcome correction on the watch.** Correction (Gave
+  in) happens in the phone app.
+
+**Shipped since this section was written** (2026-08-03), so read the paragraphs
+below against these rather than the other way round:
+
+- **On-watch habit switching**, listed here as "Later", ships as a vertical
+  pager — see Habit Paging below.
+- **Undo** ships, as a wrist shake within 5s of a log (`ShakeDetector`, Core
+  Motion — watchOS has no shake gesture API), with a VoiceOver action alongside
+  it because a motion-only affordance is no use to someone who cannot shake
+  reliably.
+- **A complication** ships, as a static launcher glyph only — no live data,
+  since showing any would mean moving the watch store into an App Group so the
+  extension process could read it.
 
 #### Watch Quick-Log (use cases)
 
@@ -1854,24 +1867,60 @@ the end).
 
 ##### Single screen, no navigation
 
-The watch app is exactly one screen — no `NavigationStack`, no tabs, no Digital
-Crown scroll target in v1 (there is nothing to scroll; the whole control fits one
-watch face). The screen is the log control plus its surrounding identity text.
-This honors the "single-screen, single-tap" fixed product decision and keeps the
-wrist interaction to: raise wrist → one tap → done.
+The watch app is one screen deep — no `NavigationStack`, no tab bar. The screen
+is the log control plus its surrounding identity text. This honors the
+"single-screen, single-tap" fixed product decision and keeps the wrist
+interaction to: raise wrist → one tap → done.
 
 - **No `ScrollView`.** All content fits within the safe area at Default Dynamic
   Type. At the largest watch Dynamic Type sizes the content may exceed one screen;
   wrap the whole layout in a `ScrollView` *only as an overflow safety net* (it
   does not scroll at normal sizes), so large-text users can still reach the count
   line below the button. This mirrors the watch HIG pattern of a non-scrolling
-  primary control that becomes scrollable only when text forces it.
-- **Digital Crown:** unused in v1 — no rotation target, no focus value. (A future
-  on-watch habit switcher, "Later", is the natural Crown owner; do not wire it
-  now.)
+  primary control that becomes scrollable only when text forces it. **This holds
+  only for the single-habit and no-habit states** — a page in the habit pager is
+  never scrollable, because a vertical scroll inside a vertically paged
+  `TabView` fights it for the same drag and the same Crown.
+- **Digital Crown:** turns the habit pager (see Habit Paging). This section
+  previously reserved the Crown as the natural owner of a future habit switcher
+  and said not to wire it; the switcher shipped, and it owns the Crown.
 - **Safe area:** use the system default; do not fight the watch's curved-corner
   inset. Let SwiftUI's default `.scenePadding()`-equivalent margins apply. The
   log button is centered, so the curved corners never clip it.
+
+##### Habit Paging
+
+One habit per page, `TabView` + `.tabViewStyle(.verticalPage)`: swipe up/down or
+turn the Crown, with the system page dots on the trailing edge as the affordance.
+Pages follow `Habit.displayOrder`, so a drag on the phone's Habits screen is the
+order on the wrist. Only present when more than one active habit exists.
+
+An earlier build put a chevron on the habit name that opened a full-screen list.
+That is three interactions — tap, read, tap — to change the one thing a
+wrist-fast app should make cheapest.
+
+**The log control must be a `Button`, not a gesture, and that is what makes
+paging work at all.** A custom press gesture on the disc swallows every vertical
+drag: the swipe neither turns the page *nor* becomes distinguishable from a
+lift, so the release logs an event. Verified in the simulator — it does exactly
+that. A `Button` yields its touch to the enclosing scroll the moment it pans and
+fires its action only on a release the scroll did not take, which is precisely
+the distinction, for free. The hold ramp therefore rides on
+`ButtonStyle.Configuration.isPressed`, which stays true for as long as the finger
+is down — so there is still no duration threshold, a flick and a three-second
+hold both log, and holding past the ramp keeps buzzing until release. Do not
+reintroduce a press gesture here, and do not try to fix the accidental log with a
+drag-distance threshold; that was tried first and the pager still never saw the
+drag.
+
+**Selection is session-only.** The pick lives in memory (`selectedHabitID`) and
+resets to the default habit on relaunch, exactly like the phone's Log screen.
+Persisting a watch-local override would make the two devices disagree about what
+"the" habit is.
+
+**Accessibility.** The pager is a standard `TabView`, so VoiceOver page
+navigation is the system's. The log control is a real `Button`, which is what
+carries the label and hint.
 
 ##### Layout — the primary tap target
 
@@ -3286,13 +3335,13 @@ Summary of all design decisions made during the design phase.
 | Quick-log widget store-unavailable | Keeps the tap (write enqueues + syncs later), replaces the count with `Count unavailable` / `ellipsis`, keeps habit tint | UC-W5 requires offline writes to persist; only the count *display* is unavailable, so the card stays loggable and never shows a false `0` |
 | Quick-log widget haptics / motion / announcements | None — platform-limited in a widget extension | Widgets can't fire haptics, animate timeline reloads, or post `UIAccessibility` announcements; the count change on reload is the only feedback |
 | Watch app purpose | Single-screen, single-tap resisted log from the wrist (the wrist-native twin of the widget) | The wrist is the lowest-friction surface for the core action; no phone needed in the urge moment |
-| Watch logged habit | Logs to the default habit (`UserSettings.defaultHabitId`), fallback to sole/first habit, always named on screen | Keeps v1 to one screen and one tap; on-watch switching is deferred to Later |
+| Watch logged habit | Opens on the default habit (`UserSettings.defaultHabitId`), fallback to sole/first habit, always named on screen | The target is never ambiguous. Switching, deferred to Later in v1, now ships as a vertical pager |
 | Watch action | One tap writes one `resisted` event (intensity nil, no tags) via shared `TemptationLogger.logResisted` | Mirrors the in-app and widget single-tap default (UC-O1 / UC-W1); identical event shape, no schema change |
 | Watch confirmation | Taptic Engine success haptic + neutral on-screen "Logged"; no notification, no banner/undo | The watch is a separate haptic stack (unaffected by phone haptics bug #48); correction/undo live on the phone |
 | Watch data parity | CloudKit sync of the same container (`iCloud.com.resistor.app`), **not** App Group | App Groups do not bridge iPhone↔Watch (separate devices); cross-device parity must come from CloudKit. Primary feasibility dependency for v1 |
 | Watch v1 acceptance frame | "Log on watch → appears on phone **after CloudKit sync**" (not instant, no live phone link required) | Logging must not depend on WatchConnectivity reachability; the watch logs independently and syncs later |
 | Watch vs notifications ban | No collision; the watch is a passive log surface with no push/alert/reminder/streak | The ban is on interruptive notifications; the watch never alerts, schedules, or nudges |
-| Watch scope (out/later) | Complication, on-watch habit switching, outcome/intensity capture, undo/correction, fully phone-less independent install — all deferred | v1 ships the smallest useful wrist surface: one tap, one habit, one haptic, synced |
+| Watch scope (out/later) | v1 deferred all of: complication, on-watch habit switching, outcome/intensity capture, undo/correction, phone-less independent install. **Since shipped:** a launcher-only complication, habit paging, and shake-to-undo. Still deferred: outcome/intensity capture, correction, phone-less install | v1 shipped the smallest useful wrist surface: one tap, one habit, one haptic, synced. The three that followed each kept that shape rather than widening it |
 | Patterns card exists at all | One card that reads several axes at once | Every other Insights chart reads one axis, so a run of Friday evenings hides inside two unremarkable bars |
 | Patterns card outcome figure | None, permanently; `Pattern` has no outcome field | The card answers "what sets me off"; a resisted % answers "how am I doing", and the two together grade the situation instead of describing it |
 | Patterns unit of evidence | Occasion (same day + same time-of-day period), not event | Two logs forty minutes apart are one sitting; counting them as independent trials inflates every statistic, worst for the compulsive-logging user the app exists for |
