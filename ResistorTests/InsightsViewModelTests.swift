@@ -33,6 +33,22 @@ final class InsightsViewModelTests: XCTestCase {
         XCTAssertEqual(vm.habits.first?.name, "Active")
     }
 
+    /// Insights lists habits in `Habit.displayOrder` like every other list, so a
+    /// drag on the Habits screen reorders this picker too.
+    func testHabitsFollowDisplayOrder() throws {
+        let first = TestHelpers.makeHabit(name: "First", createdAt: Date(timeIntervalSince1970: 0))
+        let second = TestHelpers.makeHabit(name: "Second", createdAt: Date(timeIntervalSince1970: 100))
+        first.sortOrder = 1
+        second.sortOrder = 0
+        context.insert(first)
+        context.insert(second)
+        try context.save()
+
+        let vm = InsightsViewModel(modelContext: context)
+
+        XCTAssertEqual(vm.habits.map(\.name), ["Second", "First"])
+    }
+
     func testSelectedHabitNilWhenNoHabits() throws {
         let vm = InsightsViewModel(modelContext: context)
         XCTAssertNil(vm.selectedHabit)

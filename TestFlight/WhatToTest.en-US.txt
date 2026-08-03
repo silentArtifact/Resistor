@@ -1,39 +1,13 @@
-The default habit is now just the top of your habits list.
+The Insights habit picker now follows the order you set on the Habits screen.
 
-The "Default" badge is gone, and so is "Set as Default" in the row's context
-menu. Instead, whichever habit sits first on the Habits screen is the one the
-Log screen and the Apple Watch open on. You change it by dragging.
-
-Each habit row now shows a small grip icon on the right when you have two or
-more habits, so it's visible that the order is yours to set. Tapping it turns on
-edit mode; the toolbar "Edit" button still does the same thing.
-
-Whatever you had set as your default before is not carried over — the habit that
-opens is now purely a matter of list order, so check the order is what you want.
+Every other habit list in the app — Log, Habits, the widget's picker, the watch
+— already sorted by the order you drag. Insights didn't; it was still listing
+habits oldest-first, so reordering had no effect there and it opened on whichever
+habit you created first.
 
 Worth checking:
 
-- With two or more habits, drag one to the top on the Habits screen, then go to
-  the Log tab. It should open on the habit you just moved to the top.
-- Same check on the Apple Watch: after the phone syncs, the watch should open on
-  the same habit the phone does. This is the part most at risk.
-- With exactly one habit, the grip icon and the "Edit" button should both be
-  absent — there's nothing to reorder.
-- The grip icon should disappear while you're in edit mode (the system draws its
-  own there). You shouldn't ever see two grips on one row.
-- Tapping a habit row still opens its editor, in and out of edit mode.
-- Archive the top habit. Log and the watch should move to the next one down
-  rather than showing an error.
-- VoiceOver: the grip is deliberately skipped; reordering is reachable through
-  the "Edit" button.
-
-Also in this build, and never described to you: the previous build's two Log
-screen layout fixes. Its release notes came out as "Merge pull request #66 …"
-because of a bug in how these notes were assembled, now fixed. So if you skipped
-them:
-
-- The habit pager (arrows and dots) moved from above the habit card to below it,
-  under the "Tap or hold to log" line.
-- A habit with no description had its icon and name sitting high with empty space
-  underneath; they're now centred in the card. Swiping between a habit with a
-  description and one without should not resize the card or make it jump.
+- With two or more habits, drag one to the top on the Habits screen, then open
+  Insights. The picker should list them in that order, and Insights should open
+  on the habit you moved to the top.
+- Archive a habit. It should drop out of the Insights picker, as before.
