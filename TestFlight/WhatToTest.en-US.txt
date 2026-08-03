@@ -26,3 +26,14 @@ Worth checking:
   rather than showing an error.
 - VoiceOver: the grip is deliberately skipped; reordering is reachable through
   the "Edit" button.
+
+Also in this build, and never described to you: the previous build's two Log
+screen layout fixes. Its release notes came out as "Merge pull request #66 …"
+because of a bug in how these notes were assembled, now fixed. So if you skipped
+them:
+
+- The habit pager (arrows and dots) moved from above the habit card to below it,
+  under the "Tap or hold to log" line.
+- A habit with no description had its icon and name sitting high with empty space
+  underneath; they're now centred in the card. Swiping between a habit with a
+  description and one without should not resize the card or make it jump.

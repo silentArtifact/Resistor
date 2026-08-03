@@ -43,10 +43,19 @@ echo "Set CURRENT_PROJECT_VERSION to $CI_BUILD_NUMBER"
 #
 # Subject only, never the body: these commit messages explain implementation rationale to
 # whoever reads git history later, which is the wrong register entirely for a tester.
+#
+# `-m --first-parent` is load-bearing, and its absence silently defeated the whole
+# mechanism. Everything lands on main through `gh pr merge --merge`, so the commit being
+# built is a MERGE commit — and plain `git diff-tree -r` prints *nothing at all* for a
+# merge, rather than the merge's changes. So the grep never matched, every build fell
+# through to the fallback, and hand-written notes were overwritten with "Merge pull
+# request #NN from …". `--first-parent` diffs the merge against main-as-it-was, which is
+# exactly "what this push added"; `-m` is what makes diff-tree emit a merge diff in the
+# first place. Verified on a real merge commit before and after: 0 paths, then 16.
 NOTES=TestFlight/WhatToTest.en-US.txt
 mkdir -p TestFlight
 
-if git diff-tree --no-commit-id --name-only -r HEAD 2>/dev/null | grep -qx "$NOTES"; then
+if git diff-tree --no-commit-id --name-only -r -m --first-parent HEAD 2>/dev/null | grep -qx "$NOTES"; then
   echo "Using hand-written test notes from this commit"
 else
   git log -1 --pretty=format:'%s' > "$NOTES"
