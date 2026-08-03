@@ -153,7 +153,7 @@ in Settings; a place is renamed or removed through the same sheet.
 |-------|------|-------|
 | `id` | `UUID` | No `@Attribute(.unique)` (CloudKit) |
 | `defaultHabitId` | `UUID?` | Which habit to show first on Log screen |
-| `showContextPrompt` | `Bool` | Whether context sheet appears after logging |
+| `showContextPrompt` | `Bool` | **Orphaned.** Gated the post-log context sheet, which no longer exists. Nothing reads or sets it — see Sheet Dismissal |
 | `accentColorHex` | `String?` | User-configurable accent color hex. Nil = system blue. |
 | `hasCompletedOnboarding` | `Bool` | Gates onboarding flow |
 
@@ -201,22 +201,38 @@ Views hold ViewModels as `@State private var viewModel: SomeViewModel?` and init
 
 ViewModels receive `ModelContext` via init, not environment.
 
-### Sheet Sequencing
+### Sheet Dismissal
 
-The Log screen presents two sheets in sequence: outcome -> context. Uses state flag + `onDismiss`:
+**Do not use `DispatchQueue.main.asyncAfter` to time anything off a sheet. Always
+use `onDismiss`.** Live referent: `LogView`'s Add Habit sheet rebuilds or refetches
+the view model in `onDismiss`.
 
-```swift
-.sheet(isPresented: $showOutcomeSheet, onDismiss: {
-    if shouldShowContextAfterOutcome {
-        shouldShowContextAfterOutcome = false
-        showContextSheet = true
-    } else {
-        vm.triggerConfirmation()
-    }
-}) { ... }
-```
+This entry used to document a two-sheet outcome → context sequence on the Log
+screen. **That flow no longer exists** — `showOutcomeSheet`,
+`showContextSheet` and `shouldShowContextAfterOutcome` are all gone. Logging
+defaults to `resisted` and is corrected afterward from the confirmation banner;
+context is chosen as inline chips *before* the tap. Nothing presents between the
+log tap and the banner, which is why the banner no longer needs sequencing at all.
 
-Do **not** use `DispatchQueue.main.asyncAfter` for sheet timing. Always use `onDismiss`.
+The rule survived its flow because the flow is *why* it exists: the banner
+originally fired on a guessed delay and landed behind the sheets it was supposed
+to follow. Any future sheet chain must still use `onDismiss`.
+
+**Three fields were orphaned when those sheets went, and none of it is visible
+from the models:**
+
+- `TemptationEvent.intensity` — no capture UI anywhere. Read-only in the History
+  detail; Insights' "Intensity Trend" card can only render against `UITestSeed`
+  data, never a real device's.
+- `TemptationEvent.note` — displayed in History and the export, written by no
+  view. `LogViewModel.updateEventContext(contextTags:note:)` still exists and is
+  unit-tested, with **no production caller**.
+- `UserSettings.showContextPrompt` — still defaulted, still merged by
+  `mergeDuplicates`, read by nothing.
+
+All three are live in the Production CloudKit schema (deployed 2026-07-31), so
+restoring capture for any of them needs UI only — no migration, no schema deploy.
+Don't delete them to "clean up": Production record fields can never be removed.
 
 ### Color Handling
 
@@ -489,10 +505,14 @@ it lived at SwiftData's default `Library/Application Support/default.store`, and
 **pointing a configuration at a new URL does not move the file** — it opens a
 new, empty one and strands the old.
 
-That has not fired yet, because the App Groups capability still isn't enabled on
-the **Resistor** target (issue #47), so `storeURL` returns nil at runtime and
-the code silently falls back to the old location. Ticking that checkbox is
-therefore a data migration, not a capability change.
+**The capability is now enabled and the migration path is live** (as of
+`308c8a2`, 2026-08-01). `Resistor.entitlements` declares
+`group.com.resistor.app` in both Debug and Release, `ResistorWidget` declares it
+too, and both provisioning profiles carry it — verified by decoding them, so the
+App ID has the capability and signing isn't stripping the entitlement. That
+means `storeURL` returns a real URL, and the *first launch after updating* is
+the migration.
+
 `resolvedStoreURL(groupStore:)` handles it: if the App Group has no store and a
 legacy one exists, it copies the `.store` **and its `-shm`/`-wal` sidecars**
 across, and opens the *legacy* store in place if the copy throws — an app that
@@ -691,6 +711,12 @@ pointing at the same PNG (one image, no duplication). Keep the membership: a
 shipped watch app needs an icon, and App Store validation rejects icons with an
 **alpha channel** (verify with `sips -g hasAlpha`).
 
+The `com.resistor.app.watchkitapp` App ID needs iCloud enabled with the
+`iCloud.com.resistor.app` container selected, **and** Push Notifications enabled
+(for the silent CloudKit sync push) — automatic signing won't mint a profile for
+an entitlement the App ID lacks, so a capability missing in the portal surfaces
+as a signing failure, not a sync bug. Both are set as of 2026-07-29.
+
 **Correction (2026-07-29):** an earlier version of this note claimed a missing
 icon was what made the install ring fill and then revert to "Install". That was
 wrong — a guess from a plausible detail, never verified. The actual cause was
@@ -810,28 +836,39 @@ coexist on disk; each mode only cleans its own files.
 
 ## Open GitHub Issues
 
-- #35 — App icon design
-- #37 — Accessibility pass (in progress — comprehensive VoiceOver/Dynamic Type sweep)
-- #47 — Quick-log widget: device verification + App Group / CloudKit capability setup
-- #48 — No haptics firing on device (tap impact + hold Core Haptics both silent)
-- #49 — watchOS app: wrist-fast resisted-temptation logging (post-v1, companion to widget)
-  - The `com.resistor.app.watchkitapp` App ID needs iCloud enabled with the
-    `iCloud.com.resistor.app` container selected, **and** Push Notifications
-    enabled (for the silent CloudKit sync push) — automatic signing won't mint a
-    profile for an entitlement the App ID lacks. Both are set as of 2026-07-29.
-  - **If the install ring completes and then reverts to "Install":** check that
-    the watch is a registered development device and appears in the profile's
-    `ProvisionedDevices`. That — not a missing icon — was the cause last time.
+Current as of 2026-08-03. Everything previously listed here (#35 icon, #37
+accessibility, #47 widget, #48 haptics, #49 watch) is closed.
 
-## Remaining Work (v1.0)
+- #53 — Log screen: surface multiple habits (scrollable list) to use the empty space
+- #60 — Default habit: make it the top of the reordered list, or drop it
+- #61 — Log screen: habit card content is top-justified, not centered
+- #62 — Log screen: habit pager sits above the card, should be below
+- #63 — Habit editor: expand icon and color choices (icon search)
+
+**Two of those closed without the device check they asked for**, which is worth
+knowing before trusting them:
+
+- **#47 (widget)** was closed on the signing artifacts alone. The widget's
+  runtime behaviour — configuration UI, tap-writes-one-event, debounce,
+  needs-reconfiguration states, VoiceOver — has never been exercised on
+  hardware.
+- **#37 (accessibility)** shipped its code changes (accent picker selected
+  trait, history row grouping, carousel dot labels) and closed with the
+  VoiceOver / Dynamic Type walkthrough deferred to manual QA. It has not been
+  run.
+
+## v1.0 Scope — all shipped
+
+Kept as a record of what v1 was. Nothing here is outstanding; open work lives in
+the section above.
 
 - ~~iCloud sync (CloudKit container setup + entitlements)~~ — Done: entitlements + CloudKit ModelConfiguration
 - ~~Unit + UI test targets~~ — Done: ResistorTests with 11 test files
 - ~~Tip jar (StoreKit 2 consumable IAPs)~~ — Done: TipJarViewModel + StoreKit config
-- App icon (minimalist shield) — Issue #35
+- ~~App icon~~ — Done: `Assets.xcassets/AppIcon.appiconset/AppIcon.png`, shared by the iOS and watch targets
 - ~~Dark mode audit~~ — Done: confirmation banner border, habit card contrast
-- ~~Accessibility pass (VoiceOver, Dynamic Type)~~ — Done: selected traits, event grouping, carousel labels
-- TestFlight build (requires Xcode: signing, CloudKit container, team ID)
+- ~~Accessibility pass (VoiceOver, Dynamic Type)~~ — Code done: selected traits, event grouping, carousel labels. On-device VoiceOver/Dynamic Type walkthrough still unrun (see Open GitHub Issues)
+- ~~TestFlight build~~ — Done: shipping. Release notes are hand-written per push to `main` in `TestFlight/WhatToTest.en-US.txt`
 
 ## Design Documents
 
