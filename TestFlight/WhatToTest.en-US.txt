@@ -1,10 +1,15 @@
-No app changes in this build. It is identical to build 34.
+Two changes, both about correcting and exploring what you have already logged.
 
-This build exists to fix how these release notes get delivered. Build 34 shipped
-with "Merge pull request #70 …" here instead of the notes written for it — if you
-saw that, the correct notes have since been restored on build 34, and that is
-where the things worth testing are listed (the Insights habit order, and habit
-descriptions on the Log screen).
+Insights → Top Locations now opens the map. Tap a place to open the map framed on
+it, or tap "Map" in the card's header for every pin. The separate "View Map"
+button below the card is gone. The card also shows when nothing is named yet —
+that was the only way to reach the map to name a first place.
 
-Nothing to test here beyond confirming the app still launches. If you are reading
-this sentence rather than a commit subject, the fix worked.
+History → tap an event: you can now change which habit it was logged against, and
+add or remove context tags, alongside the outcome. Date, time and location stay
+read-only on purpose — they are what the app observed, and the patterns on
+Insights are computed from them.
+
+Worth checking: a location you have never named still gets you to the map; the
+map opens zoomed to the place you tapped; changing an event's habit moves it in
+History and in Insights.

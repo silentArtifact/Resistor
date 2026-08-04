@@ -365,6 +365,19 @@ final class InsightsViewModel {
         locationDistribution().first?.location
     }
 
+    /// Whether the map has any pin to draw. Deliberately over the habit's
+    /// **whole history**, not `cachedEventsInRange`, because the map isn't
+    /// range-scoped — a 7-day range must not report "no location data" while
+    /// the map it links to is full of pins.
+    ///
+    /// Distinct from `locationDistribution().isEmpty`: an event carries a
+    /// coordinate long before it carries a name, and those are exactly the
+    /// events a user goes to the map to name.
+    var hasAnyLocatedEvent: Bool {
+        guard let habit = selectedHabit else { return false }
+        return habit.safeEvents.contains { $0.hasLocation }
+    }
+
     // MARK: - Trigger Patterns
 
     /// Combinations (time × day × place × context) the habit's temptations land

@@ -819,14 +819,27 @@ between them reads the selected range.
 - **Time of Day** — bar chart, four periods; a selected period expands in place
   to hourly bars (see Time-of-Day Drill-Down below)
 - **Day of Week** — bar chart
-- **Top Locations** — only when location data exists. A hand-built list (name +
-  count on its own full-width line, bar underneath), not a `Chart` with a
+- **Top Locations** — **always rendered**, named places or not. A hand-built list
+  (name + count on its own full-width line, bar underneath), not a `Chart` with a
   category axis: place names are long enough ("Financial District, San
-  Francisco") that Charts drew the labels inside the plot on top of their own bars
+  Francisco") that Charts drew the labels inside the plot on top of their own bars.
+  This card is the way to the Event Map, with two targets: **a row** pushes the map
+  framed on that place (trailing chevron is the affordance), and the header's
+  **"Map ›"** accessory pushes it unfocused. There is no separate "View Map" link
+  below the card — it asked the user to open an unfocused map and find again the
+  place they were already looking at.
+  **Neither the card nor its "Map" accessory may be gated on there being named
+  places.** A coordinate is logged long before it has a name (the geocode can
+  fail), and naming happens *on the map* — gating strands the user who has never
+  named anything: no rows → no card → no map → no way to ever get a row. Empty
+  copy distinguishes the two cases: "Locations logged, none named yet. Name a spot
+  from the map." vs "No location data yet.", decided by
+  `InsightsViewModel.hasAnyLocatedEvent` over the habit's **whole history** — the
+  map isn't range-scoped, so a 7-day range must not report "no location data" over
+  a map full of pins
 - **Intensity Trend** — only when intensity has been recorded; "Avg {x.x}"
   accessory
 - **Summary** — whole weeks and months from full history; "All time" accessory
-- "View Map" navigation link
 - "View History" navigation link
 
 #### Patterns Card (use cases)
@@ -1212,7 +1225,31 @@ emoji.
 
 - Events grouped by date
 - Swipe to delete
-- Tap for detail sheet — outcome is **editable**; all other fields read-only
+- Tap for detail sheet — **habit, outcome and context tags are editable**; date,
+  time and location stay read-only
+
+#### What the detail sheet lets you correct, and what it doesn't
+
+The editable fields are the ones a user can get *wrong at the moment of logging*
+and know better about afterwards: which habit the urge was for (the wrong card
+on the Log screen), how it went, and the circumstances (context usually comes
+back a moment after the tap).
+
+Date, time and location stay read-only because they are **observations, not
+judgements** — the app recorded when and where the tap happened. Letting either
+be edited turns the log into a diary that can be back-filled, and every pattern
+on Insights is computed from exactly those two fields.
+
+- **Habit** — `.menu` `Picker` over active habits in `Habit.displayOrder`, plus
+  the event's own habit if it has since been archived (a `Picker` whose
+  selection isn't among its options warns and renders blank). "None" is offered
+  only while the event actually has no habit, so a filed event can't be un-filed.
+- **Context** — one row per tag, each toggling on tap (checkmark when set).
+  Every defined `ContextTag` is listed, plus any raw value already on the event
+  that no longer has one (a legacy enum value, or a tag deleted since it was
+  logged) — otherwise the sheet would show a tag it gives no way to remove.
+  A list of what's set plus an editor elsewhere would make adding a tag cost
+  more than removing one.
 
 #### Outcome Correction (use cases)
 
@@ -1241,7 +1278,9 @@ This is the build-ready spec for **Surface C** (the History event-detail picker)
 refines the read-only Outcome `Section` in `EventDetailSheet`
 (`Views/HistoryView.swift:247`). The sheet stays a `.medium`-detent `List`; only the
 Outcome section becomes editable. No other field changes — intensity, context, time,
-location, note rows are untouched.
+location, note rows are untouched. (Superseded in part: habit and context tags are
+editable too now — see "What the detail sheet lets you correct" above. Date, time and
+location are still read-only.)
 
 ##### Picker style
 
@@ -2451,7 +2490,7 @@ as a consequence of logging.**
 | Sheet | Detent | Presented from | Purpose |
 |-------|--------|----------------|---------|
 | Add/Edit Habit | Full | Log toolbar, Habits toolbar, either empty state | Form with color/icon picker |
-| Event Detail | `.medium`, `.large` | History row | Event info; outcome editable, rest read-only |
+| Event Detail | `.medium`, `.large` | History row | Event info; habit, outcome and context tags editable; date/time and location read-only |
 | Place Name | `.medium` | Event Map pin, Event Detail location row | Name/rename/remove the spot |
 | Export (`ShareSheet`) | System | Habits → Data → "Export Data" | System share sheet |
 
@@ -2595,7 +2634,8 @@ User-defined. Managed via the `ContextTag` SwiftData model. Users create and del
 - Outcomes accessory: "{n}% resisted"; empty: "No events in this period"
 - Intensity Trend accessory: "Avg {x.x}"
 - Summary accessory: "All time"; columns "Period", "Events", "Resisted", "Intensity"; "—" where a column has no value
-- "View Map", "View History"
+- Top Locations accessory: "Map" (chevron); empty body: "Locations logged, none named yet. Name a spot from the map." / "No location data yet."
+- "View History"
 
 **Patterns card (Insights):**
 - Card title: "Patterns"

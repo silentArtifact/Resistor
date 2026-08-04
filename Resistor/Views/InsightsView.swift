@@ -103,9 +103,6 @@ struct InsightsView: View {
                     // Period summaries
                     periodSummaries(vm)
 
-                    // View Map link
-                    viewMapButton(vm)
-
                     // View History link
                     viewHistoryButton(vm)
                 }
@@ -874,11 +871,21 @@ struct InsightsView: View {
     @ViewBuilder
     private func topLocationsChart(_ vm: InsightsViewModel) -> some View {
         let data = vm.locationDistribution()
+        let barColor = Color(hex: vm.selectedHabit?.colorHex ?? "#007AFF") ?? .blue
 
-        if !data.isEmpty {
-            let barColor = Color(hex: vm.selectedHabit?.colorHex ?? "#007AFF") ?? .blue
-
-            SectionCard(title: "Top Locations") {
+        // The card is unconditional, and the "Map" accessory with it. Gating
+        // either on `data` would strand the user who most needs the map: an
+        // event carries a coordinate long before it carries a name, and naming
+        // is done *on* the map — so "no named places" must never mean "no way
+        // to reach the map to name one".
+        SectionCard(title: "Top Locations", accessory: AnyView(mapLink(vm))) {
+            if data.isEmpty {
+                Text(vm.hasAnyLocatedEvent
+                     ? "Locations logged, none named yet. Name a spot from the map."
+                     : "No location data yet.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
                 // Not a chart with a category axis. Place names are long
                 // ("Financial District, San Francisco") and Charts had to draw
                 // them inside the plot, where they landed on top of their own
@@ -888,56 +895,67 @@ struct InsightsView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     let maxCount = data.map(\.count).max() ?? 1
                     ForEach(data, id: \.location) { item in
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack(spacing: 8) {
-                                Text(item.location)
-                                    .font(.subheadline)
-                                    .lineLimit(1)
-                                Spacer(minLength: 8)
-                                Text("\(item.count)")
-                                    .font(.subheadline)
-                                    .fontWeight(.medium)
-                                    .monospacedDigit()
-                                    .foregroundStyle(.secondary)
-                            }
+                        // The rows are the way to the map. A separate "View Map"
+                        // link below the card asked the user to open an
+                        // unfocused map and find again the place they were
+                        // already looking at.
+                        NavigationLink {
+                            EventMapView(habit: vm.selectedHabit, focusLocation: item.location)
+                        } label: {
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack(spacing: 8) {
+                                    Text(item.location)
+                                        .font(.subheadline)
+                                        .lineLimit(1)
+                                    Spacer(minLength: 8)
+                                    Text("\(item.count)")
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                        .monospacedDigit()
+                                        .foregroundStyle(.secondary)
+                                    Image(systemName: "chevron.right")
+                                        .font(.caption2)
+                                        .foregroundStyle(.tertiary)
+                                }
 
-                            GeometryReader { geo in
-                                Capsule()
-                                    .fill(barColor)
-                                    .frame(width: max(geo.size.width * CGFloat(item.count) / CGFloat(maxCount), 3))
+                                GeometryReader { geo in
+                                    Capsule()
+                                        .fill(barColor)
+                                        .frame(width: max(geo.size.width * CGFloat(item.count) / CGFloat(maxCount), 3))
+                                }
+                                .frame(height: 6)
                             }
-                            .frame(height: 6)
+                            .contentShape(Rectangle())
+                            // The count is already stated as text on the line
+                            // above. Combined inside the link's label, not on
+                            // the link itself, so the link keeps its own button
+                            // trait and activation.
+                            .accessibilityElement(children: .combine)
                         }
-                        // The count is already stated as text on the line above.
-                        .accessibilityElement(children: .combine)
+                        .buttonStyle(.plain)
+                        .accessibilityHint("Opens the map for this place.")
                     }
                 }
             }
         }
     }
 
-    @ViewBuilder
-    private func viewMapButton(_ vm: InsightsViewModel) -> some View {
+    /// The card's own way onto the map, unfocused. Rows cover the named places;
+    /// this covers everything else — no names yet, or a place that didn't make
+    /// the top five.
+    private func mapLink(_ vm: InsightsViewModel) -> some View {
         NavigationLink {
             EventMapView(habit: vm.selectedHabit)
         } label: {
-            HStack {
-                Image(systemName: "map")
-                    .font(.body)
-                Text("View Map")
-                    .font(.body)
-                Spacer()
+            HStack(spacing: 2) {
+                Text("Map")
+                    .font(.subheadline)
                 Image(systemName: "chevron.right")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.caption2)
             }
-            .padding()
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(.secondarySystemGroupedBackground))
-            )
         }
-        .buttonStyle(.plain)
+        .accessibilityLabel("Map")
+        .accessibilityHint("Opens the map of all logged locations.")
     }
 }
 

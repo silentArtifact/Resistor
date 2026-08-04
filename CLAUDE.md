@@ -340,6 +340,28 @@ underneath), not a `Chart` with a category axis: place names are long enough
 ("Financial District, San Francisco") that Charts drew the labels inside the plot
 on top of their own bars.
 
+**The card is the way to the Event Map**, and it renders unconditionally — the
+"View Map" link that used to sit below it is gone, since it opened an unfocused
+map and asked the user to find again the place they had just tapped past. Two
+targets, no nesting:
+
+- **A row** pushes the map framed on that place
+  (`EventMapView(habit:focusLocation:)`, camera fitted to that grouping name's
+  pins, floor ~500 m so a lone pin isn't zoomed to the pavement).
+- **The header's "Map ›" accessory** pushes it unfocused, and is what makes the
+  card safe to render empty.
+
+**Neither the card nor the accessory may be gated on `locationDistribution()`.**
+An event carries a coordinate long before it carries a name — the geocode can
+fail or return nothing — and naming is done *on the map*, so gating strands
+exactly the user who has never named anything: no rows → no card → no map → no
+way to ever get a row. The empty body distinguishes the two cases via
+`InsightsViewModel.hasAnyLocatedEvent`, which is computed over the habit's
+**whole history**, not `cachedEventsInRange`: the map isn't range-scoped, so a
+7-day range must not claim "No location data yet" over a map full of pins.
+`testUnnamedCoordinatesStillCountAsLocationData` and
+`testLocatedEventOutsideRangeStillCountsAsLocationData` pin both halves.
+
 ### Pattern Detection (Insights "Patterns" card)
 
 `Services/PatternFinder.swift` answers the question the rest of Insights can't:

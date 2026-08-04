@@ -139,6 +139,17 @@ extension TemptationEvent {
         return tagRaw
     }
 
+    /// Adds the tag if absent, removes it if present. Removes only the first
+    /// match: a duplicate is a bug from elsewhere, and silently collapsing it
+    /// here would hide it while making one tap take two.
+    func toggleContextTag(_ tagRaw: String) {
+        if let index = contextTags.firstIndex(of: tagRaw) {
+            contextTags.remove(at: index)
+        } else {
+            contextTags.append(tagRaw)
+        }
+    }
+
     var hasLocation: Bool {
         latitude != nil && longitude != nil
     }
