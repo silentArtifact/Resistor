@@ -33,6 +33,7 @@ enum DataExporter {
             dict["latitude"] = event.latitude ?? NSNull()
             dict["longitude"] = event.longitude ?? NSNull()
             dict["location_name"] = event.locationName ?? NSNull()
+            dict["speed_mps"] = event.speedMps ?? NSNull()
             return dict
         }
 

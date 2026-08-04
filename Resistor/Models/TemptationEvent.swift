@@ -13,6 +13,10 @@ final class TemptationEvent {
     var latitude: Double?
     var longitude: Double?
     var locationName: String?
+    /// Metres per second at the moment of the fix, or nil when the fix couldn't
+    /// supply one. Stored raw rather than as a flag so `transitSpeed` can be
+    /// retuned without a migration — and CloudKit fields can never be removed.
+    var speedMps: Double?
 
     var habit: Habit?
 
@@ -26,7 +30,8 @@ final class TemptationEvent {
         note: String? = nil,
         latitude: Double? = nil,
         longitude: Double? = nil,
-        locationName: String? = nil
+        locationName: String? = nil,
+        speedMps: Double? = nil
     ) {
         self.id = id
         self.habit = habit
@@ -38,6 +43,7 @@ final class TemptationEvent {
         self.latitude = latitude
         self.longitude = longitude
         self.locationName = locationName
+        self.speedMps = speedMps
     }
 }
 
@@ -152,6 +158,26 @@ extension TemptationEvent {
 
     var hasLocation: Bool {
         latitude != nil && longitude != nil
+    }
+
+    /// Above this the fix came from a vehicle rather than a place. The
+    /// coordinate is then a road the user was passing, so matching it against a
+    /// saved `Place` — or even against the geocoded neighbourhood — files the
+    /// event somewhere it never really happened, and puts that noise into
+    /// `PatternFinder`'s place facet and Insights' Top Locations.
+    ///
+    /// ponytail: one threshold, 5 m/s (~11 mph), which also catches a cyclist.
+    /// Split it per travel mode if "In transit" ever has to say which.
+    static let transitSpeed: Double = 5
+
+    /// `CLLocation.speed` is negative when the fix can't derive one — common at
+    /// `kCLLocationAccuracyHundredMeters`, where a fix may come from wifi or
+    /// cell. That is stored as nil, and an unknown speed reads as stationary:
+    /// the old behaviour, which is also what every event logged before this
+    /// field existed gets.
+    var isInTransit: Bool {
+        guard let speedMps else { return false }
+        return speedMps >= Self.transitSpeed
     }
 
     var locationDisplayName: String? {
