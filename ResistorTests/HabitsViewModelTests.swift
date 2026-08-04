@@ -1,5 +1,6 @@
 import XCTest
 import SwiftData
+import UIKit
 @testable import Resistor
 
 @MainActor
@@ -392,5 +393,76 @@ final class HabitsViewModelTests: XCTestCase {
         for icon in HabitsViewModel.availableIcons {
             XCTAssertFalse(icon.isEmpty)
         }
+    }
+
+    /// Swatches are identified by hex in `ForEach`, and a duplicate name would
+    /// give VoiceOver two "Teal"s.
+    func testColorsAreDistinct() {
+        let hexes = HabitsViewModel.availableColors.map(\.hex)
+        let names = HabitsViewModel.availableColors.map(\.name)
+        XCTAssertEqual(Set(hexes).count, hexes.count, "duplicate hex in the palette")
+        XCTAssertEqual(Set(names).count, names.count, "duplicate name in the palette")
+    }
+
+    /// A habit colour is drawn as ink on both a white card and a black one, so
+    /// nothing may sit near either end. Doesn't police "muted" — saturation is a
+    /// design judgement — only the lightness that would actually stop rendering.
+    func testColorsAreMidTone() {
+        for color in HabitsViewModel.availableColors {
+            let hex = color.hex.dropFirst()
+            let value = Int(hex, radix: 16) ?? 0
+            let channels = [(value >> 16) & 0xFF, (value >> 8) & 0xFF, value & 0xFF]
+            let lightness = Double(channels.max()! + channels.min()!) / 2 / 255
+            XCTAssertGreaterThan(lightness, 0.40, "\(color.name) (\(color.hex)) is too dark")
+            XCTAssertLessThan(lightness, 0.80, "\(color.name) (\(color.hex)) is too light")
+        }
+    }
+
+    /// `allIcons` silently drops a symbol this OS can't draw, which is right for
+    /// an SDK-newer symbol and wrong for a typo — the typo would just never
+    /// appear in the grid. This is the only thing that tells them apart.
+    func testEveryCatalogIconIsARealSymbol() {
+        let missing = (HabitsViewModel.availableIcons + HabitsViewModel.iconCatalog)
+            .filter { UIImage(systemName: $0) == nil }
+        XCTAssertEqual(missing, [], "not SF Symbols on this OS")
+    }
+
+    /// A keyword whose key isn't in the catalogue can never match anything.
+    func testEveryKeywordedIconIsInTheCatalog() {
+        let known = Set(HabitsViewModel.availableIcons + HabitsViewModel.iconCatalog)
+        let orphans = HabitsViewModel.iconKeywords.keys.filter { !known.contains($0) }.sorted()
+        XCTAssertEqual(orphans, [], "keywords for symbols not in the catalog")
+    }
+
+    func testEmptyIconQueryReturnsTheSuggestedSet() {
+        XCTAssertEqual(HabitsViewModel.icons(matching: ""), HabitsViewModel.availableIcons)
+        XCTAssertEqual(HabitsViewModel.icons(matching: "   "), HabitsViewModel.availableIcons)
+    }
+
+    func testIconSearchMatchesNamesAndKeywords() {
+        // By name, with the dot reading as a space.
+        XCTAssertTrue(HabitsViewModel.icons(matching: "run").contains("figure.run"))
+        XCTAssertTrue(HabitsViewModel.icons(matching: "saucer").contains("cup.and.saucer.fill"))
+
+        // By keyword — nothing in the name says "coffee".
+        XCTAssertTrue(HabitsViewModel.icons(matching: "coffee").contains("cup.and.saucer.fill"))
+        XCTAssertTrue(HabitsViewModel.icons(matching: "gambling").contains("dice.fill"))
+
+        // Apple ships no cigarette symbol, so the word has to reach a stand-in
+        // or the app's most likely habit has nothing to search for.
+        XCTAssertTrue(HabitsViewModel.icons(matching: "cigarette").contains("smoke.fill"))
+
+        // Every word has to match, so a second one narrows.
+        XCTAssertTrue(HabitsViewModel.icons(matching: "figure swim").contains("figure.pool.swim"))
+        XCTAssertFalse(HabitsViewModel.icons(matching: "figure swim").contains("figure.run"))
+
+        XCTAssertEqual(HabitsViewModel.icons(matching: "zzzzz"), [])
+    }
+
+    func testIconSearchIsCaseInsensitive() {
+        XCTAssertEqual(
+            HabitsViewModel.icons(matching: "Coffee"),
+            HabitsViewModel.icons(matching: "coffee")
+        )
     }
 }

@@ -38,6 +38,7 @@
 		8C41ECC1C5222C46E02AACD8 /* TemptationLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E671048A9259B7EBC8C1B43 /* TemptationLogger.swift */; };
 		9019D281C1C4357A3751544B /* ResistorWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 821F40704A2FEA56AED6D538 /* ResistorWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		9323F6EB4158AC92D2B96065 /* ShakeDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6BF00C891AC6A8DE660DA6C /* ShakeDetector.swift */; };
+		9AAF0859F4071502636E741B /* HabitStylePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0A1B2572B8A1F52A7269A39 /* HabitStylePicker.swift */; };
 		9D3EDFD17E3756C5D1FCB5E7 /* WatchModelContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CE4E3C730BCF819722BC72C /* WatchModelContainer.swift */; };
 		A1000001000000000000001A /* ResistorApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000001000000000000000A /* ResistorApp.swift */; };
 		A1000002000000000000001A /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000002000000000000000A /* ContentView.swift */; };
@@ -196,6 +197,7 @@
 		92336A99675FFE2911DBEE63 /* ShakeDetectorTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ShakeDetectorTests.swift; sourceTree = "<group>"; };
 		95D889C949679DFDA0EC69EA /* ResistorWatchComplication.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ResistorWatchComplication.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		9A7A220FBBC346EEC2773BB4 /* SnapshotTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SnapshotTests.swift; sourceTree = "<group>"; };
+		A0A1B2572B8A1F52A7269A39 /* HabitStylePicker.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HabitStylePicker.swift; sourceTree = "<group>"; };
 		A1000000000000000000000A /* Resistor.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Resistor.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A1000001000000000000000A /* ResistorApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResistorApp.swift; sourceTree = "<group>"; };
 		A1000002000000000000000A /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -447,6 +449,7 @@
 				A1000011000000000000000A /* HistoryView.swift */,
 				43CA41D22F89730100D11E7D /* EventMapView.swift */,
 				EAF424CFFC2794EAA9148F6D /* PlaceNameSheet.swift */,
+				A0A1B2572B8A1F52A7269A39 /* HabitStylePicker.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -768,6 +771,7 @@
 				A47A6A4C85D3401311EDEEC5 /* PlaceNameSheet.swift in Sources */,
 				2EB7D9796333E9B0D1CEDD6E /* ContactPlace.swift in Sources */,
 				D830477B0140A2278C952D21 /* ContactMatcher.swift in Sources */,
+				9AAF0859F4071502636E741B /* HabitStylePicker.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

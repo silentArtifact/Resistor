@@ -43,6 +43,7 @@ Resistor/
     ├── HistoryView.swift             # Past events list + detail sheet
     ├── EventMapView.swift            # Map view for location-tagged events
     ├── PlaceNameSheet.swift          # Name/rename the spot an event was logged
+    ├── HabitStylePicker.swift        # Colour + icon sections shared by both habit forms
     └── OnboardingView.swift          # First-run flow (S0)
 ```
 
@@ -335,12 +336,16 @@ history icon, Log card and widget — the raw iOS system wheel (`#007AFF`,
 the parts a user actually looked at were the parts that looked like a default.
 Three rules keep it unified:
 
-- `HabitsViewModel.availableColors` is the **habit** palette (Sand, Clay, Rose,
-  Periwinkle, Slate Blue, Teal, Sage, Moss, Ochre, Storm); it and
-  `UserSettings.accentPalette` are the only palettes. Everything is mid-tone
-  because a habit colour has to work as chart ink and as a filled glyph on both
-  a white card and a black one. New habits take `availableColors[0]` — don't
-  reintroduce a `#007AFF` literal at a creation site.
+- `HabitsViewModel.availableColors` is the **habit** palette — 20 hues ordered
+  warm → cool → neutral so the grid reads as a sweep rather than as an
+  accretion; it and `UserSettings.accentPalette` are the only palettes.
+  Everything is mid-tone because a habit colour has to work as chart ink and as
+  a filled glyph on both a white card and a black one. New habits take
+  `availableColors[0]` (Sand stays first for that reason) — don't reintroduce a
+  `#007AFF` literal at a creation site. `testColorsAreMidTone` pins the
+  lightness band, which is the part that actually stops rendering;
+  "muted" itself is a design judgement no threshold separates cleanly from the
+  system wheel, so it isn't asserted.
 - `TemptationEvent.Outcome.color` is **not** `.green` / `.orange` / `.gray`.
   Those three are the most-repeated ink in the app (History badges, the Outcomes
   bar, the Log confirmation banner, map pins) and at full saturation they were
@@ -357,6 +362,49 @@ Three rules keep it unified:
   falling through to `.accentColor` made the one screen every user sees the one
   screen with none of the app's own colour in it. `UserSettings` owns the accent
   palette because three separate views resolve it.
+
+### Habit icons: a curated catalogue behind a search box
+
+There is **no public API to enumerate SF Symbols**, so the reachable set is a
+hand-written list in `HabitsViewModel`, in three parts:
+
+- `availableIcons` — the ~20 common habits, shown when the search box is empty,
+  and the source of the `circle.fill` default.
+- `iconCatalog` — everything else the search can reach, grouped by what someone
+  might be tracking. Curated, not exhaustive: a flat grid of several thousand
+  symbols is unusable, and the empty state is the suggested set precisely so the
+  common case doesn't change.
+- `iconKeywords` — search words a symbol's own **name** doesn't contain. Matching
+  reads dots as spaces, so "run" already finds `figure.run`; this covers the
+  cases where it doesn't, and nothing in `cup.and.saucer.fill` says coffee.
+  `testEveryKeywordedIconIsInTheCatalog` catches a key that names no symbol,
+  which would otherwise be silent dead weight.
+
+**A wrong name doesn't fail — it renders nothing.** `Image(systemName:)` on a
+name that isn't a symbol draws a blank and reports no error, so `allIcons` filters
+the catalogue through `UIImage(systemName:)` at runtime, and
+`testEveryCatalogIconIsARealSymbol` asserts every entry resolves. Those two look
+redundant and aren't: the filter is for a symbol a *later* SDK added, which
+should degrade to absent on an older OS; the test is for a typo, which should
+fail the build. Without the test, a typo is indistinguishable from the first case.
+
+That is not hypothetical. `"cigarette.fill"` shipped in `availableIcons` from v1
+and drew a blank tile the whole time — Apple ships no cigarette symbol under any
+name (issue #82). Smoking being near the app's central use case, it was close to
+the worst possible entry to have broken. `smoke.fill` replaced it, and
+`"cigarette"` is a keyword on `smoke.fill` and `lungs.fill` so the word still
+reaches a glyph. **Verify a new symbol name against a real `UIImage(systemName:)`
+call rather than against how plausible it looks** — plausibility is exactly what
+made this survive.
+
+`HabitStylePicker` is the Color and Icon `Section`s of a habit form, shared by
+the Habits screen's editor and the Log screen's Add Habit sheet, which carried
+identical copies. One copy, so the search only had to be built once. It also
+prepends the selected icon to the default grid when the icon isn't one of the
+suggested twenty — otherwise editing a habit whose icon came from a search opens
+on a grid with nothing selected in it. **Onboarding deliberately keeps its own
+horizontal strips** and offers no search: it is a first-run flow, its layout is a
+scroll strip rather than a form, and the icon is changeable a tap later.
 
 ### Manual Cascade Deletion
 
@@ -1039,13 +1087,13 @@ coexist on disk; each mode only cleans its own files.
 
 ## Open GitHub Issues
 
-Current as of 2026-08-03. Everything previously listed here (#35 icon, #37
-accessibility, #47 widget, #48 haptics, #49 watch) is closed.
+Current as of 2026-08-04. Everything previously listed here (#35 icon, #37
+accessibility, #47 widget, #48 haptics, #49 watch, #61/#62 Log layout, #63 icon
+and colour choices, #78 place-name suggestions, #82 blank cigarette glyph) is
+closed.
 
 - #53 — Log screen: surface multiple habits (scrollable list) to use the empty space
-- #61 — Log screen: habit card content is top-justified, not centered
-- #62 — Log screen: habit pager sits above the card, should be below
-- #63 — Habit editor: expand icon and color choices (icon search)
+- #77 — Calendar as a pattern facet: tag an event with the meeting it overlapped
 
 **Two of those closed without the device check they asked for**, which is worth
 knowing before trusting them:

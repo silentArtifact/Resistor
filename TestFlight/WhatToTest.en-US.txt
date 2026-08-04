@@ -1,40 +1,32 @@
-Naming a place no longer has to be typing.
+The habit editor's icon and colour choices were too narrow to name what you're
+actually tracking. Both are wider now.
 
-Open the Name This Place sheet and it now offers names as one-tap fills, under
-"Nearby": the businesses at that coordinate, and — if you turn on contact
-matching — anyone in your address book who lives there. There is also a "From
-Contacts" button that opens the system contact picker, for the places that are a
-person's rather than a business.
+Icons have a search box. Leave it empty and you get the same twenty as before —
+the common case is unchanged. Type into it and you reach a much larger set:
+"coffee", "gambling", "sleep", "run", "shopping", "phone". It matches the symbol
+name and a list of synonyms, so words Apple's own naming doesn't use still find
+something.
 
-There is a third way into the sheet now, alongside tapping a pin on the Event Map
-and the Location row in an event's detail: swipe a History row from the left. It
-appears only on rows still showing a neighbourhood or a raw coordinate, which is
-the moment naming is worth offering.
+Colours went from 10 to 20, ordered warm through cool to neutral. Still mid-tone
+only — a habit colour is also chart ink on Insights, a glyph on the Log card, and
+the widget's tint, so nothing goes near white or black.
 
-Nothing is applied for you. A hundred-metre fix in a strip mall has a dozen
-plausible answers, and a confidently wrong one is worse than none, because a
-place name feeds Insights and the Patterns card. The suggestions fill the text
-field; you still confirm with Save, and you can still type anything.
+Both pickers are now one piece of code, shared by the Habits editor and the Add
+Habit sheet on the Log screen. They were separate copies and only one of them
+would otherwise have got the search.
 
-Contact matching is off until you press Habits › Contacts › "Match My Contacts".
-That one asks for address-book access and takes about a second per contact, so
-give it a moment on a large address book. The addresses are stored on the phone
-only — unlike everything else in the app they are never synced to iCloud, so
-you would run it once per device. "Remove Contact Matches" deletes them.
+One real bug fell out of building this. The "cigarette" icon has never existed —
+there is no cigarette symbol in SF Symbols under any name — so that tile has been
+blank since the first build, and so was the glyph on any habit that picked it. It
+now offers a smoke symbol instead, and searching "cigarette" finds it. If you
+have a habit showing no icon at all, that is why; open it and pick again.
 
-The "From Contacts" button needs none of that: the picker runs outside the app,
-asks for no permission, and hands back only the name of the contact you tap.
-Neither path stores an address on the event — the place still saves at the
-coordinate you logged at.
+Worth checking: search a few words for something you actually track and see
+whether anything sensible comes back; confirm an empty search still shows the
+original twenty; open a habit you created earlier and confirm its icon is still
+selected in the grid; confirm the new colours look right on both a Log card and
+an Insights chart, in dark mode as well as light.
 
-Worth checking: open the sheet somewhere with businesses around and confirm the
-Nearby list is plausible; confirm "From Contacts" opens the picker without a
-permission prompt; run contact matching and confirm a friend's name shows up when
-you log at their place; confirm the History swipe offers "Name" on an unnamed row
-and not on one already named; confirm an event logged in transit still offers no
-naming at all.
-
-The useful thing to report: how long contact matching takes and how many of your
-contacts it found, a Nearby list that is empty or obviously wrong where you would
-expect a business, and whether the contact picker ever prompts for address-book
-access.
+The useful thing to report: a word you searched that found nothing when it should
+have — that is a missing synonym and it's a one-line fix. Also any colour that
+looks wrong as a chart bar or disappears against the background in either mode.
