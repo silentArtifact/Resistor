@@ -166,6 +166,25 @@ Named from `PlaceNameSheet`, reachable two ways — tap a pin on the Event Map, 
 tap the Location row in a History event's detail. There is no manage-places list
 in Settings; a place is renamed or removed through the same sheet.
 
+**The sheet suggests names; it never applies one.** Three sources fill the text
+field — businesses at the coordinate (`MKLocalPointsOfInterestRequest`, radius
+`Place.matchRadius`, so a POI outside what a saved place would cover is never
+offered), names already in use, and the address book. Auto-picking the nearest
+POI is the same wrong answer with a more authoritative name: a
+`kCLLocationAccuracyHundredMeters` fix in a strip mall has a dozen candidates,
+and unlike a blank it enters `PatternFinder` as a confident facet. The user
+confirming is what `Place` was designed around.
+
+`ContactNamePicker` wraps `CNContactPickerViewController`, which runs **out of
+process** — no `CNContactStore` authorization, no permission prompt, no privacy
+label, and the delegate is handed only the contact that was tapped. Only its
+name string is read; the place still saves at the *event's* coordinate, so no
+postal address is touched and nothing is forward-geocoded. Keep it that way:
+matching contacts by address (issue #78 Stage B) buys one tap and costs full
+address-book permission plus a geocode per contact. Its `onPick` fires on cancel
+too, with nil — the picker dismisses itself, so a SwiftUI `isPresented` left true
+would strand the sheet closed-but-presented and it could never reopen.
+
 ### UserSettings
 
 | Field | Type | Notes |
