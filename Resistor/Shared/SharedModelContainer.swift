@@ -33,14 +33,44 @@ enum SharedModelContainer {
     /// File name of the SwiftData store inside the App Group container.
     private static let storeFileName = "Resistor.store"
 
-    /// The schema shared by app and widget. Keep in sync with the app's models.
-    static var schema: Schema {
+    /// File name of the device-local store — see `localSchema`.
+    private static let localStoreFileName = "ContactPlaces.store"
+
+    /// The synced models: the user's own data, mirrored to CloudKit.
+    static var cloudSchema: Schema {
         Schema([
             Habit.self,
             TemptationEvent.self,
             UserSettings.self,
             ContextTag.self,
             Place.self
+        ])
+    }
+
+    /// The device-local models, in their own store with `cloudKitDatabase:
+    /// .none`.
+    ///
+    /// `ContactPlace` is a derived cache of the address book — geocoded from
+    /// Contacts, which the user's devices already sync themselves. Keeping it
+    /// out of CloudKit means no postal address ever leaves the phone, and no
+    /// `CD_ContactPlace` record type has to be created by hand and deployed to
+    /// Production before the feature works for a TestFlight user (see CLAUDE.md
+    /// → "The Production schema is a separate thing you must deploy by hand").
+    /// It costs a rebuild per device, which is the Settings button that made it.
+    static var localSchema: Schema {
+        Schema([ContactPlace.self])
+    }
+
+    /// Every model in the container, across both configurations. Keep in sync
+    /// with the app's models.
+    static var schema: Schema {
+        Schema([
+            Habit.self,
+            TemptationEvent.self,
+            UserSettings.self,
+            ContextTag.self,
+            Place.self,
+            ContactPlace.self
         ])
     }
 
@@ -58,24 +88,43 @@ enum SharedModelContainer {
     /// how to handle failure (the app fatal-errors as before; the widget treats
     /// it as the store-unavailable state).
     static func makeContainer() throws -> ModelContainer {
-        let configuration: ModelConfiguration
+        let cloudConfiguration: ModelConfiguration
+        let localConfiguration: ModelConfiguration
         if let url = storeURL {
-            configuration = ModelConfiguration(
-                schema: schema,
+            cloudConfiguration = ModelConfiguration(
+                schema: cloudSchema,
                 url: resolvedStoreURL(groupStore: url),
                 cloudKitDatabase: .automatic
+            )
+            localConfiguration = ModelConfiguration(
+                "ContactPlaces",
+                schema: localSchema,
+                url: url.deletingLastPathComponent().appendingPathComponent(localStoreFileName),
+                cloudKitDatabase: .none
             )
         } else {
             // App Group container unavailable — fall back to the default
             // location so the app still functions (the widget will report
             // store-unavailable when it can't see this store).
-            configuration = ModelConfiguration(
-                schema: schema,
+            cloudConfiguration = ModelConfiguration(
+                schema: cloudSchema,
                 isStoredInMemoryOnly: false,
                 cloudKitDatabase: .automatic
             )
+            localConfiguration = ModelConfiguration(
+                "ContactPlaces",
+                schema: localSchema,
+                isStoredInMemoryOnly: false,
+                cloudKitDatabase: .none
+            )
         }
-        return try ModelContainer(for: schema, configurations: [configuration])
+        // No migration for the local store, deliberately: it has never existed
+        // anywhere else, and it is a cache — an empty one costs a tap on the
+        // Settings button, not data.
+        return try ModelContainer(
+            for: schema,
+            configurations: [cloudConfiguration, localConfiguration]
+        )
     }
 
     // MARK: - Legacy Store Migration

@@ -14,6 +14,7 @@ struct PlaceNameSheet: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @Query(sort: \Place.createdAt) private var places: [Place]
+    @Query private var contactPlaces: [ContactPlace]
 
     @State private var name: String = ""
     @State private var didLoad = false
@@ -61,10 +62,10 @@ struct PlaceNameSheet: View {
                     Text("Events logged within \(radiusText) of here show this name.")
                 }
 
-                if !nearby.isEmpty {
+                if !nearbySuggestions.isEmpty {
                     Section("Nearby") {
-                        ForEach(nearby, id: \.self) { poi in
-                            Button(poi) { name = poi }
+                        ForEach(nearbySuggestions, id: \.self) { suggestion in
+                            Button(suggestion) { name = suggestion }
                         }
                     }
                 }
@@ -108,6 +109,15 @@ struct PlaceNameSheet: View {
             }
         }
         .presentationDetents([.medium])
+    }
+
+    /// Everything offered for this coordinate: contacts who live here first,
+    /// then businesses. Contacts lead because a matched address is a far
+    /// narrower claim than "one of the POIs within 150 m", so it is more often
+    /// the answer — and there are rarely more than one or two, where the POI
+    /// list is capped at six and would otherwise bury them.
+    private var nearbySuggestions: [String] {
+        Self.nearbyNames(from: contactPlaces.matches(event) + nearby, limit: 8)
     }
 
     /// Businesses at the event's coordinate, offered as one-tap fills. Searched

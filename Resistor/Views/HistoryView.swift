@@ -58,6 +58,11 @@ struct HistoryView: View {
     }
 
     @State private var selectedEvent: TemptationEvent?
+    /// The event whose spot is being named from a row swipe. Separate state, and
+    /// its sheet hangs off the list rather than off `body` — two `.sheet(item:)`
+    /// on one view is a presentation race, and this one has to be able to open
+    /// while the detail sheet is not up.
+    @State private var namingEvent: TemptationEvent?
 
     var body: some View {
         Group {
@@ -105,6 +110,17 @@ struct HistoryView: View {
             }
         }
         .listStyle(.insetGrouped)
+        .sheet(item: $namingEvent) { event in
+            PlaceNameSheet(event: event)
+        }
+    }
+
+    /// True when the row is showing a coarse geocoded string or a raw lat/lon —
+    /// the moment naming is worth offering, because what the user is reading is
+    /// the fallback. A named spot, a missing coordinate and an in-transit event
+    /// all have nothing to name.
+    private func canName(_ event: TemptationEvent) -> Bool {
+        event.hasLocation && !event.isInTransit && places.match(event) == nil
     }
 
     @ViewBuilder
@@ -189,6 +205,18 @@ struct HistoryView: View {
                 deleteEvent(event)
             } label: {
                 Label("Delete", systemImage: "trash")
+            }
+        }
+        // Leading edge, so the naming action can never be the one a full swipe
+        // fires by accident — that edge belongs to Delete.
+        .swipeActions(edge: .leading) {
+            if canName(event) {
+                Button {
+                    namingEvent = event
+                } label: {
+                    Label("Name", systemImage: "mappin.and.ellipse")
+                }
+                .tint(.accentColor)
             }
         }
     }

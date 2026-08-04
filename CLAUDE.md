@@ -22,10 +22,12 @@ Resistor/
 │   ├── TemptationEvent.swift         # @Model — logged event entity
 │   ├── UserSettings.swift            # @Model — singleton settings
 │   ├── ContextTag.swift              # @Model — user-defined context tag
-│   └── Place.swift                   # @Model — user-named location + distance matching
+│   ├── Place.swift                   # @Model — user-named location + distance matching
+│   └── ContactPlace.swift            # @Model — geocoded contact address, device-local cache
 ├── Services/
 │   ├── DataExporter.swift            # CSV/JSON export of temptation events
 │   ├── LocationManager.swift         # GPS location capture for events
+│   ├── ContactMatcher.swift          # Opt-in address-book geocoding → ContactPlace
 │   └── PatternFinder.swift           # Trigger detection — see "Pattern Detection"
 ├── ViewModels/
 │   ├── LogViewModel.swift            # Log screen logic + Core Haptics engine
@@ -162,9 +164,49 @@ Duplicate names are allowed on purpose: a drifting fix or a site with two
 entrances is covered by saving a second `Place` with the same name, and display
 groups by name.
 
-Named from `PlaceNameSheet`, reachable two ways — tap a pin on the Event Map, or
-tap the Location row in a History event's detail. There is no manage-places list
-in Settings; a place is renamed or removed through the same sheet.
+Named from `PlaceNameSheet`, reachable three ways — tap a pin on the Event Map,
+tap the Location row in a History event's detail, or swipe a History row from the
+**leading** edge. The swipe appears only when `canName` holds (located, not in
+transit, no `Place` matching yet), so it is offered exactly when the row is
+showing the fallback the name would replace; the trailing edge stays Delete's,
+because that is the edge a full swipe fires. There is no manage-places list in
+Settings; a place is renamed or removed through the same sheet.
+
+**The sheet suggests names; it never applies one.** Three sources fill the text
+field — businesses at the coordinate (`MKLocalPointsOfInterestRequest`, radius
+`Place.matchRadius`, so a POI outside what a saved place would cover is never
+offered), names already in use, and Contacts. Auto-picking the nearest POI is the
+same wrong answer with a more authoritative name: a
+`kCLLocationAccuracyHundredMeters` fix in a strip mall has a dozen candidates,
+and unlike a blank it enters `PatternFinder` as a confident facet. The user
+confirming is what `Place` was designed around.
+
+Contacts arrive two ways, and the cheap one is not the fallback for the
+expensive one — they answer different questions:
+
+- **`ContactNamePicker`** wraps `CNContactPickerViewController`, which runs **out
+  of process**: no `CNContactStore` authorization, no prompt, no privacy label,
+  and the delegate is handed only the contact that was tapped. Always available.
+  Its `onPick` fires on cancel too, with nil — the picker dismisses itself, so a
+  SwiftUI `isPresented` left true would strand the sheet closed-but-presented and
+  it could never reopen.
+- **`ContactMatcher` + `ContactPlace`** (opt-in, from Settings › Contacts) geocode
+  the address book once so a contact's name appears *without* picking a source.
+  That is the only thing it buys, and it costs full Contacts access, a privacy
+  label and a rate-limited geocode per contact — hence a button the user presses,
+  never anything automatic. Only the name string is read either way; the place
+  still saves at the *event's* coordinate, so no postal address is stored and
+  nothing is forward-geocoded onto an event.
+
+`ContactPlace` is **not** a `Place` despite the identical shape, and it lives in
+its own `cloudKitDatabase: .none` store — see "The store lives in the App Group"
+below.
+
+Settings shows an action and a resting state ("Match My Contacts" / "Matched — N
+contacts" + Remove), **not a `Toggle`**: a toggle would have to flip itself back
+off whenever a run matched nothing — access declined, or no contact has an
+address — which reads as a broken switch. Nothing here is a setting; either
+matches exist or they don't.
 
 **The sheet suggests names; it never applies one.** Three sources fill the text
 field — businesses at the coordinate (`MKLocalPointsOfInterestRequest`, radius
@@ -563,6 +605,33 @@ iCloud sync via SwiftData + CloudKit imposes these restrictions:
 - **No ordered relationships** — sort at query time
 - **No cascading deletes** — implement manually (see above)
 - **Additive-only schema migrations** — cannot rename or remove fields once shipped
+
+### Two configurations: the synced store, and a device-local cache
+
+`SharedModelContainer` opens **one container over two `ModelConfiguration`s**.
+`cloudSchema` (Habit, TemptationEvent, UserSettings, ContextTag, Place) is the
+user's data and mirrors to CloudKit. `localSchema` is `ContactPlace` alone, in
+its own `ContactPlaces.store` with `cloudKitDatabase: .none`. `schema` is the
+union, because `ModelContainer(for:)` has to cover every configuration.
+
+Three things fall out of keeping the contact cache local, and all three are the
+point:
+
+- **No postal address ever leaves the phone.** It is geocoded from Contacts,
+  which the user's devices already sync themselves — mirroring it again would put
+  the address book in the app's CloudKit database for nothing.
+- **No `CD_ContactPlace` to deploy.** A new synced `@Model` is a Production record
+  type someone has to create by hand and deploy before it works for a TestFlight
+  user (see below); a local one is live the moment it builds.
+- The cost is a rebuild per device, which is exactly the Settings button that
+  created it. `ContactPlace` is derived and disposable — that is why an empty one
+  after a reinstall is a tap, not data loss, and why the local store gets no
+  migration path of the kind the main store needed.
+
+`testCloudAndLocalConfigurationsOpenAsOneContainer` and
+`testContactCacheIsNotInTheCloudSchema` pin both halves. A bad split does not
+fail to compile — `ModelContainer` throws at launch and the app `fatalError`s on
+it — and the leak back into `cloudSchema` would be silent and permanent.
 
 ### The store lives in the App Group, and moving there is a migration
 
