@@ -204,15 +204,26 @@ final class SnapshotTests: XCTestCase {
         // and a hardcoded swipe count silently lands the tap on the wrong card.
         // Not just "visible": the tap lands 60pt *below* the title, so a title
         // sitting near the bottom edge puts the tap past the card entirely —
-        // onto the View Map link, which navigates away. Scroll until the title
-        // is in the top 60% of the screen so the whole plot is on screen too.
+        // onto the next card, whose Top Locations rows navigate away to the map.
+        // Scroll until the title is in the top 60% of the screen so the whole
+        // plot is on screen too.
         let cardTitle = app.staticTexts["Time of Day"]
         func titleIsHighOnScreen() -> Bool {
             cardTitle.exists && cardTitle.isHittable && cardTitle.frame.maxY < app.frame.height * 0.6
         }
-        for _ in 0..<5 where !titleIsHighOnScreen() {
-            scroll.swipeUp(velocity: .slow)
+        func scrollTitleIntoPosition() {
+            // Down first: the card can be *above* the viewport (an expand /
+            // collapse changes its height and shifts everything), and swiping
+            // up from there only pushes it further away.
+            if !titleIsHighOnScreen() {
+                scroll.swipeDown(velocity: .fast)
+                scroll.swipeDown(velocity: .fast)
+            }
+            for _ in 0..<5 where !titleIsHighOnScreen() {
+                scroll.swipeUp(velocity: .slow)
+            }
         }
+        scrollTitleIntoPosition()
 
         // The real expand interaction is a `chartOverlay` spatial-tap hit test
         // on the chart plot. The mirrored accessibility buttons are zero-height
@@ -226,21 +237,26 @@ final class SnapshotTests: XCTestCase {
             XCTFail("Time of Day card never appeared — drill-down capture skipped")
             return
         }
-        let titleFrame = title.frame
-
         // The four period bands run left→right (Morning, Afternoon, Evening,
         // Night) across the card's width; `plotY` sits on the bars, below the
         // title and above the x-axis labels.
+        //
+        // The frame is re-read on every attempt rather than captured once:
+        // expanding the card and collapsing it again changes its height, so a
+        // frame taken before the first tap is stale by the second and the tap
+        // lands 60pt below where the title now is.
         func tapPeriod(dx: CGFloat, named: String) {
-            let plotY = titleFrame.maxY + 60
-            let x = titleFrame.minX + (app.frame.width - titleFrame.minX * 2) * dx
-            app.coordinate(withNormalizedOffset: .zero)
-                .withOffset(CGVector(dx: x, dy: plotY))
-                .tap()
-            XCTAssertTrue(
-                app.buttons["Collapse hourly breakdown"].waitForExistence(timeout: 2),
-                "Tapping the \(named) band did not expand the hourly drill-down"
-            )
+            for _ in 0..<2 {
+                scrollTitleIntoPosition()
+                let frame = title.frame
+                let plotY = frame.maxY + 60
+                let x = frame.minX + (app.frame.width - frame.minX * 2) * dx
+                app.coordinate(withNormalizedOffset: .zero)
+                    .withOffset(CGVector(dx: x, dy: plotY))
+                    .tap()
+                if app.buttons["Collapse hourly breakdown"].waitForExistence(timeout: 2) { return }
+            }
+            XCTFail("Tapping the \(named) band did not expand the hourly drill-down")
         }
 
         // Evening — the simple 4-bar case (3rd of 4 bands).

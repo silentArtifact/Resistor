@@ -668,6 +668,67 @@ final class InsightsViewModelTests: XCTestCase {
         XCTAssertTrue(dist.isEmpty)
     }
 
+    /// The map is reached from the Top Locations card, and naming a place is
+    /// done on the map — so a coordinate that has no name yet must still report
+    /// that the map has something to show, or the user who has never named
+    /// anything can never get there to start.
+    func testUnnamedCoordinatesStillCountAsLocationData() throws {
+        let habit = TestHelpers.makeHabit()
+        context.insert(habit)
+
+        // A fix with no reverse-geocoded name and no saved Place.
+        let event = TestHelpers.makeEvent(
+            habit: habit,
+            occurredAt: Date(),
+            outcome: "resisted",
+            latitude: 40.7,
+            longitude: -74.0
+        )
+        context.insert(event)
+        try context.save()
+
+        let vm = InsightsViewModel(modelContext: context)
+        vm.selectedTimeRange = .week
+
+        XCTAssertTrue(vm.locationDistribution().isEmpty, "An unnamed coordinate is not a chart row")
+        XCTAssertTrue(vm.hasAnyLocatedEvent, "…but it is still a pin on the map")
+    }
+
+    /// The card's range picker doesn't scope the map, so an old fix outside the
+    /// current range must not read as "no location data".
+    func testLocatedEventOutsideRangeStillCountsAsLocationData() throws {
+        let habit = TestHelpers.makeHabit()
+        context.insert(habit)
+
+        let longAgo = Calendar.current.date(byAdding: .day, value: -90, to: Date())!
+        let event = TestHelpers.makeEvent(
+            habit: habit,
+            occurredAt: longAgo,
+            outcome: "resisted",
+            latitude: 40.7,
+            longitude: -74.0,
+            locationName: "Home"
+        )
+        context.insert(event)
+        try context.save()
+
+        let vm = InsightsViewModel(modelContext: context)
+        vm.selectedTimeRange = .week
+
+        XCTAssertTrue(vm.locationDistribution().isEmpty)
+        XCTAssertTrue(vm.hasAnyLocatedEvent)
+    }
+
+    func testNoLocationDataAtAll() throws {
+        let habit = TestHelpers.makeHabit()
+        context.insert(habit)
+        context.insert(TestHelpers.makeEvent(habit: habit, occurredAt: Date(), outcome: "resisted"))
+        try context.save()
+
+        let vm = InsightsViewModel(modelContext: context)
+        XCTAssertFalse(vm.hasAnyLocatedEvent)
+    }
+
     func testTopLocationReturnsHighestCount() throws {
         let habit = TestHelpers.makeHabit()
         context.insert(habit)

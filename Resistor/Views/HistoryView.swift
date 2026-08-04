@@ -229,9 +229,42 @@ struct EventDetailSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Place.createdAt) private var places: [Place]
+    @Query(sort: Habit.displayOrder) private var habits: [Habit]
+    @Query(sort: \ContextTag.createdAt) private var definedTags: [ContextTag]
     let event: TemptationEvent
 
     @State private var showPlaceNameSheet = false
+
+    /// Active habits, plus the event's own if it has since been archived — a
+    /// Picker whose selection isn't among its options warns and renders blank.
+    private var habitOptions: [Habit] {
+        let active = habits.filter { !$0.isArchived }
+        if let current = event.habit, !active.contains(where: { $0.id == current.id }) {
+            return active + [current]
+        }
+        return active
+    }
+
+    /// Selection by id rather than by `Habit`, so the "none" case is a plain
+    /// `nil` tag instead of a doubly-optional model reference.
+    private var habitBinding: Binding<UUID?> {
+        Binding(
+            get: { event.habit?.id },
+            set: { newValue in
+                event.habit = habitOptions.first { $0.id == newValue }
+                try? modelContext.save()
+            }
+        )
+    }
+
+    /// Every tag the user could put on this event: the defined ones, plus any
+    /// raw value already on the event that no longer has a `ContextTag` (a
+    /// legacy enum value, or a tag deleted since it was logged) — otherwise the
+    /// sheet would show a tag it gives no way to remove.
+    private var tagOptions: [String] {
+        let defined = definedTags.map(\.name)
+        return defined + event.contextTags.filter { !defined.contains($0) }
+    }
 
     private var outcomeBinding: Binding<TemptationEvent.Outcome> {
         Binding(
@@ -246,16 +279,30 @@ struct EventDetailSheet: View {
     var body: some View {
         NavigationStack {
             List {
-                // Habit section
-                if let habit = event.habit {
+                // Habit section. Editable, because the common mislog is tapping
+                // the wrong card on the Log screen — the event happened, it was
+                // just filed against the wrong habit.
+                if !habitOptions.isEmpty {
                     Section("Habit") {
-                        HStack(spacing: 12) {
-                            Image(systemName: habit.iconName ?? "circle.fill")
-                                .font(.title2)
-                                .foregroundStyle(Color(hex: habit.colorHex ?? "#007AFF") ?? .blue)
-                            Text(habit.name)
-                                .font(.body)
+                        Picker(selection: habitBinding) {
+                            ForEach(habitOptions) { habit in
+                                Label {
+                                    Text(habit.name)
+                                } icon: {
+                                    Image(systemName: habit.iconName ?? "circle.fill")
+                                }
+                                .tag(Optional(habit.id))
+                            }
+                            // Only offered while the event actually has no
+                            // habit, so a filed event can't be un-filed.
+                            if event.habit == nil {
+                                Text("None").tag(UUID?.none)
+                            }
+                        } label: {
+                            Text("Habit")
                         }
+                        .pickerStyle(.menu)
+                        .accessibilityLabel("Habit")
                     }
                 }
 
@@ -324,11 +371,29 @@ struct EventDetailSheet: View {
                     }
                 }
 
-                // Context section
-                if !event.contextTags.isEmpty {
+                // Context section. Every tag is a row that toggles, rather than
+                // a list of what's set plus an editor elsewhere — context is
+                // usually remembered a moment after the log, so adding one has
+                // to cost the same as removing one.
+                if !tagOptions.isEmpty {
                     Section("Context") {
-                        ForEach(event.contextTags, id: \.self) { tagRaw in
-                            Text(TemptationEvent.displayName(for: tagRaw))
+                        ForEach(tagOptions, id: \.self) { tagRaw in
+                            let isSet = event.contextTags.contains(tagRaw)
+                            Button {
+                                toggleTag(tagRaw)
+                            } label: {
+                                HStack {
+                                    Text(TemptationEvent.displayName(for: tagRaw))
+                                        .foregroundStyle(.primary)
+                                    Spacer()
+                                    if isSet {
+                                        Image(systemName: "checkmark")
+                                            .foregroundStyle(.tint)
+                                    }
+                                }
+                                .contentShape(Rectangle())
+                            }
+                            .accessibilityAddTraits(isSet ? [.isButton, .isSelected] : .isButton)
                         }
                     }
                 }
@@ -400,6 +465,10 @@ struct EventDetailSheet: View {
         HistoryView.timeFormatter.string(from: date)
     }
 
+    private func toggleTag(_ tagRaw: String) {
+        event.toggleContextTag(tagRaw)
+        try? modelContext.save()
+    }
 }
 
 #Preview {

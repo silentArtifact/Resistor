@@ -8,6 +8,11 @@ struct EventMapView: View {
 
     let habit: Habit?
 
+    /// The Insights grouping name that was tapped, if the map was opened from a
+    /// Top Locations row — the map then opens framed on that place rather than
+    /// on every pin.
+    var focusLocation: String? = nil
+
     /// The event whose spot is being named, driving the `PlaceNameSheet`.
     @State private var namingEvent: TemptationEvent?
 
@@ -29,15 +34,42 @@ struct EventMapView: View {
                 mapContent
             }
         }
-        .navigationTitle("Event Map")
+        .navigationTitle(focusLocation ?? "Event Map")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $namingEvent) { event in
             PlaceNameSheet(event: event)
         }
     }
 
+    /// Frames the pins of `focusLocation` when the map was opened from a Top
+    /// Locations row. A place is a spread of fixes, not a point — a drifting
+    /// GPS or two entrances put its events tens of metres apart — so the camera
+    /// fits their bounding box rather than centring on one of them.
+    private var initialPosition: MapCameraPosition {
+        guard let focusLocation else { return .automatic }
+        let coords = eventsWithLocation
+            .filter { places.groupingName(for: $0) == focusLocation }
+            .compactMap { event -> CLLocationCoordinate2D? in
+                guard let lat = event.latitude, let lon = event.longitude else { return nil }
+                return CLLocationCoordinate2D(latitude: lat, longitude: lon)
+            }
+        guard let first = coords.first else { return .automatic }
+        let lats = coords.map(\.latitude), lons = coords.map(\.longitude)
+        let minLat = lats.min() ?? first.latitude, maxLat = lats.max() ?? first.latitude
+        let minLon = lons.min() ?? first.longitude, maxLon = lons.max() ?? first.longitude
+        return .region(MKCoordinateRegion(
+            center: CLLocationCoordinate2D(latitude: (minLat + maxLat) / 2, longitude: (minLon + maxLon) / 2),
+            // Floor of ~500 m so a single pin isn't zoomed to the pavement,
+            // and 40% headroom so edge pins don't sit under the hint bar.
+            span: MKCoordinateSpan(
+                latitudeDelta: max((maxLat - minLat) * 1.4, 0.005),
+                longitudeDelta: max((maxLon - minLon) * 1.4, 0.005)
+            )
+        ))
+    }
+
     private var mapContent: some View {
-        Map {
+        Map(initialPosition: initialPosition) {
             ForEach(eventsWithLocation) { event in
                 if let lat = event.latitude, let lon = event.longitude {
                     Annotation(

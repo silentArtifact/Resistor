@@ -328,4 +328,23 @@ final class TemptationEventTests: XCTestCase {
         XCTAssertNil(event.longitude)
         XCTAssertNil(event.locationName)
     }
+
+    /// The History detail sheet's context rows are one toggle each, so adding a
+    /// tag has to cost the same as removing one and neither may disturb the
+    /// tags already on the event.
+    func testToggleContextTagAddsThenRemoves() {
+        let habit = TestHelpers.makeHabit()
+        let event = TemptationEvent(habit: habit, contextTags: ["Bored"])
+
+        event.toggleContextTag("Stressed")
+        XCTAssertEqual(event.contextTags, ["Bored", "Stressed"])
+
+        event.toggleContextTag("Bored")
+        XCTAssertEqual(event.contextTags, ["Stressed"])
+
+        // Re-adding a removed tag appends rather than duplicating.
+        event.toggleContextTag("Stressed")
+        event.toggleContextTag("Stressed")
+        XCTAssertEqual(event.contextTags, ["Stressed"])
+    }
 }
