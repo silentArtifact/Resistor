@@ -485,52 +485,16 @@ struct HabitsView: View {
                     .lineLimit(2...4)
                 }
 
-                Section("Color") {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 44))], spacing: 12) {
-                        ForEach(HabitsViewModel.availableColors, id: \.hex) { color in
-                            Circle()
-                                .fill(Color(hex: color.hex) ?? .blue)
-                                .frame(width: 44, height: 44)
-                                .overlay(
-                                    Circle()
-                                        .stroke(Color.primary, lineWidth: vm.selectedColorHex == color.hex ? 3 : 0)
-                                )
-                                .onTapGesture {
-                                    vm.selectedColorHex = color.hex
-                                }
-                                .accessibilityLabel(color.name)
-                                .accessibilityAddTraits(vm.selectedColorHex == color.hex ? [.isButton, .isSelected] : .isButton)
-                        }
-                    }
-                    .padding(.vertical, 8)
-                }
-
-                Section("Icon") {
-                    let selectedColor = Color(hex: vm.selectedColorHex) ?? .blue
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 50))], spacing: 12) {
-                        ForEach(HabitsViewModel.availableIcons, id: \.self) { icon in
-                            let isSelected = vm.selectedIconName == icon
-                            Image(systemName: icon)
-                                .font(.title2)
-                                .foregroundStyle(isSelected ? selectedColor : Color.primary)
-                                .frame(width: 50, height: 50)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .fill(isSelected ? selectedColor.opacity(0.2) : Color.clear)
-                                )
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .stroke(isSelected ? selectedColor : Color.clear, lineWidth: 2)
-                                )
-                                .onTapGesture {
-                                    vm.selectedIconName = icon
-                                }
-                                .accessibilityLabel(icon.replacingOccurrences(of: ".fill", with: "").replacingOccurrences(of: ".", with: " "))
-                                .accessibilityAddTraits(vm.selectedIconName == icon ? [.isButton, .isSelected] : .isButton)
-                        }
-                    }
-                    .padding(.vertical, 8)
-                }
+                HabitStylePicker(
+                    colorHex: Binding(
+                        get: { vm.selectedColorHex },
+                        set: { vm.selectedColorHex = $0 }
+                    ),
+                    iconName: Binding(
+                        get: { vm.selectedIconName },
+                        set: { vm.selectedIconName = $0 }
+                    )
+                )
 
                 // Preview
                 Section("Preview") {

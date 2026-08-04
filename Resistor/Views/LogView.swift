@@ -789,48 +789,7 @@ private struct AddHabitFromLogSheet: View {
                     .lineLimit(2...4)
                 }
 
-                Section("Color") {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 44))], spacing: 12) {
-                        ForEach(HabitsViewModel.availableColors, id: \.hex) { color in
-                            Circle()
-                                .fill(Color(hex: color.hex) ?? .blue)
-                                .frame(width: 44, height: 44)
-                                .overlay(
-                                    Circle()
-                                        .stroke(Color.primary, lineWidth: selectedColor == color.hex ? 3 : 0)
-                                )
-                                .onTapGesture { selectedColor = color.hex }
-                                .accessibilityLabel(color.name)
-                                .accessibilityAddTraits(selectedColor == color.hex ? .isSelected : [])
-                        }
-                    }
-                    .padding(.vertical, 8)
-                }
-
-                Section("Icon") {
-                    let iconColor = Color(hex: selectedColor) ?? .blue
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 50))], spacing: 12) {
-                        ForEach(HabitsViewModel.availableIcons, id: \.self) { icon in
-                            let isSelected = selectedIcon == icon
-                            Image(systemName: icon)
-                                .font(.title2)
-                                .foregroundStyle(isSelected ? iconColor : Color.primary)
-                                .frame(width: 50, height: 50)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .fill(isSelected ? iconColor.opacity(0.2) : Color.clear)
-                                )
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .stroke(isSelected ? iconColor : Color.clear, lineWidth: 2)
-                                )
-                                .onTapGesture { selectedIcon = icon }
-                                .accessibilityLabel(icon.replacingOccurrences(of: ".fill", with: "").replacingOccurrences(of: ".", with: " "))
-                                .accessibilityAddTraits(selectedIcon == icon ? .isSelected : [])
-                        }
-                    }
-                    .padding(.vertical, 8)
-                }
+                HabitStylePicker(colorHex: $selectedColor, iconName: $selectedIcon)
             }
             .navigationTitle("New Habit")
             .navigationBarTitleDisplayMode(.inline)
