@@ -35,6 +35,10 @@ final class Place {
     /// someone needs a campus or a mall covered.
     static let matchRadius: CLLocationDistance = 150
 
+    /// What an event logged in a moving vehicle is called instead of a place.
+    /// Not a `Place` row — nothing is saved, and no coordinate owns it.
+    static let transitName = "In transit"
+
     var coordinate: CLLocationCoordinate2D {
         CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
     }
@@ -54,13 +58,18 @@ extension Collection where Element == Place {
     /// What to show the user for an event's location: its saved place name, else
     /// the reverse-geocoded name, else raw coordinates.
     func displayName(for event: TemptationEvent) -> String? {
-        match(event)?.name ?? event.locationDisplayName
+        if event.isInTransit { return Place.transitName }
+        return match(event)?.name ?? event.locationDisplayName
     }
 
     /// Grouping key for Insights: saved place name, else the reverse-geocoded
     /// name. Raw coordinates are deliberately excluded — a lat/lon pair is not a
     /// place the user would recognize in a chart.
     func groupingName(for event: TemptationEvent) -> String? {
+        // Ahead of the coordinate check below: unlike a lat/lon pair, "In
+        // transit" is a name the user recognizes, so a moving event still
+        // groups even when the geocode came back empty.
+        if event.isInTransit { return Place.transitName }
         if let place = match(event) { return place.name }
         guard let name = event.locationName, !name.isEmpty else { return nil }
         return name

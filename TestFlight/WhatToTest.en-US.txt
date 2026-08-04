@@ -1,15 +1,24 @@
-Two changes, both about correcting and exploring what you have already logged.
+One change, about where a temptation logged in a moving vehicle gets filed.
 
-Insights → Top Locations now opens the map. Tap a place to open the map framed on
-it, or tap "Map" in the card's header for every pin. The separate "View Map"
-button below the card is gone. The card also shows when nothing is named yet —
-that was the only way to reach the map to name a first place.
+Until now a log made while driving was recorded at whatever coordinate the fix
+landed on, so it was filed under a neighbourhood you were only passing through —
+or matched to a place you had named, if you happened to drive within 150 m of it.
+Those events now read "In transit" instead: in History, on the map, in Insights →
+Top Locations, and in the Patterns card.
 
-History → tap an event: you can now change which habit it was logged against, and
-add or remove context tags, alongside the outcome. Date, time and location stay
-read-only on purpose — they are what the app observed, and the patterns on
-Insights are computed from them.
+The threshold is about 11 mph, so walking and standing still are unaffected. An
+event logged in transit has no spot to name, so its History detail shows the
+location without the Name / Rename option.
 
-Worth checking: a location you have never named still gets you to the map; the
-map opens zoomed to the place you tapped; changing an event's habit moves it in
-History and in Insights.
+Nothing already logged changes. Speed is read from the location fix at the moment
+you log, and events recorded before this build carry none, so they keep their
+current location exactly as it is.
+
+Worth checking: log one as a passenger on a drive and confirm it reads "In
+transit" rather than a street or a named place; log one while walking and confirm
+it still names the place; confirm your existing history is unchanged.
+
+Known unknown, and the useful thing to report: some location fixes cannot supply
+a speed at all — a fix from wifi or cell rather than GPS. Those are treated as
+stationary. If you log while clearly driving and it still shows a place name,
+that is the case worth telling us about.

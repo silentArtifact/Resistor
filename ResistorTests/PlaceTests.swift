@@ -99,6 +99,61 @@ final class PlaceTests: XCTestCase {
         XCTAssertNil([Place]().groupingName(for: event))
     }
 
+    // MARK: - In transit
+
+    func testTransitBeatsASavedPlaceTheEventDrovePast() {
+        let home = Place(name: "Home", latitude: base.lat, longitude: base.lon)
+        let habit = TestHelpers.makeHabit()
+        let event = TestHelpers.makeEvent(
+            habit: habit,
+            latitude: within,
+            longitude: base.lon,
+            locationName: "Midtown, New York",
+            speedMps: 20   // ~45 mph
+        )
+
+        // Driving past the house is not being at the house — the whole point of
+        // the field. It has to win over both the saved place and the geocode.
+        XCTAssertEqual([home].displayName(for: event), "In transit")
+        XCTAssertEqual([home].groupingName(for: event), "In transit")
+    }
+
+    func testTransitGroupsEvenWithoutAGeocodedName() {
+        let habit = TestHelpers.makeHabit()
+        let event = TestHelpers.makeEvent(
+            habit: habit,
+            latitude: base.lat,
+            longitude: base.lon,
+            speedMps: 20
+        )
+
+        // Raw coordinates are excluded from the grouping key; "In transit" is a
+        // name, so it must not be dropped alongside them.
+        XCTAssertEqual([Place]().groupingName(for: event), "In transit")
+    }
+
+    func testWalkingPaceAndUnknownSpeedBothStayAtThePlace() {
+        let home = Place(name: "Home", latitude: base.lat, longitude: base.lon)
+        let habit = TestHelpers.makeHabit()
+        let strolling = TestHelpers.makeEvent(
+            habit: habit,
+            latitude: within,
+            longitude: base.lon,
+            speedMps: 1.5   // walking
+        )
+        // nil is what a wifi or cell fix stores, and what every event logged
+        // before the field existed has. It must read as stationary, not as
+        // transit, or the whole back catalogue relabels itself.
+        let unknown = TestHelpers.makeEvent(
+            habit: habit,
+            latitude: within,
+            longitude: base.lon
+        )
+
+        XCTAssertEqual([home].displayName(for: strolling), "Home")
+        XCTAssertEqual([home].displayName(for: unknown), "Home")
+    }
+
     // MARK: - Insights grouping
 
     func testNamedPlacesSplitAnIdenticalGeocodedString() throws {

@@ -604,6 +604,12 @@ intensity ratings, notes, named locations and habit order were device-local and
 would have been lost on any reinstall or new device. All five record types now
 match the models.
 
+`CD_speedMps` (`Double`, no index) was added by hand and deployed on 2026-08-04,
+in the same change that introduced `TemptationEvent.speedMps` — an optional
+never populated on a dev build, so exactly the case where "Deploy Schema
+Changes" has nothing to find until someone creates the field. `CD_TemptationEvent`
+is 18 fields in both environments.
+
 When adding a field by hand, take its type from a sibling SwiftData already
 generated rather than guessing: `Int`/`Int?`/`Bool` → `Int(64)`, `String?` →
 `String`, `Double?` → `Double`, `[String]` → `Bytes`, `Date` → `Date/Time`.

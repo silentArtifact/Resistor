@@ -38,7 +38,8 @@ enum TestHelpers {
         note: String? = nil,
         latitude: Double? = nil,
         longitude: Double? = nil,
-        locationName: String? = nil
+        locationName: String? = nil,
+        speedMps: Double? = nil
     ) -> TemptationEvent {
         TemptationEvent(
             habit: habit,
@@ -49,7 +50,8 @@ enum TestHelpers {
             note: note,
             latitude: latitude,
             longitude: longitude,
-            locationName: locationName
+            locationName: locationName,
+            speedMps: speedMps
         )
     }
 

@@ -401,21 +401,33 @@ struct EventDetailSheet: View {
                 // Location section
                 if event.hasLocation {
                     Section("Location") {
-                        Button {
-                            showPlaceNameSheet = true
-                        } label: {
+                        if event.isInTransit {
+                            // No naming affordance: the coordinate is a road the
+                            // user was passing, so a name saved here would never
+                            // show on this event — the display stays "In
+                            // transit" — and offering "Name" would read as broken.
                             HStack(spacing: 8) {
-                                Image(systemName: "location.fill")
+                                Image(systemName: "car.fill")
                                     .foregroundStyle(.secondary)
-                                Text(places.displayName(for: event) ?? "Unknown")
-                                    .foregroundStyle(.primary)
-                                Spacer()
-                                Text(places.match(event) == nil ? "Name" : "Rename")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
+                                Text(Place.transitName)
                             }
+                        } else {
+                            Button {
+                                showPlaceNameSheet = true
+                            } label: {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "location.fill")
+                                        .foregroundStyle(.secondary)
+                                    Text(places.displayName(for: event) ?? "Unknown")
+                                        .foregroundStyle(.primary)
+                                    Spacer()
+                                    Text(places.match(event) == nil ? "Name" : "Rename")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            .accessibilityHint("Double tap to name this place.")
                         }
-                        .accessibilityHint("Double tap to name this place.")
 
                         if let lat = event.latitude, let lon = event.longitude {
                             Map(initialPosition: .region(MKCoordinateRegion(

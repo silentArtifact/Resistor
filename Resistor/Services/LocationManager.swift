@@ -36,6 +36,11 @@ extension LocationProviding {
 
         event.latitude = location.coordinate.latitude
         event.longitude = location.coordinate.longitude
+        // Negative means the fix couldn't derive a speed. Store nil rather than
+        // the sentinel, so "moving slowly" and "don't know" stay distinct.
+        event.speedMps = location.speed >= 0 ? location.speed : nil
+        // Geocode even when moving: the name is still worth keeping, since
+        // `transitSpeed` decides at display time and can change.
         if let placeName {
             event.locationName = placeName
         }
