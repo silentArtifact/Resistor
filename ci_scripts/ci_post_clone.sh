@@ -52,6 +52,28 @@ echo "Set CURRENT_PROJECT_VERSION to $CI_BUILD_NUMBER"
 # request #NN from …". `--first-parent` diffs the merge against main-as-it-was, which is
 # exactly "what this push added"; `-m` is what makes diff-tree emit a merge diff in the
 # first place. Verified on a real merge commit before and after: 0 paths, then 16.
+#
+# And `-m --first-parent` was still not enough, because it fixes the wrong half of
+# the problem. Xcode Cloud clones with:
+#
+#   git fetch --depth 1 origin <sha> && git checkout <sha>
+#
+# — a shallow clone containing the merge commit and NOTHING ELSE. diff-tree needs
+# the first parent to diff against, and that object isn't in the repository, so it
+# emits zero paths for the same reason a plain `-r` does. Build 34 shipped with
+# "Merge pull request #70 from …" as its release notes despite the file being in
+# the commit; the log line was "Generated test notes from the commit subject".
+#
+# Both previous versions of this were verified on a full local clone, where the
+# parent is always present, so both looked correct and neither was. `--deepen 1`
+# pulls the merge's parents in, which is the whole requirement. Verified by
+# reproducing the shallow clone (git init; fetch --depth 1 <merge sha>; checkout):
+# 0 paths before, 9 after, notes file among them.
+#
+# `|| true` because `set -eu` is in force and a failed deepen must degrade to the
+# commit-subject fallback, never abort the build over release-note prose.
+git fetch --deepen 1 origin 2>/dev/null || true
+
 NOTES=TestFlight/WhatToTest.en-US.txt
 mkdir -p TestFlight
 
