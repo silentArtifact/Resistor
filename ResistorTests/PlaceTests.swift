@@ -229,4 +229,16 @@ final class PlaceTests: XCTestCase {
             ["12 PM", "1", "2", "3", "4"]
         )
     }
+
+    // MARK: - Nearby name suggestions
+
+    func testNearbyNamesDropNilsAndDuplicatesAndCap() {
+        let raw: [String?] = ["Blue Bottle", nil, "Blue Bottle", "", "Safeway", "Gym", "Bank", "Park", "Deli", "Bar"]
+        // First-seen order kept, so the closest result stays at the top.
+        XCTAssertEqual(
+            PlaceNameSheet.nearbyNames(from: raw),
+            ["Blue Bottle", "Safeway", "Gym", "Bank", "Park", "Deli"]
+        )
+        XCTAssertEqual(PlaceNameSheet.nearbyNames(from: raw, limit: 2), ["Blue Bottle", "Safeway"])
+    }
 }

@@ -1,24 +1,25 @@
-One change, about where a temptation logged in a moving vehicle gets filed.
+Naming a place no longer has to be typing.
 
-Until now a log made while driving was recorded at whatever coordinate the fix
-landed on, so it was filed under a neighbourhood you were only passing through —
-or matched to a place you had named, if you happened to drive within 150 m of it.
-Those events now read "In transit" instead: in History, on the map, in Insights →
-Top Locations, and in the Patterns card.
+Open the Name This Place sheet — tap a pin on the Event Map, or the Location row
+in a History event's detail — and it now offers the names of businesses at that
+coordinate as one-tap fills, under "Nearby". There is also a "From Contacts"
+button, for the places that are a person's rather than a business: it opens the
+system contact picker and fills the field with the name you tap.
 
-The threshold is about 11 mph, so walking and standing still are unaffected. An
-event logged in transit has no spot to name, so its History detail shows the
-location without the Name / Rename option.
+Nothing is applied for you. A hundred-metre fix in a strip mall has a dozen
+plausible answers, and a confidently wrong one is worse than none, because a
+place name feeds Insights and the Patterns card. The suggestions fill the text
+field; you still confirm with Save, and you can still type anything.
 
-Nothing already logged changes. Speed is read from the location fix at the moment
-you log, and events recorded before this build carry none, so they keep their
-current location exactly as it is.
+The contact picker asks for no permission and reads no addresses. It runs
+outside the app and hands back only the name of the contact you tapped — the
+place is still saved at the event's own coordinate.
 
-Worth checking: log one as a passenger on a drive and confirm it reads "In
-transit" rather than a street or a named place; log one while walking and confirm
-it still names the place; confirm your existing history is unchanged.
+Worth checking: open the sheet somewhere with businesses around and confirm the
+Nearby list is plausible; confirm "From Contacts" opens the picker without a
+permission prompt and fills the field; confirm an event logged in transit still
+offers no naming at all.
 
-Known unknown, and the useful thing to report: some location fixes cannot supply
-a speed at all — a fix from wifi or cell rather than GPS. Those are treated as
-stationary. If you log while clearly driving and it still shows a place name,
-that is the case worth telling us about.
+The useful thing to report: a Nearby list that is empty or obviously wrong where
+you would expect a business, and whether the contact picker ever prompts for
+address-book access.
