@@ -595,6 +595,41 @@ record fields in the Console against the model's stored properties, remembering
 6 metadata fields and a `CD_entityName` are always present (so a 5-property
 model shows 12 fields).
 
+### Xcode Cloud builds from a shallow clone with no history
+
+A push to `main` triggers the Xcode Cloud **Archive - iOS** workflow, which runs
+`ci_scripts/ci_post_clone.sh`. That script stamps `CURRENT_PROJECT_VERSION` from
+`CI_BUILD_NUMBER` and chooses the TestFlight release notes — hand-written
+`TestFlight/WhatToTest.en-US.txt` if the commit being built touched it, else the
+commit subject.
+
+**The checkout is `git fetch --depth 1 origin <sha>` followed by `git checkout
+<sha>`.** The repository contains that one commit and nothing else — no parents,
+no branches, no history. Anything in the post-clone script that reads git history
+therefore sees an empty repository and fails *silently*, because the script's job
+is to pick between two acceptable outcomes rather than to succeed or fail.
+
+This cost three attempts at one bug. Everything lands on `main` via
+`gh pr merge --merge`, so the commit built is always a merge commit, and the
+"was the notes file touched" check needs both `-m --first-parent` (merges need it
+to emit a diff at all) *and* `git fetch --deepen 1 origin` (to have a parent to
+diff against). The first two fixes were verified on a full local clone, where the
+parent always exists, so both looked correct and neither was; builds kept
+shipping "Merge pull request #NN from …" to testers.
+
+**So: reproduce the clone, don't reason about it.**
+
+```bash
+git init && git remote add origin <url>
+git fetch --depth 1 origin <merge sha> && git checkout <merge sha>
+git diff-tree --no-commit-id --name-only -r -m --first-parent HEAD   # 0 paths = broken
+```
+
+Then verify what was actually *delivered* rather than what should have been: an
+App Store Connect API key (App Manager) is on this machine, so
+`GET builds/<id>/betaBuildLocalizations` reads the notes a build really shipped
+with. Build 35 is the first that carried hand-written notes automatically.
+
 ## Key Design Decisions
 
 | Decision | Choice |
