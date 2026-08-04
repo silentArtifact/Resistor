@@ -6,7 +6,7 @@ import Foundation
 enum TestHelpers {
     @MainActor
     static func makeModelContainer() throws -> ModelContainer {
-        let schema = Schema([Habit.self, TemptationEvent.self, UserSettings.self, Place.self, ContextTag.self])
+        let schema = Schema([Habit.self, TemptationEvent.self, UserSettings.self, Place.self, ContextTag.self, ContactPlace.self])
         let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
         return try ModelContainer(for: schema, configurations: [config])
     }

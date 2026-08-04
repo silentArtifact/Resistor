@@ -13,6 +13,8 @@ struct HabitsView: View {
     @State private var showExportSheet = false
     @State private var exportURL: URL?
     @State private var newTagName: String = ""
+    @Query private var contactPlaces: [ContactPlace]
+    @State private var contactMatcher = ContactMatcher()
     /// Owned rather than read from `\.editMode`, because `EditButton` installs
     /// that inside the `NavigationStack` — below this view's own environment —
     /// so the rows could never tell whether the grip hint should stand down.
@@ -301,6 +303,46 @@ struct HabitsView: View {
                 .buttonStyle(.plain)
                 .disabled(newTagName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
+        }
+
+        contactMatchingSection
+    }
+
+    /// Opt-in address-book matching, so naming a place can suggest the person
+    /// who lives there.
+    ///
+    /// An action and a resting state, not a `Toggle`. A toggle would have to
+    /// flip itself back off when a run finds nothing to match — every contact
+    /// without an address, or access declined — which reads as the switch being
+    /// broken. There is no setting here: either matches exist or they don't.
+    @ViewBuilder
+    private var contactMatchingSection: some View {
+        Section {
+            if contactPlaces.isEmpty {
+                Button("Match My Contacts") {
+                    Task { await contactMatcher.rebuild(in: modelContext) }
+                }
+                .disabled(contactMatcher.isWorking)
+            } else {
+                LabeledContent(
+                    "Matched",
+                    value: contactPlaces.count == 1 ? "1 contact" : "\(contactPlaces.count) contacts"
+                )
+                Button("Remove Contact Matches", role: .destructive) {
+                    contactMatcher.clear(in: modelContext)
+                }
+                .disabled(contactMatcher.isWorking)
+            }
+
+            if let statusText = contactMatcher.statusText {
+                Text(statusText)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+        } header: {
+            Text("Contacts")
+        } footer: {
+            Text("Looks up your contacts' addresses once, so naming a place can suggest whoever lives there. Addresses stay on this device.")
         }
     }
 

@@ -241,4 +241,101 @@ final class PlaceTests: XCTestCase {
         )
         XCTAssertEqual(PlaceNameSheet.nearbyNames(from: raw, limit: 2), ["Blue Bottle", "Safeway"])
     }
+
+    // MARK: - Contact matching
+
+    /// ~110 m north of the base coordinate — inside `matchRadius`.
+    private static let nearLatitude = 37.7759
+    /// ~1.1 km north — outside it.
+    private static let farLatitude = 37.7849
+
+    func testContactMatchesAreWithinRadiusAndNearestFirst() {
+        let habit = TestHelpers.makeHabit()
+        context.insert(habit)
+        let event = TestHelpers.makeEvent(habit: habit, latitude: 37.7749, longitude: -122.4194)
+        context.insert(event)
+
+        let contacts = [
+            ContactPlace(name: "Dana", latitude: Self.nearLatitude, longitude: -122.4194),
+            ContactPlace(name: "Sam", latitude: 37.7749, longitude: -122.4194),
+            ContactPlace(name: "Across Town", latitude: Self.farLatitude, longitude: -122.4194)
+        ]
+
+        // Sam is at the coordinate itself, Dana ~110 m away, the third a km out.
+        XCTAssertEqual(contacts.matches(event), ["Sam", "Dana"])
+    }
+
+    func testContactMatchesDropDuplicateNamesAndSkipTransit() {
+        let habit = TestHelpers.makeHabit()
+        context.insert(habit)
+        let contacts = [
+            ContactPlace(name: "Dana", latitude: 37.7749, longitude: -122.4194),
+            // A second address for the same person — one suggestion, not two.
+            ContactPlace(name: "Dana", latitude: Self.nearLatitude, longitude: -122.4194)
+        ]
+
+        let stationary = TestHelpers.makeEvent(habit: habit, latitude: 37.7749, longitude: -122.4194)
+        context.insert(stationary)
+        XCTAssertEqual(contacts.matches(stationary), ["Dana"])
+
+        // A coordinate the user drove through is not a place, so it gets no
+        // suggestion — the same rule `displayName(for:)` applies.
+        let driving = TestHelpers.makeEvent(
+            habit: habit,
+            latitude: 37.7749,
+            longitude: -122.4194,
+            speedMps: 20
+        )
+        context.insert(driving)
+        XCTAssertEqual(contacts.matches(driving), [])
+    }
+
+    /// The production container splits its models across two configurations —
+    /// the user's data to CloudKit, the contact cache to a device-local store.
+    /// A build cannot catch a bad split; `ModelContainer` throws at launch, and
+    /// the app fatal-errors on that.
+    func testCloudAndLocalConfigurationsOpenAsOneContainer() throws {
+        let directory = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let container = try ModelContainer(
+            for: SharedModelContainer.schema,
+            configurations: [
+                ModelConfiguration(
+                    schema: SharedModelContainer.cloudSchema,
+                    url: directory.appendingPathComponent("Resistor.store"),
+                    cloudKitDatabase: .none
+                ),
+                ModelConfiguration(
+                    "ContactPlaces",
+                    schema: SharedModelContainer.localSchema,
+                    url: directory.appendingPathComponent("ContactPlaces.store"),
+                    cloudKitDatabase: .none
+                )
+            ]
+        )
+
+        // Both stores are writable and readable through the one context.
+        let context = ModelContext(container)
+        context.insert(Place(name: "Home", latitude: 37.7749, longitude: -122.4194))
+        context.insert(ContactPlace(name: "Dana", latitude: 37.7749, longitude: -122.4194))
+        try context.save()
+
+        XCTAssertEqual(try context.fetch(FetchDescriptor<Place>()).map(\.name), ["Home"])
+        XCTAssertEqual(try context.fetch(FetchDescriptor<ContactPlace>()).map(\.name), ["Dana"])
+    }
+
+    /// The point of the split: the contact cache must not be in the schema that
+    /// mirrors to CloudKit, or every address book entry syncs to iCloud and
+    /// `CD_ContactPlace` becomes a record type someone has to deploy by hand.
+    func testContactCacheIsNotInTheCloudSchema() {
+        let cloudNames = SharedModelContainer.cloudSchema.entities.map(\.name)
+        XCTAssertFalse(cloudNames.contains("ContactPlace"), "ContactPlace must stay out of CloudKit")
+        XCTAssertEqual(SharedModelContainer.localSchema.entities.map(\.name), ["ContactPlace"])
+        // The container schema still has to cover both, or it cannot open.
+        let allNames = Set(SharedModelContainer.schema.entities.map(\.name))
+        XCTAssertTrue(allNames.isSuperset(of: Set(cloudNames + ["ContactPlace"])))
+    }
 }
